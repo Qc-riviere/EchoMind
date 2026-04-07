@@ -1,10 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Home, Search, Settings, Brain, Archive } from "lucide-react";
+import { Home, Search, Settings, Brain, Archive, MessageSquare } from "lucide-react";
 
 const navItems = [
   { to: "/", icon: Home, label: "首页", shortcut: "Ctrl+N" },
   { to: "/search", icon: Search, label: "搜索", shortcut: "Ctrl+K" },
   { to: "/archive", icon: Archive, label: "归档" },
+  { to: "/wechat", icon: MessageSquare, label: "微信桥接" },
   { to: "/settings", icon: Settings, label: "设置" },
 ];
 

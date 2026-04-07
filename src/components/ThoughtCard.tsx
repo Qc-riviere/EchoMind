@@ -37,6 +37,17 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
           : 'bg-white/70 backdrop-blur-sm shadow-[0_4px_16px_rgba(87,91,140,0.04)] border-white/60 hover:bg-white hover:shadow-[0_12px_40px_-8px_rgba(87,91,140,0.2)] hover:-translate-y-1.5'
       }`}
     >
+      {thought.image_path && (
+        <div className="mb-4 rounded-xl overflow-hidden border border-[#e3e1ed]/50">
+          <img
+            src={`http://127.0.0.1:8765/api/images/${thought.image_path}`}
+            alt="想法图片"
+            className="w-full max-h-64 object-cover"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+        </div>
+      )}
+
       <p className="text-[#31323b] leading-relaxed mb-4 text-lg">
         {thought.content}
       </p>

@@ -9,10 +9,12 @@ interface ChatStore {
   streamingContent: string;
   isStreaming: boolean;
   error: string | null;
+  currentConversationId: string | null;
 
   startChat: (thoughtId: string) => Promise<Conversation>;
   loadMessages: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, content: string) => Promise<void>;
+  withdrawMessage: (messageId: string) => Promise<void>;
   reset: () => void;
 }
 
@@ -22,10 +24,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   streamingContent: "",
   isStreaming: false,
   error: null,
+  currentConversationId: null,
 
   startChat: async (thoughtId: string) => {
     const conv = await invoke<Conversation>("start_chat", { thoughtId });
-    set({ conversation: conv, messages: [], streamingContent: "", error: null });
+    set({ conversation: conv, messages: [], streamingContent: "", error: null, currentConversationId: conv.id });
     return conv;
   },
 
@@ -35,7 +38,11 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   },
 
   sendMessage: async (conversationId: string, content: string) => {
-    // Add user message to UI immediately
+    // Prevent concurrent messages for the same conversation
+    if (get().isStreaming && get().currentConversationId === conversationId) {
+      return;
+    }
+
     const userMsg: ChatMessage = {
       id: crypto.randomUUID(),
       conversation_id: conversationId,
@@ -48,15 +55,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingContent: "",
       isStreaming: true,
       error: null,
+      currentConversationId: conversationId,
     });
 
-    // Listen for stream events
+    let unlistenFn: (() => void) | null = null;
+
     const unlisten = await listen<StreamPayload>("chat-stream", (event) => {
       const payload = event.payload;
       if (payload.conversation_id !== conversationId) return;
 
       if (payload.is_done) {
-        // Finalize: move streaming content to a proper message
         const finalContent = get().streamingContent;
         if (finalContent) {
           const assistantMsg: ChatMessage = {
@@ -74,19 +82,32 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         } else {
           set({ isStreaming: false });
         }
-        unlisten();
+        unlistenFn?.();
       } else {
         set({ streamingContent: get().streamingContent + payload.token });
       }
     });
+    unlistenFn = unlisten;
 
-    // Trigger the backend to start streaming
     try {
       await invoke("send_chat_message", { conversationId, content });
     } catch (e) {
       set({ error: String(e), isStreaming: false });
       unlisten();
     }
+  },
+
+  withdrawMessage: async (messageId: string) => {
+    const msgs = get().messages;
+    const msgIndex = msgs.findIndex((m) => m.id === messageId);
+    if (msgIndex === -1) return;
+
+    const msg = msgs[msgIndex];
+    if (msg.role !== "user") return;
+
+    const newMessages = [...msgs];
+    newMessages[msgIndex] = { ...msg, withdrawn: true, content: "[已撤回]" };
+    set({ messages: newMessages });
   },
 
   reset: () => {
@@ -96,6 +117,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       streamingContent: "",
       isStreaming: false,
       error: null,
+      currentConversationId: null,
     });
   },
 }));

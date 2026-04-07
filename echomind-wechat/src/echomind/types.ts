@@ -10,34 +10,24 @@ export interface Thought {
   updated_at: string;
 }
 
-export interface CreateThoughtInput {
-  content: string;
-}
-
-export interface UpdateThoughtInput {
-  id: string;
-  content: string;
-}
-
 export interface Conversation {
   id: string;
   thought_id: string;
-  title: string | null;
+  title: string;
   created_at: string;
   updated_at: string;
 }
 
-export interface ChatMessage {
+export interface Message {
   id: string;
   conversation_id: string;
-  role: "user" | "assistant" | "system";
+  role: string;
   content: string;
   created_at: string;
-  withdrawn?: boolean;
 }
 
-export interface StreamPayload {
-  conversation_id: string;
-  token: string;
-  is_done: boolean;
+export interface StatusInfo {
+  thoughts: number;
+  archived: number;
+  conversations: number;
 }

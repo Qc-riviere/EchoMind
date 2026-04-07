@@ -1,13 +1,8 @@
-use std::sync::Mutex;
 use tauri::Manager;
 
 mod commands;
-mod db;
-mod llm;
 
-pub struct DbState {
-    pub conn: Mutex<rusqlite::Connection>,
-}
+pub struct AppCore(pub echomind_core::EchoMind);
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -26,12 +21,11 @@ pub fn run() {
             std::fs::create_dir_all(&app_dir).expect("failed to create app data dir");
 
             let db_path = app_dir.join("echomind.db");
-            let conn =
-                db::init::initialize_database(&db_path).expect("failed to initialize database");
+            let core = echomind_core::EchoMind::open(&db_path)
+                .expect("failed to initialize database");
 
-            app.manage(DbState {
-                conn: Mutex::new(conn),
-            });
+            app.manage(AppCore(core));
+            app.manage(commands::bridge_cmds::BridgeState::default());
 
             Ok(())
         })
@@ -60,6 +54,11 @@ pub fn run() {
             commands::chat_cmds::start_chat,
             commands::chat_cmds::get_chat_messages,
             commands::chat_cmds::send_chat_message,
+            commands::bridge_cmds::bridge_server_status,
+            commands::bridge_cmds::bridge_start_server,
+            commands::bridge_cmds::bridge_stop_server,
+            commands::bridge_cmds::bridge_wechat_account,
+            commands::bridge_cmds::bridge_wechat_project_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

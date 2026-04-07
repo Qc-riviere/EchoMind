@@ -10,11 +10,13 @@ interface Props {
 }
 
 export default function ThoughtList({ onThoughtClick, activeThoughtId }: Props) {
-  const { thoughts, loading, error, fetchThoughts } = useThoughtStore();
+  const { thoughts, loading, error, fetchThoughts, startPolling, stopPolling } = useThoughtStore();
 
   useEffect(() => {
     fetchThoughts();
-  }, [fetchThoughts]);
+    startPolling();
+    return () => stopPolling();
+  }, [fetchThoughts, startPolling, stopPolling]);
 
   if (loading && thoughts.length === 0) {
     return (

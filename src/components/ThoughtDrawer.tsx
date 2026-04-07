@@ -205,6 +205,17 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
           {/* 内容编辑区 */}
           {displayThought && (
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {displayThought.image_path && (
+                <div className="rounded-2xl overflow-hidden border border-[#e3e1ed]/50 shadow-sm">
+                  <img
+                    src={`http://127.0.0.1:8765/api/images/${displayThought.image_path}`}
+                    alt="想法图片"
+                    className="w-full max-h-80 object-contain bg-[#f4f0fa]/50"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-medium text-[#7a7a84] mb-2 uppercase tracking-wider">
                   内容

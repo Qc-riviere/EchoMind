@@ -5,6 +5,7 @@ import SearchPage from "./pages/SearchPage";
 import SettingsPage from "./pages/SettingsPage";
 import ChatPage from "./pages/ChatPage";
 import ArchivePage from "./pages/ArchivePage";
+import WeChatBridgePage from "./pages/WeChatBridgePage";
 import "./App.css";
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/archive" element={<ArchivePage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/wechat" element={<WeChatBridgePage />} />
           <Route path="/thought/:thoughtId/chat" element={<ChatPage />} />
         </Route>
       </Routes>

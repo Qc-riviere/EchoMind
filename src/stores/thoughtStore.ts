@@ -8,7 +8,10 @@ interface ThoughtStore {
   error: string | null;
   enrichingIds: Set<string>;
   enrichErrors: Record<string, string>;
+  _pollTimer: ReturnType<typeof setInterval> | null;
   fetchThoughts: () => Promise<void>;
+  startPolling: () => void;
+  stopPolling: () => void;
   addThought: (content: string) => Promise<Thought>;
   updateThought: (id: string, content: string) => Promise<void>;
   archiveThought: (id: string) => Promise<void>;
@@ -21,6 +24,37 @@ export const useThoughtStore = create<ThoughtStore>((set, get) => ({
   error: null,
   enrichingIds: new Set(),
   enrichErrors: {},
+  _pollTimer: null,
+
+  startPolling: () => {
+    const state = get();
+    if (state._pollTimer) return; // already polling
+    const timer = setInterval(async () => {
+      try {
+        const thoughts = await invoke<Thought[]>("list_thoughts");
+        const current = get().thoughts;
+        // Only update if data changed (compare by count + first item timestamp)
+        if (
+          thoughts.length !== current.length ||
+          thoughts[0]?.updated_at !== current[0]?.updated_at ||
+          thoughts[0]?.id !== current[0]?.id
+        ) {
+          set({ thoughts });
+        }
+      } catch {
+        // Silently ignore poll errors
+      }
+    }, 5000);
+    set({ _pollTimer: timer });
+  },
+
+  stopPolling: () => {
+    const timer = get()._pollTimer;
+    if (timer) {
+      clearInterval(timer);
+      set({ _pollTimer: null });
+    }
+  },
 
   fetchThoughts: async () => {
     set({ loading: true, error: null });
