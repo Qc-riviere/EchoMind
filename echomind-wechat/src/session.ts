@@ -6,10 +6,18 @@ const DATA_DIR = path.join(os.homedir(), ".echomind-wechat");
 const SESSIONS_DIR = path.join(DATA_DIR, "sessions");
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
+export interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
 export interface Session {
   state: "idle" | "chatting";
+  /** Local mode: conversation UUID from EchoMind server */
   conversationId?: string;
   thoughtId?: string;
+  /** Bridge mode: accumulated message history sent to /bridge/chat */
+  messages?: ChatMessage[];
   lastActivity: string;
 }
 

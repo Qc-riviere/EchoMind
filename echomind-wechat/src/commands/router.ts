@@ -1,11 +1,14 @@
 import { EchoMindClient } from "../echomind/client.js";
+import { BridgeClient, BridgeThought, bridgeClientFromEnv } from "../echomind/bridge-client.js";
 import { Thought } from "../echomind/types.js";
 import { describeImage } from "../echomind/vision.js";
 import { downloadImage } from "../wechat/media.js";
-import { getSession, updateSession, clearSession } from "../session.js";
+import { getSession, updateSession, clearSession, ChatMessage } from "../session.js";
 import type { ImageItem } from "../wechat/types.js";
 
 const client = new EchoMindClient();
+const bridgeClient: BridgeClient | null = bridgeClientFromEnv();
+const BRIDGE_MODE = bridgeClient !== null;
 
 // ── Command dispatch ─────────────────────────────────────
 
@@ -28,11 +31,19 @@ export async function handleMessage(
   }
 
   // If in chatting state, forward to AI conversation
-  if (session.state === "chatting" && session.conversationId) {
-    return { pending: "🤔 思考中...", ...(await handleChatReply(userId, session.conversationId, trimmed)) };
+  if (session.state === "chatting") {
+    if (BRIDGE_MODE && session.messages) {
+      return { pending: "🤔 思考中...", ...(await handleBridgeChatReply(userId, trimmed)) };
+    }
+    if (!BRIDGE_MODE && session.conversationId) {
+      return { pending: "🤔 思考中...", ...(await handleChatReply(userId, session.conversationId, trimmed)) };
+    }
   }
 
   // Default: capture as a new thought
+  if (BRIDGE_MODE) {
+    return handleBridgeCapture(trimmed);
+  }
   return handleCapture(userId, trimmed);
 }
 
@@ -147,19 +158,20 @@ async function handleCommand(
 async function cmdList(args: string): Promise<CommandResult> {
   const n = parseInt(args) || 10;
   try {
-    const thoughts = await client.listThoughts(n);
-    if (thoughts.length === 0) {
-      return { text: "暂无想法记录。发送任意文字开始记录！" };
-    }
+    const thoughts: Array<{ id: string; content: string; tags?: string | string[] | null }> =
+      BRIDGE_MODE
+        ? await bridgeClient!.listThoughts(n)
+        : await client.listThoughts(n);
 
+    if (thoughts.length === 0) {
+      return { text: "暂无想法记录。" };
+    }
     const lines = thoughts.map((t, i) => {
-      const tags = t.tags ? ` | ${t.tags}` : "";
-      const preview = t.content.length > 50
-        ? t.content.slice(0, 50) + "..."
-        : t.content;
+      const rawTags = Array.isArray(t.tags) ? t.tags.join(", ") : t.tags;
+      const tags = rawTags ? ` | ${rawTags}` : "";
+      const preview = t.content.length > 50 ? t.content.slice(0, 50) + "..." : t.content;
       return `${i + 1}. ${preview}${tags}\n   ID: ${t.id.slice(0, 8)}`;
     });
-
     return { text: `最近 ${thoughts.length} 条想法：\n\n${lines.join("\n\n")}` };
   } catch (e) {
     return { text: `获取列表失败: ${errorMsg(e)}` };
@@ -170,23 +182,20 @@ async function cmdSearch(query: string): Promise<CommandResult> {
   if (!query) {
     return { text: "用法: /search <关键词>\n例如: /search AI产品" };
   }
-
   try {
-    const results = await client.search(query);
+    const results: Array<{ id: string; content: string }> =
+      BRIDGE_MODE
+        ? await bridgeClient!.searchThoughts(query)
+        : await client.search(query);
+
     if (results.length === 0) {
       return { text: `未找到与「${query}」相关的想法` };
     }
-
     const lines = results.slice(0, 5).map((t, i) => {
-      const preview = t.content.length > 60
-        ? t.content.slice(0, 60) + "..."
-        : t.content;
+      const preview = t.content.length > 60 ? t.content.slice(0, 60) + "..." : t.content;
       return `${i + 1}. ${preview}\n   ID: ${t.id.slice(0, 8)}`;
     });
-
-    return {
-      text: `搜索「${query}」找到 ${results.length} 条相关想法：\n\n${lines.join("\n\n")}`,
-    };
+    return { text: `搜索「${query}」找到 ${results.length} 条相关想法：\n\n${lines.join("\n\n")}` };
   } catch (e) {
     return { text: `搜索失败: ${errorMsg(e)}` };
   }
@@ -199,24 +208,47 @@ async function cmdChat(userId: string, args: string): Promise<CommandResult> {
   }
 
   try {
-    // Find thought by ID prefix
+    if (BRIDGE_MODE) {
+      const thoughts = await bridgeClient!.listThoughts(200);
+      const thought = thoughts.find((t) => t.id.startsWith(idPrefix)) || null;
+      if (!thought) {
+        return { text: `未找到 ID 以「${idPrefix}」开头的想法` };
+      }
+      // Verify LLM is configured and not disabled
+      const status = await bridgeClient!.status();
+      if (!status.has_llm_config) {
+        return { text: "远程 LLM 未配置，请在 EchoMind 桌面端 → Cloud Bridge → 推送 LLM 配置" };
+      }
+      if (status.llm_disabled) {
+        return { text: `远程 LLM 已因超出预算而禁用（已用 $${(status.usage_cents / 100).toFixed(3)}）` };
+      }
+      const preview = thought.content.length > 40 ? thought.content.slice(0, 40) + "..." : thought.content;
+      const systemMsg: ChatMessage = {
+        role: "system",
+        content: `你是用户的 AI 思考伙伴。以下是用户的灵感笔记，请围绕它与用户深度对话：\n\n${thought.content}`,
+      };
+      updateSession(userId, {
+        state: "chatting",
+        thoughtId: thought.id,
+        messages: [systemMsg],
+      });
+      return {
+        text: `进入远程对话模式\n灵感：「${preview}」\n\n直接发送文字与 AI 深度探讨\n发送 /exit 退出对话`,
+      };
+    }
+
+    // Local mode
     const thought = await findThoughtByPrefix(idPrefix);
     if (!thought) {
       return { text: `未找到 ID 以「${idPrefix}」开头的想法` };
     }
-
     const conv = await client.startChat(thought.id);
-
     updateSession(userId, {
       state: "chatting",
       conversationId: conv.id,
       thoughtId: thought.id,
     });
-
-    const preview = thought.content.length > 40
-      ? thought.content.slice(0, 40) + "..."
-      : thought.content;
-
+    const preview = thought.content.length > 40 ? thought.content.slice(0, 40) + "..." : thought.content;
     return {
       text: `进入对话模式\n灵感：「${preview}」\n\n直接发送文字与 AI 深度探讨\n发送 /exit 退出对话`,
     };
@@ -259,18 +291,26 @@ async function cmdView(args: string): Promise<CommandResult> {
   }
 
   try {
+    if (BRIDGE_MODE) {
+      const thoughts = await bridgeClient!.listThoughts(200);
+      const t = thoughts.find((x) => x.id.startsWith(idPrefix));
+      if (!t) return { text: `未找到 ID 以「${idPrefix}」开头的想法` };
+      let text = t.content;
+      if (t.domain) text += `\n领域: ${t.domain}`;
+      if (t.tags?.length) text += `\n标签: ${t.tags.join(", ")}`;
+      text += `\n\n创建于: ${t.created_at}\nID: ${t.id}`;
+      return { text };
+    }
+
     const thought = await findThoughtByPrefix(idPrefix);
     if (!thought) {
       return { text: `未找到 ID 以「${idPrefix}」开头的想法` };
     }
-
     let text = `${thought.content}`;
     if (thought.context) text += `\n\n背景: ${thought.context}`;
     if (thought.domain) text += `\n领域: ${thought.domain}`;
     if (thought.tags) text += `\n标签: ${thought.tags}`;
-    text += `\n\n创建于: ${thought.created_at}`;
-    text += `\nID: ${thought.id}`;
-
+    text += `\n\n创建于: ${thought.created_at}\nID: ${thought.id}`;
     return { text };
   } catch (e) {
     return { text: `查看失败: ${errorMsg(e)}` };
@@ -279,12 +319,19 @@ async function cmdView(args: string): Promise<CommandResult> {
 
 async function cmdStatus(): Promise<CommandResult> {
   try {
+    if (BRIDGE_MODE) {
+      const s = await bridgeClient!.status();
+      const budget = s.budget_cents != null ? `$${(s.budget_cents / 100).toFixed(2)}` : "不限";
+      return {
+        text: `EchoMind 远程状态\nLLM 配置: ${s.has_llm_config ? "已配置" : "未配置"}\nLLM 状态: ${s.llm_disabled ? "已禁用（超预算）" : "正常"}\n已用额度: $${(s.usage_cents / 100).toFixed(3)}\n预算上限: ${budget}`,
+      };
+    }
     const s = await client.status();
     return {
       text: `EchoMind 状态\n想法: ${s.thoughts} 条\n归档: ${s.archived} 条\n对话: ${s.conversations} 个`,
     };
   } catch (e) {
-    return { text: `获取状态失败: ${errorMsg(e)}\n请确认 echomind-server 正在运行` };
+    return { text: `获取状态失败: ${errorMsg(e)}` };
   }
 }
 
@@ -349,6 +396,31 @@ async function enrichAndEmbed(thoughtId: string): Promise<void> {
   await client.embedThought(thoughtId);
 }
 
+// ── Bridge chat reply ────────────────────────────────────
+
+async function handleBridgeChatReply(
+  userId: string,
+  content: string,
+): Promise<CommandResult> {
+  const session = getSession(userId);
+  const messages: ChatMessage[] = [...(session.messages ?? []), { role: "user", content }];
+  try {
+    const result = await bridgeClient!.chat(messages);
+    const assistantMsg: ChatMessage = { role: "assistant", content: result.content };
+    updateSession(userId, { messages: [...messages, assistantMsg] });
+
+    let suffix = "";
+    if (result.llm_disabled) {
+      suffix = "\n\n⚠ LLM 已因超出预算而禁用，本次为最后回复。";
+      clearSession(userId);
+    }
+    return { text: result.content + suffix };
+  } catch (e) {
+    clearSession(userId);
+    return { text: `AI 回复失败: ${errorMsg(e)}\n已退出对话模式。` };
+  }
+}
+
 // ── Chat reply ───────────────────────────────────────────
 
 async function handleChatReply(
@@ -381,6 +453,15 @@ async function findThoughtByPrefix(prefix: string): Promise<Thought | null> {
 
   const thoughts = await client.listThoughts(100);
   return thoughts.find((t) => t.id.startsWith(prefix)) || null;
+}
+
+async function handleBridgeCapture(content: string): Promise<CommandResult> {
+  try {
+    const thought = await bridgeClient!.captureThought(content);
+    return { text: `✓ 已记录 (ID: ${thought.id.slice(0, 8)})` };
+  } catch (e) {
+    return { text: `记录失败: ${errorMsg(e)}` };
+  }
 }
 
 function errorMsg(e: unknown): string {
