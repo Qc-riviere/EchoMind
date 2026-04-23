@@ -14,7 +14,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  OWNER: ${{ github.repository_owner }}
+  OWNER: qc-riviere
 
 jobs:
   bridge:
