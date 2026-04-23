@@ -6,7 +6,6 @@ npm-cache/_npx/
 dist/
 
 src-tauri/target/
-src-tauri/Cargo.lock
 src-tauri/sqlite-vec/sqlite-vec.tar.gz
 
 .claude/settings.local.json
@@ -14,6 +13,7 @@ src-tauri/sqlite-vec/sqlite-vec.tar.gz
 
 *.log
 *.lock
+!src-tauri/Cargo.lock
 
 .DS_Store
 Thumbs.db
