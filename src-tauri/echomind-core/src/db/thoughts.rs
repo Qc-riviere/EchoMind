@@ -9,6 +9,7 @@ pub struct Thought {
     pub domain: Option<String>,
     pub tags: Option<String>,
     pub image_path: Option<String>,
+    pub file_summary: Option<String>,
     pub is_archived: bool,
     pub created_at: String,
     pub updated_at: String,
@@ -18,7 +19,11 @@ pub fn create_thought(conn: &Connection, content: &str) -> Result<Thought> {
     create_thought_with_image(conn, content, None)
 }
 
-pub fn create_thought_with_image(conn: &Connection, content: &str, image_path: Option<&str>) -> Result<Thought> {
+pub fn create_thought_with_image(
+    conn: &Connection,
+    content: &str,
+    image_path: Option<&str>,
+) -> Result<Thought> {
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
@@ -33,7 +38,7 @@ pub fn create_thought_with_image(conn: &Connection, content: &str, image_path: O
 
 pub fn list_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
     let mut stmt = conn.prepare(
-        "SELECT id, content, context, domain, tags, image_path, is_archived, created_at, updated_at
+        "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at
          FROM thoughts
          WHERE is_archived = 0
          ORDER BY created_at DESC",
@@ -47,9 +52,10 @@ pub fn list_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
             domain: row.get(3)?,
             tags: row.get(4)?,
             image_path: row.get(5)?,
-            is_archived: row.get::<_, i32>(6)? != 0,
-            created_at: row.get(7)?,
-            updated_at: row.get(8)?,
+            file_summary: row.get(6)?,
+            is_archived: row.get::<_, i32>(7)? != 0,
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
         })
     })?;
 
@@ -58,7 +64,7 @@ pub fn list_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
 
 pub fn get_thought(conn: &Connection, id: &str) -> Result<Thought> {
     conn.query_row(
-        "SELECT id, content, context, domain, tags, image_path, is_archived, created_at, updated_at
+        "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at
          FROM thoughts WHERE id = ?1",
         params![id],
         |row| {
@@ -69,9 +75,10 @@ pub fn get_thought(conn: &Connection, id: &str) -> Result<Thought> {
                 domain: row.get(3)?,
                 tags: row.get(4)?,
                 image_path: row.get(5)?,
-                is_archived: row.get::<_, i32>(6)? != 0,
-                created_at: row.get(7)?,
-                updated_at: row.get(8)?,
+                file_summary: row.get(6)?,
+                is_archived: row.get::<_, i32>(7)? != 0,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
             })
         },
     )
@@ -90,7 +97,7 @@ pub fn update_thought(conn: &Connection, id: &str, content: &str) -> Result<Thou
 
 pub fn list_archived_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
     let mut stmt = conn.prepare(
-        "SELECT id, content, context, domain, tags, image_path, is_archived, created_at, updated_at
+        "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at
          FROM thoughts
          WHERE is_archived = 1
          ORDER BY updated_at DESC",
@@ -104,9 +111,10 @@ pub fn list_archived_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
             domain: row.get(3)?,
             tags: row.get(4)?,
             image_path: row.get(5)?,
-            is_archived: row.get::<_, i32>(6)? != 0,
-            created_at: row.get(7)?,
-            updated_at: row.get(8)?,
+            file_summary: row.get(6)?,
+            is_archived: row.get::<_, i32>(7)? != 0,
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
         })
     })?;
 
@@ -168,11 +176,12 @@ pub fn update_thought_enrichment(
     context: &str,
     domain: &str,
     tags: &str,
+    file_summary: Option<&str>,
 ) -> Result<Thought> {
     let now = chrono::Utc::now().to_rfc3339();
     conn.execute(
-        "UPDATE thoughts SET context = ?1, domain = ?2, tags = ?3, updated_at = ?4 WHERE id = ?5",
-        params![context, domain, tags, now, id],
+        "UPDATE thoughts SET context = ?1, domain = ?2, tags = ?3, file_summary = ?4, updated_at = ?5 WHERE id = ?6",
+        params![context, domain, tags, file_summary, now, id],
     )?;
     get_thought(conn, id)
 }

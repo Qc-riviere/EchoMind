@@ -102,7 +102,23 @@ async fn generate_embedding_openai(text: &str, config: &EmbeddingConfig) -> Resu
     Ok(embedding)
 }
 
+/// Detect "local" embedding provider via base_url == "local" (case-insensitive).
+fn is_local(base_url: &str) -> bool {
+    base_url.eq_ignore_ascii_case("local")
+}
+
 pub async fn generate_embedding(text: &str, config: &EmbeddingConfig) -> Result<Vec<f32>, String> {
+    if is_local(&config.base_url) {
+        let emb = super::local_embedding::embed(text).await?;
+        if emb.len() != config.dimensions as usize {
+            return Err(format!(
+                "Local embedding dimension mismatch: expected {}, got {}",
+                config.dimensions,
+                emb.len()
+            ));
+        }
+        return Ok(emb);
+    }
     if is_gemini(&config.base_url) {
         generate_embedding_gemini(text, config).await
     } else {

@@ -79,23 +79,69 @@ pub fn initialize_database(db_path: &Path) -> Result<Connection> {
         conn.execute_batch("ALTER TABLE thoughts ADD COLUMN image_path TEXT;")?;
     }
 
-    // Create vector table — sqlite-vec virtual table
-    let vec_table_exists: bool = conn
-        .query_row(
-            "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='thought_embeddings'",
-            [],
-            |row| row.get::<_, i32>(0),
-        )
-        .map(|c| c > 0)
-        .unwrap_or(false);
+    // Migration: add file_summary column if missing
+    let has_file_summary: bool = conn
+        .prepare("SELECT file_summary FROM thoughts LIMIT 0")
+        .is_ok();
+    if !has_file_summary {
+        conn.execute_batch("ALTER TABLE thoughts ADD COLUMN file_summary TEXT;")?;
+    }
 
-    if !vec_table_exists {
-        conn.execute_batch(
+    // Resolve desired embedding dimension from settings, defaulting to the
+    // local-model default (512) for fresh installs and falling back to 1536
+    // when any cloud embedding has already been configured.
+    let desired_dim: u32 = {
+        let dim_setting: Option<String> = conn
+            .query_row(
+                "SELECT value FROM settings WHERE key = 'embedding_dimensions'",
+                [],
+                |row| row.get(0),
+            )
+            .ok();
+        dim_setting
+            .as_deref()
+            .and_then(|s| s.parse::<u32>().ok())
+            .unwrap_or(512)
+    };
+
+    let table_sql: Option<String> = conn
+        .query_row(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='thought_embeddings'",
+            [],
+            |row| row.get(0),
+        )
+        .ok();
+
+    let current_dim: Option<u32> = table_sql.as_deref().and_then(|sql| {
+        let needle = "float[";
+        let start = sql.find(needle)? + needle.len();
+        let end = sql[start..].find(']')? + start;
+        sql[start..end].trim().parse().ok()
+    });
+
+    let needs_recreate = match current_dim {
+        None => true,
+        Some(d) if d != desired_dim => {
+            eprintln!(
+                "[db] embedding dim mismatch (table={}, desired={}); recreating vector table — thoughts will need re-embedding",
+                d, desired_dim
+            );
+            true
+        }
+        _ => false,
+    };
+
+    if needs_recreate {
+        if current_dim.is_some() {
+            conn.execute_batch("DROP TABLE thought_embeddings;")?;
+        }
+        conn.execute_batch(&format!(
             "CREATE VIRTUAL TABLE thought_embeddings USING vec0(
                 thought_id TEXT PRIMARY KEY,
-                embedding float[1536]
+                embedding float[{}]
             );",
-        )?;
+            desired_dim
+        ))?;
     }
 
     Ok(conn)

@@ -4,7 +4,7 @@ use reqwest::Client;
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
-use super::{ChatMessage, LLMProvider, ModelConfig};
+use super::{AgentMessage, AgentTurn, ChatMessage, LLMProvider, ModelConfig, Tool, ToolCall};
 
 pub struct ClaudeProvider;
 
@@ -151,5 +151,174 @@ impl LLMProvider for ClaudeProvider {
         }
 
         Ok(())
+    }
+
+    async fn analyze_image(
+        &self,
+        text_prompt: &str,
+        image_base64: &str,
+        mime_type: &str,
+        config: &ModelConfig,
+    ) -> Result<String, String> {
+        let base_url = config.base_url.as_deref().unwrap_or(DEFAULT_BASE_URL);
+
+        let body = json!({
+            "model": config.model,
+            "max_tokens": config.max_tokens.unwrap_or(2048),
+            "messages": [{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": mime_type,
+                            "data": image_base64,
+                        }
+                    },
+                    {"type": "text", "text": text_prompt}
+                ]
+            }]
+        });
+
+        let resp = Client::new()
+            .post(format!("{}/v1/messages", base_url))
+            .header("x-api-key", &config.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .header("content-type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| format!("Claude vision request failed: {}", e))?;
+
+        let status = resp.status();
+        let text = resp.text().await.map_err(|e| e.to_string())?;
+
+        if !status.is_success() {
+            return Err(format!("Claude vision API error ({}): {}", status, text));
+        }
+
+        let json: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+        json["content"][0]["text"]
+            .as_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| "No content in Claude vision response".to_string())
+    }
+
+    async fn complete_with_tools(
+        &self,
+        messages: Vec<AgentMessage>,
+        tools: Vec<Tool>,
+        config: &ModelConfig,
+    ) -> Result<AgentTurn, String> {
+        let base_url = config.base_url.as_deref().unwrap_or(DEFAULT_BASE_URL);
+
+        // Anthropic puts system messages outside the messages array.
+        let system_msg = messages.iter().find_map(|m| match m {
+            AgentMessage::System { content } => Some(content.clone()),
+            _ => None,
+        });
+
+        // Convert remaining messages. Claude expects user/assistant alternation.
+        // Tool results are wrapped in a `user` message with content[type=tool_result].
+        let mut msgs: Vec<Value> = Vec::new();
+        for m in &messages {
+            match m {
+                AgentMessage::System { .. } => {}
+                AgentMessage::User { content } => {
+                    msgs.push(json!({"role": "user", "content": content}));
+                }
+                AgentMessage::Assistant { content, tool_calls } => {
+                    let mut blocks: Vec<Value> = Vec::new();
+                    if !content.is_empty() {
+                        blocks.push(json!({"type": "text", "text": content}));
+                    }
+                    for tc in tool_calls {
+                        blocks.push(json!({
+                            "type": "tool_use",
+                            "id": tc.id,
+                            "name": tc.name,
+                            "input": tc.arguments,
+                        }));
+                    }
+                    msgs.push(json!({"role": "assistant", "content": blocks}));
+                }
+                AgentMessage::ToolResult { tool_call_id, content, .. } => {
+                    msgs.push(json!({
+                        "role": "user",
+                        "content": [{
+                            "type": "tool_result",
+                            "tool_use_id": tool_call_id,
+                            "content": content,
+                        }]
+                    }));
+                }
+            }
+        }
+
+        let tools_json: Vec<Value> = tools
+            .iter()
+            .map(|t| {
+                json!({
+                    "name": t.name,
+                    "description": t.description,
+                    "input_schema": t.parameters_schema,
+                })
+            })
+            .collect();
+
+        let mut body = json!({
+            "model": config.model,
+            "messages": msgs,
+            "max_tokens": config.max_tokens.unwrap_or(2048),
+        });
+        if let Some(sys) = &system_msg {
+            body["system"] = json!(sys);
+        }
+        if !tools_json.is_empty() {
+            body["tools"] = json!(tools_json);
+        }
+        if let Some(t) = config.temperature {
+            body["temperature"] = json!(t);
+        }
+
+        let resp = Client::new()
+            .post(format!("{}/v1/messages", base_url))
+            .header("x-api-key", &config.api_key)
+            .header("anthropic-version", "2023-06-01")
+            .header("content-type", "application/json")
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| format!("Claude request failed: {}", e))?;
+
+        let status = resp.status();
+        let text = resp.text().await.map_err(|e| e.to_string())?;
+        if !status.is_success() {
+            return Err(format!("Claude API error ({}): {}", status, text));
+        }
+
+        let json: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+        let mut text_out = String::new();
+        let mut tool_calls: Vec<ToolCall> = Vec::new();
+        if let Some(arr) = json["content"].as_array() {
+            for block in arr {
+                match block["type"].as_str() {
+                    Some("text") => {
+                        if let Some(s) = block["text"].as_str() {
+                            text_out.push_str(s);
+                        }
+                    }
+                    Some("tool_use") => {
+                        let id = block["id"].as_str().unwrap_or("").to_string();
+                        let name = block["name"].as_str().unwrap_or("").to_string();
+                        let arguments = block["input"].clone();
+                        tool_calls.push(ToolCall { id, name, arguments });
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Ok(AgentTurn { text: text_out, tool_calls })
     }
 }

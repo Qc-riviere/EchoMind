@@ -96,6 +96,67 @@ pub fn get_messages(conn: &Connection, conversation_id: &str) -> Result<Vec<Mess
     rows.collect()
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ConversationWithPreview {
+    pub id: String,
+    pub thought_id: String,
+    pub title: Option<String>,
+    pub thought_preview: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+pub fn list_recent_conversations(conn: &Connection, limit: usize) -> Result<Vec<ConversationWithPreview>> {
+    let mut stmt = conn.prepare(
+        "SELECT c.id, c.thought_id, c.title, COALESCE(t.file_summary, t.content, '') as preview, c.created_at, c.updated_at
+         FROM conversations c
+         LEFT JOIN thoughts t ON t.id = c.thought_id
+         ORDER BY c.updated_at DESC
+         LIMIT ?1",
+    )?;
+
+    let rows = stmt.query_map(params![limit], |row| {
+        Ok(ConversationWithPreview {
+            id: row.get(0)?,
+            thought_id: row.get(1)?,
+            title: row.get(2)?,
+            thought_preview: row.get(3)?,
+            created_at: row.get(4)?,
+            updated_at: row.get(5)?,
+        })
+    })?;
+
+    rows.collect()
+}
+
+/// Delete a message and all subsequent messages in the same conversation.
+/// Used for "withdraw": removes the user message and the AI reply that followed.
+pub fn withdraw_message(conn: &Connection, message_id: &str) -> Result<Vec<String>> {
+    // Find the message to get its conversation_id and created_at
+    let (conversation_id, created_at): (String, String) = conn.query_row(
+        "SELECT conversation_id, created_at FROM messages WHERE id = ?1",
+        params![message_id],
+        |row| Ok((row.get(0)?, row.get(1)?)),
+    )?;
+
+    // Collect IDs of messages to be deleted (this message and all after it)
+    let mut stmt = conn.prepare(
+        "SELECT id FROM messages WHERE conversation_id = ?1 AND created_at >= ?2 ORDER BY created_at ASC",
+    )?;
+    let deleted_ids: Vec<String> = stmt
+        .query_map(params![conversation_id, created_at], |row| row.get(0))?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    // Delete them
+    conn.execute(
+        "DELETE FROM messages WHERE conversation_id = ?1 AND created_at >= ?2",
+        params![conversation_id, created_at],
+    )?;
+
+    Ok(deleted_ids)
+}
+
 pub fn get_conversations_for_thought(
     conn: &Connection,
     thought_id: &str,
