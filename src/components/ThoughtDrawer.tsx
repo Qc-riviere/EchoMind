@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Save, MessageSquare, Archive, Lightbulb, Loader2, Check, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { Thought } from "../lib/types";
 import { useThoughtStore } from "../stores/thoughtStore";
 import { format } from "date-fns";
 import ConfirmDialog from "./ConfirmDialog";
 import { invoke } from "@tauri-apps/api/core";
+import ThoughtImage from "./ThoughtImage";
 
 interface Props {
   thought: Thought | null;
@@ -20,14 +20,21 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
   const [displayThought, setDisplayThought] = useState<Thought | null>(null);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  
+
   const updateThought = useThoughtStore((s) => s.updateThought);
   const archiveThought = useThoughtStore((s) => s.archiveThought);
+  const setThoughts = useThoughtStore.setState;
   const navigate = useNavigate();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isOpen = !!thought;
+
+  const handleOpenFile = async () => {
+    if (displayThought?.image_path) {
+      try { await invoke("open_file", { filename: displayThought.image_path }); } catch {}
+    }
+  };
 
   useEffect(() => {
     if (thought) {
@@ -41,11 +48,7 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
         }
       }, 50);
     }
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
+    return () => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); };
   }, [thought]);
 
   const handleSave = async (contentToSave: string) => {
@@ -56,45 +59,29 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
       setLastSavedContent(contentToSave.trim());
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
-    } finally {
-      setIsSaving(false);
-    }
+    } finally { setIsSaving(false); }
   };
 
   const handleContentChange = (newContent: string) => {
     setContent(newContent);
-    
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
-    }
-    
-    saveTimeoutRef.current = setTimeout(() => {
-      handleSave(newContent);
-    }, 1500);
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => handleSave(newContent), 1500);
   };
 
   const hasUnsavedChanges = content.trim() !== lastSavedContent && content.trim() !== "";
 
   const handleClose = async () => {
     if (hasUnsavedChanges) {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       await handleSave(content);
     }
     onClose();
   };
 
-  const handleArchive = async () => {
-    setShowArchiveConfirm(true);
-  };
-
   const confirmArchive = async () => {
     if (!displayThought) return;
     if (hasUnsavedChanges) {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
       await handleSave(content);
     }
     archiveThought(displayThought.id);
@@ -104,36 +91,29 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
 
   const handleReanalyze = async () => {
     if (!displayThought || isAnalyzing) return;
-    
     setIsAnalyzing(true);
     try {
-      // First save any unsaved changes
       if (hasUnsavedChanges) {
-        if (saveTimeoutRef.current) {
-          clearTimeout(saveTimeoutRef.current);
-        }
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
         await handleSave(content);
       }
-      
-      // Call the enrich_thought command directly to re-analyze
-      // Note: enrich_thought already handles embedding internally
       const enriched = await invoke<Thought>("enrich_thought", { thoughtId: displayThought.id });
-      
-      // Update the displayed thought with new enrichment data
       setDisplayThought(enriched);
-      
+      // Sync to global store so home/list reflects the new enrichment
+      setThoughts((state) => ({
+        thoughts: state.thoughts.map((t) => (t.id === enriched.id ? enriched : t)),
+      }));
+      // Re-embed in background so search/related uses the new content
+      invoke("embed_thought", { thoughtId: enriched.id }).catch(() => {});
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     } catch (e) {
       console.error("Failed to re-analyze:", e);
-    } finally {
-      setIsAnalyzing(false);
-    }
+    } finally { setIsAnalyzing(false); }
   };
 
   return (
     <>
-      {/* 归档确认对话框 */}
       <ConfirmDialog
         isOpen={showArchiveConfirm}
         title="确认归档"
@@ -145,179 +125,136 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
         onConfirm={confirmArchive}
         onCancel={() => setShowArchiveConfirm(false)}
       />
-      
-      {/* 透明遮罩层 - 点击关闭 */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-black/5"
-          onClick={handleClose}
-        />
-      )}
-      
-      <div 
-        className={`
-          fixed top-8 lg:top-12 right-8 lg:right-12 h-[calc(100vh-4rem)] lg:h-[calc(100vh-6rem)] z-50
-          transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]
-          ${isOpen 
-            ? 'opacity-100 translate-x-0' 
-            : 'opacity-0 translate-x-[120%] pointer-events-none'
-          }
-        `}
-        style={{ width: '400px' }}
+
+      {isOpen && <div className="fixed inset-0 z-40 bg-black/30" onClick={handleClose} />}
+
+      <div
+        className={`fixed top-4 right-4 bottom-4 z-50 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${
+          isOpen ? "opacity-100 translate-x-0" : "opacity-0 translate-x-[120%] pointer-events-none"
+        }`}
+        style={{ width: "420px" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-full h-full bg-white/80 backdrop-blur-xl border border-white/60 shadow-[0_8px_30px_rgba(87,91,140,0.12)] rounded-3xl flex flex-col overflow-hidden">
-          
-          {/* 头部 */}
-          <div className="flex items-center justify-between p-5 border-b border-[#e3e1ed]/50 bg-white/50">
+        <div className="w-full h-full bg-surface-container-low flex flex-col overflow-hidden rounded-2xl border border-outline-variant/10">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pb-5 border-b border-outline-variant/10">
             <div className="flex items-center gap-2">
-              <Lightbulb className="w-5 h-5 text-[#575b8c]" />
-              <h2 className="font-semibold text-[#31323b]">编辑灵感</h2>
+              <span className="material-symbols-outlined text-primary text-[20px]">lightbulb</span>
+              <h2 className="font-headline font-semibold text-on-surface text-sm">Edit Inspiration</h2>
             </div>
-            
-            {/* 保存状态指示器 */}
             <div className="flex items-center gap-2">
               {isSaving && (
-                <div className="flex items-center gap-1.5 text-xs text-[#575b8c]">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>保存中...</span>
-                </div>
+                <span className="flex items-center gap-1 text-[10px] text-on-surface-variant">
+                  <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> Saving
+                </span>
               )}
               {showSaved && !isSaving && (
-                <div className="flex items-center gap-1.5 text-xs text-green-600">
-                  <Check className="w-3.5 h-3.5" />
-                  <span>已保存</span>
-                </div>
-              )}
-              {hasUnsavedChanges && !isSaving && (
-                <span className="text-xs text-[#a1a1aa]">编辑中</span>
+                <span className="flex items-center gap-1 text-[10px] text-primary">
+                  <span className="material-symbols-outlined text-[14px]">check</span> Saved
+                </span>
               )}
             </div>
-            
-            <button 
-              onClick={handleClose}
-              className="p-2 text-[#7a7a84] hover:text-[#31323b] hover:bg-[#e9e7f1] rounded-xl transition-colors"
-            >
-              <X className="w-5 h-5" />
+            <button onClick={handleClose} className="p-2 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-high transition-colors">
+              <span className="material-symbols-outlined">close</span>
             </button>
           </div>
 
-          {/* 内容编辑区 */}
+          {/* Content */}
           {displayThought && (
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {displayThought.image_path && (
-                <div className="rounded-2xl overflow-hidden border border-[#e3e1ed]/50 shadow-sm">
-                  <img
-                    src={`http://127.0.0.1:8765/api/images/${displayThought.image_path}`}
-                    alt="想法图片"
-                    className="w-full max-h-80 object-contain bg-[#f4f0fa]/50"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {/* File attachment */}
+              {displayThought.image_path && isImageFile(displayThought.image_path) && (
+                <div className="rounded-xl overflow-hidden bg-surface-container-lowest">
+                  <ThoughtImage filename={displayThought.image_path} className="w-full max-h-80 object-contain" />
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-medium text-[#7a7a84] mb-2 uppercase tracking-wider">
-                  内容
-                </label>
-                <textarea
-                  ref={textareaRef}
-                  value={content}
-                  onChange={(e) => {
-                    handleContentChange(e.target.value);
-                    e.target.style.height = "auto";
-                    e.target.style.height = e.target.scrollHeight + "px";
-                  }}
-                  placeholder="写下你的想法..."
-                  className="w-full bg-transparent border-none p-0 text-lg text-[#31323b] leading-relaxed resize-none focus:outline-none placeholder-[#a1a1aa]"
-                />
+              {displayThought.image_path && !isImageFile(displayThought.image_path) && (
+                <div className="flex items-center gap-3 rounded-xl bg-surface-container-lowest px-4 py-3 cursor-pointer hover:bg-surface-container transition-colors" onClick={handleOpenFile}>
+                  <span className="material-symbols-outlined text-primary/60">description</span>
+                  <span className="text-sm text-on-surface-variant truncate flex-1">{displayThought.image_path}</span>
+                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant/40">open_in_new</span>
+                </div>
+              )}
+
+              {/* Date */}
+              <div className="text-xs text-on-surface-variant/60 font-mono">
+                {format(new Date(displayThought.created_at), "MMM d, h:mm a").toUpperCase()}
               </div>
 
-              {/* AI 解析结果区 */}
-              {displayThought.context && (
-                <div className="bg-gradient-to-br from-[#f4f0fa] to-white rounded-2xl p-4 border border-[#e3e1ed]/50 shadow-sm">
-                  <label className="block text-xs font-medium text-[#575b8c] mb-2 uppercase tracking-wider">
-                    AI 洞察
-                  </label>
-                  <p className="text-sm text-[#5e5e68] leading-relaxed">
-                    {displayThought.context}
-                  </p>
-                </div>
+              {/* File summary (read-only) */}
+              {displayThought.file_summary && (
+                <p className="text-base text-on-surface leading-relaxed">{displayThought.file_summary}</p>
               )}
 
-              {/* 元数据 */}
-              <div className="space-y-3 pt-4 border-t border-[#e3e1ed]/50">
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-[#a1a1aa]">创建时间</span>
-                  <span className="text-[#5e5e68] font-medium">{format(new Date(displayThought.created_at), "yyyy-MM-dd HH:mm")}</span>
-                </div>
-                {displayThought.domain && (
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-[#a1a1aa]">领域</span>
-                    <span className="px-2.5 py-1 rounded-full bg-[#f6d0fd]/40 text-[#855392] text-xs font-medium border border-[#f6d0fd]/50">
+              {/* AI context (read-only) */}
+              {displayThought.context && (
+                <p className="text-sm text-on-surface-variant/70 leading-relaxed">{displayThought.context}</p>
+              )}
+
+              {/* Editable content */}
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => {
+                  handleContentChange(e.target.value);
+                  e.target.style.height = "auto";
+                  e.target.style.height = e.target.scrollHeight + "px";
+                }}
+                placeholder="写下你的想法..."
+                className="w-full bg-transparent border-none p-0 text-sm text-on-surface leading-relaxed resize-none focus:outline-none placeholder:text-on-surface-variant/30"
+              />
+
+              {/* Tags */}
+              {(displayThought.domain || displayThought.tags) && (
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {displayThought.domain && (
+                    <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] text-on-surface-variant tracking-wider font-semibold">
                       {displayThought.domain}
                     </span>
-                  </div>
-                )}
-              </div>
+                  )}
+                  {displayThought.tags?.split(",").map((tag) => tag.trim()).filter(Boolean).map((tag) => (
+                    <span key={tag} className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] text-on-surface-variant tracking-wider font-semibold">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          {/* 底部操作栏 */}
+          {/* Footer actions */}
           {displayThought && (
-            <div className="p-5 border-t border-[#e3e1ed]/50 bg-white/50">
-              {/* 分析状态指示器 */}
+            <div className="px-5 py-4 border-t border-outline-variant/10">
               {isAnalyzing && (
-                <div className="flex items-center gap-2 mb-3 text-xs text-[#575b8c] bg-[#c1c5fd]/10 rounded-xl px-3 py-2">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span>AI 正在重新分析...</span>
+                <div className="flex items-center gap-2 mb-3 text-[10px] text-primary bg-primary/5 rounded-lg px-3 py-2">
+                  <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
+                  AI Re-analyzing...
                 </div>
               )}
-              
-              <div className="flex items-center justify-between">
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleReanalyze}
-                    disabled={isAnalyzing}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl text-[#575b8c] bg-[#c1c5fd]/20 hover:bg-[#c1c5fd]/30 disabled:opacity-50 transition-colors"
-                    title="重新让 AI 分析这条灵感"
-                  >
-                    {isAnalyzing ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-4 h-4" />
-                    )}
-                    再分析
+              <div className="grid grid-cols-4 gap-1.5">
+                  <button onClick={handleReanalyze} disabled={isAnalyzing}
+                    className="flex items-center justify-center gap-1 py-2 text-[9px] font-bold uppercase tracking-wider rounded-lg text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 transition-colors">
+                    <span className="material-symbols-outlined text-[16px]">{isAnalyzing ? "progress_activity" : "auto_awesome"}</span>
+                    Analyze
+                  </button>
+                  <button onClick={() => navigate(`/thought/${displayThought.id}/chat`)}
+                    className="flex items-center justify-center gap-1 py-2 text-[9px] font-bold uppercase tracking-wider rounded-lg text-on-surface-variant bg-surface-container-high hover:text-on-surface transition-colors">
+                    <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
+                    Question
+                  </button>
+                  <button onClick={() => setShowArchiveConfirm(true)}
+                    className="flex items-center justify-center gap-1 py-2 text-[9px] font-bold uppercase tracking-wider rounded-lg text-error/60 hover:text-error hover:bg-error-container/20 transition-colors">
+                    <span className="material-symbols-outlined text-[16px]">inventory_2</span>
+                    Archive
                   </button>
                   <button
-                    onClick={() => navigate(`/thought/${displayThought.id}/chat`)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl text-[#575b8c] bg-[#c1c5fd]/20 hover:bg-[#c1c5fd]/30 transition-colors"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    拷问
+                    onClick={() => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); handleSave(content); }}
+                    disabled={!hasUnsavedChanges || isSaving}
+                    className="flex items-center justify-center gap-1 py-2 text-[9px] font-bold uppercase tracking-wider rounded-lg luminous-pulse text-on-primary disabled:opacity-50 transition-all">
+                    <span className="material-symbols-outlined text-[16px]">save</span>
+                    Save
                   </button>
-                  <button
-                    onClick={handleArchive}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-xl text-[#a8364b] bg-[#f97386]/10 hover:bg-[#f97386]/20 transition-colors"
-                  >
-                    <Archive className="w-4 h-4" />
-                    归档
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => {
-                    if (saveTimeoutRef.current) {
-                      clearTimeout(saveTimeoutRef.current);
-                    }
-                    handleSave(content);
-                  }}
-                  disabled={!hasUnsavedChanges || isSaving}
-                  className="flex items-center gap-2 px-6 py-2 text-sm font-medium rounded-xl text-white bg-[#575b8c] hover:bg-[#434670] disabled:opacity-50 disabled:hover:bg-[#575b8c] transition-all shadow-md shadow-[#575b8c]/20"
-                >
-                  <Save className="w-4 h-4" />
-                  {isSaving ? "保存中..." : "保存"}
-                </button>
               </div>
             </div>
           )}
@@ -325,4 +262,10 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
       </div>
     </>
   );
+}
+
+const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"];
+function isImageFile(filename: string): boolean {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  return IMAGE_EXTS.includes(ext);
 }

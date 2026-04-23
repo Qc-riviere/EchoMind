@@ -1,12 +1,18 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { ChatMessage, Conversation, StreamPayload } from "../lib/types";
+import type {
+  AgentEventPayload,
+  ChatMessage,
+  Conversation,
+  ToolEvent,
+} from "../lib/types";
 
 interface ChatStore {
   conversation: Conversation | null;
   messages: ChatMessage[];
   streamingContent: string;
+  streamingToolEvents: ToolEvent[];
   isStreaming: boolean;
   error: string | null;
   currentConversationId: string | null;
@@ -22,13 +28,21 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   conversation: null,
   messages: [],
   streamingContent: "",
+  streamingToolEvents: [],
   isStreaming: false,
   error: null,
   currentConversationId: null,
 
   startChat: async (thoughtId: string) => {
     const conv = await invoke<Conversation>("start_chat", { thoughtId });
-    set({ conversation: conv, messages: [], streamingContent: "", error: null, currentConversationId: conv.id });
+    set({
+      conversation: conv,
+      messages: [],
+      streamingContent: "",
+      streamingToolEvents: [],
+      error: null,
+      currentConversationId: conv.id,
+    });
     return conv;
   },
 
@@ -53,47 +67,84 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set({
       messages: [...get().messages, userMsg],
       streamingContent: "",
+      streamingToolEvents: [],
       isStreaming: true,
       error: null,
       currentConversationId: conversationId,
     });
 
-    let unlistenFn: (() => void) | null = null;
+    const finishStreaming = (finalText: string) => {
+      const events = get().streamingToolEvents;
+      const text = finalText || get().streamingContent;
+      if (text || events.length > 0) {
+        const assistantMsg: ChatMessage = {
+          id: crypto.randomUUID(),
+          conversation_id: conversationId,
+          role: "assistant",
+          content: text,
+          created_at: new Date().toISOString(),
+          tool_events: events.length > 0 ? events : undefined,
+        };
+        set({
+          messages: [...get().messages, assistantMsg],
+          streamingContent: "",
+          streamingToolEvents: [],
+          isStreaming: false,
+        });
+      } else {
+        set({ isStreaming: false, streamingToolEvents: [] });
+      }
+    };
 
-    const unlisten = await listen<StreamPayload>("chat-stream", (event) => {
+    let unlistenAgent: (() => void) | null = null;
+
+    unlistenAgent = await listen<AgentEventPayload>("chat-agent", (event) => {
       const payload = event.payload;
       if (payload.conversation_id !== conversationId) return;
 
-      if (payload.is_done) {
-        const finalContent = get().streamingContent;
-        if (finalContent) {
-          const assistantMsg: ChatMessage = {
-            id: crypto.randomUUID(),
-            conversation_id: conversationId,
-            role: "assistant",
-            content: finalContent,
-            created_at: new Date().toISOString(),
-          };
-          set({
-            messages: [...get().messages, assistantMsg],
-            streamingContent: "",
-            isStreaming: false,
-          });
-        } else {
-          set({ isStreaming: false });
+      switch (payload.kind) {
+        case "text": {
+          set({ streamingContent: get().streamingContent + payload.text });
+          break;
         }
-        unlistenFn?.();
-      } else {
-        set({ streamingContent: get().streamingContent + payload.token });
+        case "tool_call": {
+          set({
+            streamingToolEvents: [
+              ...get().streamingToolEvents,
+              { id: payload.id, name: payload.name, arguments: payload.arguments },
+            ],
+          });
+          break;
+        }
+        case "tool_result": {
+          set({
+            streamingToolEvents: get().streamingToolEvents.map((e) =>
+              e.id === payload.id ? { ...e, result: payload.result } : e
+            ),
+          });
+          break;
+        }
+        case "tool_error": {
+          set({
+            streamingToolEvents: get().streamingToolEvents.map((e) =>
+              e.id === payload.id ? { ...e, error: payload.error } : e
+            ),
+          });
+          break;
+        }
+        case "done": {
+          finishStreaming(payload.text);
+          unlistenAgent?.();
+          break;
+        }
       }
     });
-    unlistenFn = unlisten;
 
     try {
       await invoke("send_chat_message", { conversationId, content });
     } catch (e) {
       set({ error: String(e), isStreaming: false });
-      unlisten();
+      unlistenAgent?.();
     }
   },
 
@@ -105,9 +156,13 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     const msg = msgs[msgIndex];
     if (msg.role !== "user") return;
 
-    const newMessages = [...msgs];
-    newMessages[msgIndex] = { ...msg, withdrawn: true, content: "[已撤回]" };
-    set({ messages: newMessages });
+    try {
+      const deletedIds = await invoke<string[]>("withdraw_message", { messageId });
+      const deletedSet = new Set(deletedIds);
+      set({ messages: msgs.filter((m) => !deletedSet.has(m.id)) });
+    } catch (e) {
+      console.error("Failed to withdraw message:", e);
+    }
   },
 
   reset: () => {

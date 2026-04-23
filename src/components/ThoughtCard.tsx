@@ -1,10 +1,11 @@
-import { Archive, MessageSquare, Loader2, RefreshCw, AlertCircle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
+import { invoke } from "@tauri-apps/api/core";
 import type { Thought } from "../lib/types";
 import { useThoughtStore } from "../stores/thoughtStore";
 import RelatedThoughts from "./RelatedThoughts";
+import ThoughtImage from "./ThoughtImage";
 
 interface Props {
   thought: Thought;
@@ -22,112 +23,141 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
 
   const isEnriching = enrichingIds.has(thought.id);
   const enrichError = enrichErrors[thought.id];
+  const hasImage = thought.image_path && isImageFile(thought.image_path);
 
-  const timeAgo = formatDistanceToNow(new Date(thought.created_at), {
-    addSuffix: true,
-    locale: zhCN,
-  });
+  const timeAgo = formatDistanceToNow(new Date(thought.created_at), { addSuffix: true, locale: zhCN });
+  const dateStr = new Date(thought.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).toUpperCase();
+
+  const handleOpenFile = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (thought.image_path) {
+      try { await invoke("open_file", { filename: thought.image_path }); } catch {}
+    }
+  };
 
   return (
-    <div 
+    <div
       onClick={onClick}
-      className={`group cursor-pointer rounded-2xl p-5 transition-all duration-400 ease-[cubic-bezier(0.25,0.8,0.25,1)] border ${
-        isActive 
-          ? 'bg-white shadow-[0_16px_40px_-8px_rgba(87,91,140,0.25)] border-[#c1c5fd] -translate-y-1.5 z-10 relative ring-4 ring-[#c1c5fd]/20' 
-          : 'bg-white/70 backdrop-blur-sm shadow-[0_4px_16px_rgba(87,91,140,0.04)] border-white/60 hover:bg-white hover:shadow-[0_12px_40px_-8px_rgba(87,91,140,0.2)] hover:-translate-y-1.5'
+      className={`group relative rounded-2xl overflow-hidden transition-all duration-500 cursor-pointer ${
+        isActive
+          ? "bg-surface-container-high translate-y-[-4px] ring-1 ring-primary/30"
+          : "bg-surface-container-lowest hover:translate-y-[-4px]"
       }`}
     >
-      {thought.image_path && (
-        <div className="mb-4 rounded-xl overflow-hidden border border-[#e3e1ed]/50">
-          <img
-            src={`http://127.0.0.1:8765/api/images/${thought.image_path}`}
-            alt="想法图片"
-            className="w-full max-h-64 object-cover"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        </div>
-      )}
+      <div className={`flex flex-col ${hasImage ? "md:flex-row items-stretch" : ""} h-full`}>
+        {/* Image section (1/3 width) */}
+        {hasImage && (
+          <div className="w-full md:w-1/3 overflow-hidden bg-surface-container relative min-h-[180px]">
+            <ThoughtImage
+              filename={thought.image_path!}
+              className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-700"
+            />
+          </div>
+        )}
 
-      <p className="text-[#31323b] leading-relaxed mb-4 text-lg">
-        {thought.content}
-      </p>
-
-      {isEnriching && (
-        <div className="flex items-center gap-2 text-xs text-[#575b8c] mb-4 bg-[#c1c5fd]/10 w-fit px-3 py-1.5 rounded-full">
-          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          <span className="font-medium">AI 正在思考...</span>
-        </div>
-      )}
-
-      {enrichError && (
-        <div className="flex items-center gap-2 text-xs text-[#a8364b] bg-[#f97386]/10 rounded-xl px-3 py-2 mb-4 border border-[#f97386]/20">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span className="truncate flex-1">{enrichError}</span>
-          <button
-            onClick={(e) => { e.stopPropagation(); enrichAndEmbed(thought.id); }}
-            className="shrink-0 text-[#a8364b] hover:text-[#7d2435] bg-white/50 p-1 rounded-md transition-colors"
-            title="重试"
+        {/* Non-image file attachment */}
+        {thought.image_path && !isImageFile(thought.image_path) && (
+          <div
+            className="flex items-center gap-3 px-8 pt-6 cursor-pointer group/file"
+            onClick={handleOpenFile}
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
+            <span className="material-symbols-outlined text-primary/60">description</span>
+            <span className="text-sm text-on-surface-variant truncate">{thought.image_path}</span>
+            <span className="material-symbols-outlined text-[16px] text-on-surface-variant/40 group-hover/file:text-primary">open_in_new</span>
+          </div>
+        )}
 
-      {thought.context && (
-        <div className="mb-5 mt-2">
-          <div className="bg-gradient-to-r from-[#f4f0fa] to-white/50 rounded-2xl p-4 border border-[#e3e1ed]/60 shadow-sm relative overflow-hidden group/insight">
-            <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#575b8c] to-[#c1c5fd] rounded-l-2xl"></div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-[10px] font-bold text-[#575b8c] uppercase tracking-widest flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#575b8c]/50"></span>
-                AI Insight
-              </span>
+        {/* Content section */}
+        <div className={`flex-1 p-8 ${hasImage ? "bg-surface-container-low" : ""}`}>
+          {/* Date & actions */}
+          <div className="flex justify-between items-start mb-4">
+            <span className="text-[10px] text-on-surface-variant tracking-[0.2em] font-mono">{dateStr}</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); }}
+              className="text-on-surface-variant opacity-20 group-hover:opacity-100 hover:text-primary transition-all"
+            >
+              <span className="material-symbols-outlined">more_horiz</span>
+            </button>
+          </div>
+
+        {/* Content text */}
+        <h4 className="text-lg font-headline font-semibold text-on-surface mb-3 leading-tight break-words whitespace-pre-wrap">
+          {thought.file_summary || thought.content}
+        </h4>
+
+          {/* Enriching indicator */}
+          {isEnriching && (
+            <div className="flex items-center gap-2 text-[10px] text-primary mb-4 tracking-wider uppercase">
+              <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+              AI Processing...
             </div>
-            <p className="text-sm text-[#5e5e68] leading-relaxed relative z-10">
+          )}
+
+          {/* Enrich error */}
+          {enrichError && (
+            <div className="flex items-center gap-2 text-[11px] text-error bg-error-container/20 rounded-lg px-3 py-2 mb-4">
+              <span className="material-symbols-outlined text-[16px]">error</span>
+              <span className="truncate flex-1">{enrichError}</span>
+              <button
+                onClick={(e) => { e.stopPropagation(); enrichAndEmbed(thought.id); }}
+                className="text-error hover:text-on-error-container transition-colors"
+              >
+                <span className="material-symbols-outlined text-[16px]">refresh</span>
+              </button>
+            </div>
+          )}
+
+          {/* AI Context insight */}
+          {thought.context && (
+            <p className="text-sm text-on-surface-variant/80 font-light leading-relaxed mb-6">
               {thought.context}
             </p>
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-center justify-between mt-2 pt-4 border-t border-[#e3e1ed]/50">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-[#a1a1aa] font-medium">{timeAgo}</span>
-          {thought.domain && (
-            <span className="text-xs px-2.5 py-1 rounded-full bg-[#f6d0fd]/50 text-[#855392] font-medium border border-[#f6d0fd]">
-              {thought.domain}
-            </span>
           )}
-          {thought.tags &&
-            thought.tags.split(",").map((tag) => (
+
+          {/* Tags */}
+          <div className="flex flex-wrap gap-2">
+            {thought.domain && (
+              <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] text-secondary-fixed-dim tracking-wider uppercase font-semibold">
+                {thought.domain}
+              </span>
+            )}
+            {thought.tags?.split(",").map((tag) => (
               <span
                 key={tag}
-                className="text-xs px-2.5 py-1 rounded-full bg-[#f4f0fa] text-[#6b6e8a] border border-[#e3e1ed]"
+                className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] text-primary tracking-wider uppercase font-semibold"
               >
                 {tag.trim()}
               </span>
             ))}
-        </div>
+          </div>
 
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/thought/${thought.id}/chat`); }}
-            className="text-[#a1a1aa] hover:text-[#575b8c] hover:bg-[#c1c5fd]/20 transition-all p-2 rounded-xl group-hover:bg-[#f4f0fa]"
-            title="进入深度拷问"
-          >
-            <MessageSquare className="w-4 h-4" />
-          </button>
-          <button
-            onClick={(e) => { e.stopPropagation(); archiveThought(thought.id); }}
-            className="text-[#a1a1aa] hover:text-[#a8364b] hover:bg-[#f97386]/10 transition-all p-2 rounded-xl group-hover:bg-[#f4f0fa]"
-            title="归档"
-          >
-            <Archive className="w-4 h-4" />
-          </button>
+          {/* Action buttons (visible on hover) */}
+          <div className="flex items-center gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => { e.stopPropagation(); navigate(`/thought/${thought.id}/chat`); }}
+              className="flex items-center gap-1.5 text-[10px] text-on-surface-variant hover:text-primary uppercase tracking-wider transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
+              Deep Question
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); archiveThought(thought.id); }}
+              className="flex items-center gap-1.5 text-[10px] text-on-surface-variant hover:text-error uppercase tracking-wider transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px]">inventory_2</span>
+              Archive
+            </button>
+          </div>
+
+          {showRelated && <div className="mt-4"><RelatedThoughts thoughtId={thought.id} /></div>}
         </div>
       </div>
-
-      {showRelated && <div className="mt-4"><RelatedThoughts thoughtId={thought.id} /></div>}
     </div>
   );
+}
+
+const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"];
+function isImageFile(filename: string): boolean {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  return IMAGE_EXTS.includes(ext);
 }

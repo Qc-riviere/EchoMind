@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
 import type { Thought } from "../lib/types";
+import { useGraphStore } from "./graphStore";
 
 interface ThoughtStore {
   thoughts: Thought[];
@@ -13,6 +14,7 @@ interface ThoughtStore {
   startPolling: () => void;
   stopPolling: () => void;
   addThought: (content: string) => Promise<Thought>;
+  addThoughtWithImage: (content: string, imageData: string, ext: string, originalName?: string) => Promise<Thought>;
   updateThought: (id: string, content: string) => Promise<void>;
   archiveThought: (id: string) => Promise<void>;
   enrichAndEmbed: (thoughtId: string) => Promise<void>;
@@ -33,14 +35,24 @@ export const useThoughtStore = create<ThoughtStore>((set, get) => ({
       try {
         const thoughts = await invoke<Thought[]>("list_thoughts");
         const current = get().thoughts;
-        // Only update if data changed (compare by count + first item timestamp)
-        if (
-          thoughts.length !== current.length ||
-          thoughts[0]?.updated_at !== current[0]?.updated_at ||
-          thoughts[0]?.id !== current[0]?.id
-        ) {
-          set({ thoughts });
+        // Detect change across the whole list (id, updated_at, image_path, file_summary)
+        let changed = thoughts.length !== current.length;
+        if (!changed) {
+          for (let i = 0; i < thoughts.length; i++) {
+            const a = thoughts[i];
+            const b = current[i];
+            if (
+              a.id !== b.id ||
+              a.updated_at !== b.updated_at ||
+              a.image_path !== b.image_path ||
+              a.file_summary !== b.file_summary
+            ) {
+              changed = true;
+              break;
+            }
+          }
         }
+        if (changed) set({ thoughts });
       } catch {
         // Silently ignore poll errors
       }
@@ -73,6 +85,17 @@ export const useThoughtStore = create<ThoughtStore>((set, get) => ({
     return thought;
   },
 
+  addThoughtWithImage: async (content: string, imageData: string, ext: string, originalName?: string) => {
+    const filename = await invoke<string>("save_image", { data: imageData, ext, originalName });
+    const thought = await invoke<Thought>("create_thought_with_image", {
+      content,
+      imagePath: filename,
+    });
+    set({ thoughts: [thought, ...get().thoughts] });
+    get().enrichAndEmbed(thought.id);
+    return thought;
+  },
+
   enrichAndEmbed: async (thoughtId: string) => {
     const ids = new Set(get().enrichingIds);
     ids.add(thoughtId);
@@ -91,6 +114,8 @@ export const useThoughtStore = create<ThoughtStore>((set, get) => ({
         enrichingIds: updatedIds,
       });
       await invoke("embed_thought", { thoughtId: enriched.id });
+      // Push the new node into the graph store (no-op if graph page never opened).
+      useGraphStore.getState().addNodeIncremental(enriched.id);
     } catch (e) {
       const updatedIds = new Set(get().enrichingIds);
       updatedIds.delete(thoughtId);
@@ -99,6 +124,7 @@ export const useThoughtStore = create<ThoughtStore>((set, get) => ({
         enrichErrors: { ...get().enrichErrors, [thoughtId]: String(e) },
       });
       await invoke("embed_thought", { thoughtId });
+      useGraphStore.getState().addNodeIncremental(thoughtId);
     }
   },
 

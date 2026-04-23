@@ -1,0 +1,7 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Interlocking circles representing connection, network, and brain -->
+  <circle cx="38" cy="50" r="24" fill="none" stroke="#0ea5e9" stroke-width="8"/>
+  <circle cx="62" cy="50" r="24" fill="none" stroke="#ec4899" stroke-width="8" opacity="0.8"/>
+  <!-- Synapse center node -->
+  <circle cx="50" cy="50" r="7" fill="#14b8a6"/>
+</svg>

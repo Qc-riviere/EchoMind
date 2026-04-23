@@ -1,0 +1,6 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer glowing box rotated to form a diamond -->
+  <rect x="50" y="15" width="50" height="50" transform="rotate(45 50 15)" fill="none" stroke="#3b82f6" stroke-width="8" stroke-linejoin="round" rx="4"/>
+  <!-- Inner core -->
+  <rect x="50" y="35" width="20" height="20" transform="rotate(45 50 35)" fill="#a855f7" rx="3"/>
+</svg>

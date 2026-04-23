@@ -1,5 +1,3 @@
-import { AlertTriangle, Archive, RotateCcw, Trash2 } from "lucide-react";
-
 interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
@@ -11,6 +9,13 @@ interface ConfirmDialogProps {
   onConfirm: () => void;
   onCancel: () => void;
 }
+
+const iconMap: Record<string, string> = {
+  archive: "inventory_2",
+  restore: "restore",
+  delete: "delete",
+  warning: "warning",
+};
 
 export default function ConfirmDialog({
   isOpen,
@@ -25,33 +30,21 @@ export default function ConfirmDialog({
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
-  const iconMap = {
-    archive: Archive,
-    restore: RotateCcw,
-    delete: Trash2,
-    warning: AlertTriangle,
-  };
-
-  const Icon = iconMap[icon];
-
   const variantStyles = {
     danger: {
-      icon: 'text-[#a8364b]',
-      bg: 'bg-[#f97386]/10',
-      border: 'border-[#f97386]/20',
-      button: 'bg-[#a8364b] hover:bg-[#7d2435]',
+      icon: 'text-error',
+      bg: 'bg-error-container/20',
+      button: 'bg-error hover:bg-error/80',
     },
     warning: {
-      icon: 'text-[#b45309]',
-      bg: 'bg-amber-50',
-      border: 'border-amber-200/50',
-      button: 'bg-[#b45309] hover:bg-[#92400e]',
+      icon: 'text-tertiary',
+      bg: 'bg-tertiary-container/20',
+      button: 'bg-tertiary hover:bg-tertiary/80',
     },
     info: {
-      icon: 'text-[#575b8c]',
-      bg: 'bg-[#c1c5fd]/20',
-      border: 'border-[#c1c5fd]/30',
-      button: 'bg-[#575b8c] hover:bg-[#434670]',
+      icon: 'text-primary',
+      bg: 'bg-primary/10',
+      button: 'bg-primary hover:bg-primary/80',
     },
   };
 
@@ -59,39 +52,28 @@ export default function ConfirmDialog({
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center">
-      {/* 遮罩层 */}
-      <div 
-        className="absolute inset-0 bg-black/20 backdrop-blur-sm"
-        onClick={onCancel}
-      />
-      
-      {/* 对话框 */}
-      <div className="relative bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/60 w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in duration-200">
-        {/* 内容区 */}
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+
+      <div className="relative bg-surface-container-high rounded-2xl w-full max-w-md mx-4 overflow-hidden ghost-border">
         <div className="p-6">
-          <div className={`w-12 h-12 rounded-2xl ${styles.bg} ${styles.border} border flex items-center justify-center mb-4`}>
-            <Icon className={`w-6 h-6 ${styles.icon}`} />
+          <div className={`w-12 h-12 rounded-xl ${styles.bg} flex items-center justify-center mb-4`}>
+            <span className={`material-symbols-outlined text-[24px] ${styles.icon}`}>{iconMap[icon]}</span>
           </div>
-          
-          <h3 className="text-lg font-bold text-[#31323b] mb-2">
-            {title}
-          </h3>
-          <p className="text-sm text-[#5e5e68] leading-relaxed">
-            {message}
-          </p>
+
+          <h3 className="text-lg font-headline font-bold text-on-surface mb-2">{title}</h3>
+          <p className="text-sm text-on-surface-variant leading-relaxed">{message}</p>
         </div>
 
-        {/* 按钮区 */}
         <div className="flex gap-3 p-6 pt-0">
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-3 text-sm font-medium rounded-xl bg-white/60 text-[#5e5e68] hover:bg-white border border-[#e3e1ed]/50 transition-all"
+            className="flex-1 px-4 py-3 text-sm font-medium rounded-xl bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all"
           >
             {cancelText}
           </button>
           <button
             onClick={onConfirm}
-            className={`flex-1 px-4 py-3 text-sm font-medium rounded-xl text-white ${styles.button} transition-all shadow-lg`}
+            className={`flex-1 px-4 py-3 text-sm font-medium rounded-xl text-on-primary ${styles.button} transition-all`}
           >
             {confirmText}
           </button>

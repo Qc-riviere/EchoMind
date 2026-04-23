@@ -1,0 +1,7 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- Animated bars representing echo and soundwave -->
+  <rect x="20" y="40" width="12" height="20" rx="6" fill="#8b5cf6" opacity="0.3"/>
+  <rect x="38" y="25" width="12" height="50" rx="6" fill="#8b5cf6" opacity="0.5"/>
+  <rect x="56" y="10" width="12" height="80" rx="6" fill="#8b5cf6" opacity="0.8"/>
+  <rect x="74" y="30" width="12" height="40" rx="6" fill="#8b5cf6" opacity="1.0"/>
+</svg>

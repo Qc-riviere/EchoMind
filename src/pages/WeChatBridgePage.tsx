@@ -1,19 +1,6 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import {
-  MessageSquare,
-  Server,
-  Power,
-  PowerOff,
-  RefreshCw,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  Smartphone,
-  Terminal,
-  Copy,
-  Check,
-} from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 
 interface ServerStatus {
   online: boolean;
@@ -28,317 +15,279 @@ interface WeChatAccount {
   createdAt?: string;
 }
 
+interface QrLoginInfo {
+  qrcode_id: string;
+  qrcode_url: string;
+}
+
+interface QrPollResult {
+  status: string;
+  account_id: string | null;
+}
+
+type BridgeStep = "idle" | "starting-server" | "scanning" | "scanned" | "connecting" | "ready" | "error";
+
 export default function WeChatBridgePage() {
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null);
   const [account, setAccount] = useState<WeChatAccount | null>(null);
+  const [daemonRunning, setDaemonRunning] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [starting, setStarting] = useState(false);
-  const [stopping, setStopping] = useState(false);
-  const [copied, setCopied] = useState<string | null>(null);
+  const [step, setStep] = useState<BridgeStep>("idle");
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
-      const [status, acct] = await Promise.all([
+      const [status, acct, daemon] = await Promise.all([
         invoke<ServerStatus>("bridge_server_status"),
         invoke<WeChatAccount>("bridge_wechat_account"),
+        invoke<boolean>("bridge_daemon_status"),
       ]);
       setServerStatus(status);
       setAccount(acct);
-    } catch (e) {
-      console.error("Failed to fetch bridge status:", e);
+      setDaemonRunning(daemon);
+      if (daemon && status.online && acct.configured) {
+        if (step !== "scanning" && step !== "scanned") setStep("ready");
+      }
+    } catch {
       setServerStatus({ online: false });
       setAccount({ configured: false });
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      setDaemonRunning(false);
+    } finally { setLoading(false); }
+  }, [step]);
 
-  useEffect(() => {
-    refresh();
-    const interval = setInterval(refresh, 5000);
-    return () => clearInterval(interval);
-  }, [refresh]);
+  useEffect(() => { refresh(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, [refresh]);
+  useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
 
-  const handleStartServer = async () => {
-    setStarting(true);
+  const startConnect = async () => {
+    setError(null);
+    setActionLoading(true);
     try {
-      await invoke("bridge_start_server");
-      // Wait a moment for server to bind
-      await new Promise((r) => setTimeout(r, 2000));
-      await refresh();
+      if (!serverStatus?.online) {
+        setStep("starting-server");
+        await invoke("bridge_start_server");
+        for (let i = 0; i < 10; i++) {
+          await new Promise((r) => setTimeout(r, 1000));
+          const status = await invoke<ServerStatus>("bridge_server_status");
+          if (status.online) { setServerStatus(status); break; }
+          if (i === 9) throw new Error("Server 启动超时");
+        }
+      }
+      setStep("scanning");
+      const qr = await invoke<QrLoginInfo>("bridge_qr_start");
+      setQrUrl(qr.qrcode_url);
+      pollRef.current = setInterval(async () => {
+        try {
+          const result = await invoke<QrPollResult>("bridge_qr_poll", { qrcodeId: qr.qrcode_id });
+          if (result.status === "scaned") setStep("scanned");
+          else if (result.status === "confirmed") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setStep("connecting");
+            await invoke("bridge_start_daemon");
+            await new Promise((r) => setTimeout(r, 2000));
+            setStep("ready");
+            await refresh();
+          } else if (result.status === "expired") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setError("二维码已过期，请重试");
+            setStep("idle");
+          }
+        } catch {}
+      }, 3000);
     } catch (e) {
-      console.error("Failed to start server:", e);
-    } finally {
-      setStarting(false);
-    }
+      setError(String(e));
+      setStep("error");
+    } finally { setActionLoading(false); }
   };
 
-  const handleStopServer = async () => {
-    setStopping(true);
+  const handleDisconnect = async () => {
+    setActionLoading(true);
     try {
+      await invoke("bridge_stop_daemon");
       await invoke("bridge_stop_server");
-      await new Promise((r) => setTimeout(r, 500));
-      await refresh();
-    } catch (e) {
-      console.error("Failed to stop server:", e);
-    } finally {
-      setStopping(false);
-    }
+      setDaemonRunning(false);
+      setServerStatus({ online: false });
+      setStep("idle");
+      setQrUrl(null);
+    } catch {} finally { setActionLoading(false); }
   };
 
-  const copyCommand = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopied(id);
-    setTimeout(() => setCopied(null), 2000);
+  const handleStartDaemon = async () => {
+    setActionLoading(true);
+    try {
+      if (!serverStatus?.online) {
+        await invoke("bridge_start_server");
+        for (let i = 0; i < 10; i++) {
+          await new Promise((r) => setTimeout(r, 1000));
+          const status = await invoke<ServerStatus>("bridge_server_status");
+          if (status.online) { setServerStatus(status); break; }
+        }
+      }
+      await invoke<string>("bridge_start_daemon");
+      await new Promise((r) => setTimeout(r, 1500));
+      await refresh();
+      setStep("ready");
+    } catch (e) {
+      setError(String(e));
+      setStep("idle");
+    } finally { setActionLoading(false); }
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 text-[#575b8c] animate-spin" />
+        <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
       </div>
     );
   }
 
+  const isReady = serverStatus?.online && account?.configured && daemonRunning;
+
   return (
-    <div className="relative min-h-screen w-full overflow-x-hidden">
-      <div className="flex justify-center w-full">
-        <div className="w-full max-w-3xl">
-          <div className="space-y-6 py-8">
-            {/* Header */}
-            <div className="pt-4">
-              <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-[#575b8c] to-[#8a8dc4] font-[Manrope] tracking-tight">
-                微信桥接
-              </h1>
-              <p className="text-[#7a7a84] mt-2 font-medium">
-                通过微信随时记录想法、搜索和 AI 对话
-              </p>
-            </div>
+    <div className="max-w-5xl mx-auto px-8 py-12">
+      {/* Header */}
+      <div className="mb-10">
+        <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">WeChat Bridge</h1>
+        <p className="text-sm text-on-surface-variant mt-3 leading-relaxed max-w-2xl">
+          Deploy your cognitive sanctuary into your pocket. Connect mobile WeChat as an edge-node for instant inspiration capture and retrieval.
+        </p>
+      </div>
 
-            {/* Architecture Diagram */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-5 shadow-[0_4px_16px_rgba(87,91,140,0.04)] border border-white/60">
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <div className="flex flex-col items-center gap-1.5 flex-1">
-                  <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center border border-green-200/50">
-                    <Smartphone className="w-5 h-5 text-green-600" />
-                  </div>
-                  <span className="text-[#7a7a84] text-xs">微信</span>
-                </div>
-                <div className="text-[#c4c4cc] text-xs flex-shrink-0">
-                  ← ilink API →
-                </div>
-                <div className="flex flex-col items-center gap-1.5 flex-1">
-                  <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center border border-blue-200/50">
-                    <MessageSquare className="w-5 h-5 text-blue-600" />
-                  </div>
-                  <span className="text-[#7a7a84] text-xs">桥接守护</span>
-                </div>
-                <div className="text-[#c4c4cc] text-xs flex-shrink-0">
-                  ← HTTP →
-                </div>
-                <div className="flex flex-col items-center gap-1.5 flex-1">
-                  <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center border border-purple-200/50">
-                    <Server className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <span className="text-[#7a7a84] text-xs">API Server</span>
-                </div>
-                <div className="text-[#c4c4cc] text-xs flex-shrink-0">
-                  ← SQLite →
-                </div>
-                <div className="flex flex-col items-center gap-1.5 flex-1">
-                  <div className="w-10 h-10 rounded-xl bg-[#f4f0fa] flex items-center justify-center border border-[#e3e1ed]/50">
-                    <svg className="w-5 h-5 text-[#575b8c]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-                  </div>
-                  <span className="text-[#7a7a84] text-xs">桌面应用</span>
-                </div>
-              </div>
-            </div>
+      {/* Status indicators */}
+      <div className="grid grid-cols-4 gap-4 mb-8">
+        <StatusCard icon="cloud" label="Server" value={serverStatus?.online ? "Online" : "Offline"} active={!!serverStatus?.online} />
+        <StatusCard icon="person" label="Account" value={account?.accountId ? `@${account.accountId.slice(0, 8)}` : "None"} active={!!account?.configured} />
+        <StatusCard icon="hub" label="Bridge" value={daemonRunning ? "Connected" : "Idle"} active={daemonRunning} />
+        <StatusCard icon="lock" label="Encryption" value="256-bit AES" active={!!isReady} />
+      </div>
 
-            {/* API Server Card */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 shadow-[0_4px_16px_rgba(87,91,140,0.04)] border border-white/60 space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-bold text-[#3a3e6c] flex items-center gap-2">
-                  <Server className="w-5 h-5" />
-                  API Server
+      <div className="grid grid-cols-12 gap-8">
+        {/* Main action area */}
+        <div className="col-span-12 lg:col-span-5">
+          <div className="bg-surface-container-low p-8 rounded-2xl ghost-border">
+            {step === "scanning" || step === "scanned" ? (
+              <div className="text-center space-y-5">
+                <h2 className="text-lg font-headline font-bold text-on-surface">
+                  {step === "scanned" ? "请在手机上确认" : "Sync Device"}
                 </h2>
+                <p className="text-xs text-on-surface-variant">
+                  {step === "scanned" ? "已扫描，等待确认..." : "Open WeChat and scan the QR code to pair your device."}
+                </p>
+                {qrUrl && (
+                  <div className="inline-block p-5 bg-surface-container-lowest rounded-2xl">
+                    <QRCodeSVG
+                      value={qrUrl}
+                      size={200}
+                      level="M"
+                      bgColor="transparent"
+                      fgColor={step === "scanned" ? "#adc7ff" : "#e5e2e1"}
+                    />
+                  </div>
+                )}
+                {step === "scanned" && (
+                  <div className="flex items-center justify-center gap-2 text-primary text-sm">
+                    <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                    已扫描
+                  </div>
+                )}
                 <button
-                  onClick={refresh}
-                  className="p-2 rounded-xl text-[#7a7a84] hover:text-[#575b8c] hover:bg-white/60 transition-all"
-                  title="刷新状态"
+                  onClick={() => { if (pollRef.current) clearInterval(pollRef.current); pollRef.current = null; setStep("idle"); setQrUrl(null); }}
+                  className="text-[10px] text-on-surface-variant hover:text-on-surface uppercase tracking-wider transition-colors"
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  Cancel
                 </button>
               </div>
-
-              {/* Status */}
-              <div className="flex items-center gap-3">
-                {serverStatus?.online ? (
-                  <>
-                    <div className="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50/80 rounded-2xl px-4 py-2.5 border border-emerald-200/50 flex-1">
-                      <CheckCircle className="w-4 h-4 shrink-0" />
-                      <span className="font-medium">在线</span>
-                      <span className="text-emerald-500 ml-2">
-                        {serverStatus.thoughts} 想法 · {serverStatus.conversations} 对话
-                      </span>
-                    </div>
-                    <button
-                      onClick={handleStopServer}
-                      disabled={stopping}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition-all border border-red-200/50 disabled:opacity-50"
-                    >
-                      {stopping ? <Loader2 className="w-4 h-4 animate-spin" /> : <PowerOff className="w-4 h-4" />}
-                      停止
+            ) : step === "starting-server" || step === "connecting" ? (
+              <div className="text-center space-y-4 py-8">
+                <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
+                <p className="text-on-surface-variant text-sm">
+                  {step === "starting-server" ? "正在启动服务..." : "正在连接微信桥接..."}
+                </p>
+              </div>
+            ) : isReady && step !== "scanning" ? (
+              <div className="text-center space-y-5">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-3xl text-primary">wifi</span>
+                </div>
+                <h2 className="text-lg font-headline font-bold text-on-surface">微信已连接</h2>
+                <p className="text-xs text-on-surface-variant">
+                  在微信中发送文字即可记录想法，发送 /help 查看命令
+                </p>
+                <div className="flex items-center justify-center gap-3 text-[10px] text-on-surface-variant">
+                  <span>{serverStatus?.thoughts ?? 0} thoughts</span>
+                  <span className="text-outline-variant">·</span>
+                  <span>{serverStatus?.conversations ?? 0} conversations</span>
+                </div>
+                <div className="flex justify-center gap-3 pt-2">
+                  <button onClick={startConnect} disabled={actionLoading}
+                    className="flex items-center gap-2 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg text-on-surface-variant hover:text-primary bg-surface-container-high transition-all">
+                    <span className="material-symbols-outlined text-[16px]">refresh</span> Rebind
+                  </button>
+                  <button onClick={handleDisconnect} disabled={actionLoading}
+                    className="flex items-center gap-2 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg text-error/60 hover:text-error bg-error-container/10 transition-all">
+                    {actionLoading ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[16px]">power_off</span>}
+                    Disconnect
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center space-y-5">
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-surface-container-high flex items-center justify-center">
+                  <span className="material-symbols-outlined text-3xl text-on-surface-variant/40">wifi_off</span>
+                </div>
+                <h2 className="text-lg font-headline font-bold text-on-surface">连接微信</h2>
+                <p className="text-xs text-on-surface-variant">一键扫码，在微信中使用 EchoMind</p>
+                {error && (
+                  <div className="text-[11px] text-error bg-error-container/20 rounded-xl px-4 py-3 text-left">{error}</div>
+                )}
+                {account?.configured && !daemonRunning ? (
+                  <div className="space-y-3">
+                    <button onClick={handleStartDaemon} disabled={actionLoading}
+                      className="inline-flex items-center gap-2 px-8 py-3 text-sm font-bold rounded-xl luminous-pulse text-on-primary disabled:opacity-50 active:scale-95 transition-all">
+                      {actionLoading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <span className="material-symbols-outlined">power</span>}
+                      启动桥接
                     </button>
-                  </>
+                    <div className="text-[10px] text-on-surface-variant/50">
+                      已绑定 {account.accountId?.slice(0, 12)}...
+                      <button onClick={startConnect} className="text-primary hover:underline ml-2">重新绑定</button>
+                    </div>
+                  </div>
                 ) : (
-                  <>
-                    <div className="flex items-center gap-2 text-sm text-[#a8364b] bg-[#f97386]/10 rounded-2xl px-4 py-2.5 border border-[#f97386]/20 flex-1">
-                      <XCircle className="w-4 h-4 shrink-0" />
-                      <span className="font-medium">离线</span>
-                      <span className="text-[#c4636f] ml-2">127.0.0.1:8765</span>
-                    </div>
-                    <button
-                      onClick={handleStartServer}
-                      disabled={starting}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-[#575b8c] text-white hover:bg-[#434670] transition-all shadow-sm disabled:opacity-50"
-                    >
-                      {starting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Power className="w-4 h-4" />}
-                      启动
-                    </button>
-                  </>
+                  <button onClick={startConnect} disabled={actionLoading}
+                    className="inline-flex items-center gap-2 px-8 py-3 text-sm font-bold rounded-xl luminous-pulse text-on-primary disabled:opacity-50 active:scale-95 transition-all">
+                    {actionLoading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <span className="material-symbols-outlined">qr_code_scanner</span>}
+                    扫码连接
+                  </button>
                 )}
               </div>
+            )}
+          </div>
+        </div>
 
-              {/* Manual start hint */}
-              {!serverStatus?.online && (
-                <div className="text-xs text-[#7a7a84] bg-[#f8f8fa] rounded-xl px-4 py-3 border border-[#e3e1ed]/30">
-                  也可以手动启动：
-                  <CommandBlock
-                    cmd="cd src-tauri
-cargo run -p echomind-server"
-                    id="server"
-                    copied={copied}
-                    onCopy={copyCommand}
-                  />
-                </div>
-              )}
+        {/* Command panel */}
+        <div className="col-span-12 lg:col-span-7">
+          <div className="bg-surface-container-low p-6 rounded-2xl ghost-border">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-headline font-bold text-on-surface uppercase tracking-widest">
+                WeChat Command Protocol
+              </h3>
+              <span className="text-[10px] text-on-surface-variant/40 font-mono">v1.2</span>
             </div>
-
-            {/* WeChat Account Card */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 shadow-[0_4px_16px_rgba(87,91,140,0.04)] border border-white/60 space-y-4">
-              <h2 className="text-lg font-bold text-[#3a3e6c] flex items-center gap-2">
-                <MessageSquare className="w-5 h-5" />
-                微信账号
-              </h2>
-
-              {account?.configured ? (
-                <div className="flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50/80 rounded-2xl px-4 py-2.5 border border-emerald-200/50">
-                  <CheckCircle className="w-4 h-4 shrink-0" />
-                  <span className="font-medium">已绑定</span>
-                  <span className="text-emerald-500 ml-2">
-                    ID: {account.accountId}
-                  </span>
-                  {account.createdAt && (
-                    <span className="text-emerald-400 ml-auto text-xs">
-                      {new Date(account.createdAt).toLocaleDateString("zh-CN")}
-                    </span>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-sm text-amber-600 bg-amber-50/80 rounded-2xl px-4 py-2.5 border border-amber-200/50">
-                  <XCircle className="w-4 h-4 shrink-0" />
-                  <span className="font-medium">未绑定</span>
-                </div>
-              )}
-
-              {/* Setup instructions */}
-              <div className="text-xs text-[#7a7a84] bg-[#f8f8fa] rounded-xl px-4 py-3 border border-[#e3e1ed]/30 space-y-2">
-                <p className="font-medium text-[#575b8c]">
-                  {account?.configured ? "重新绑定微信：" : "绑定微信（首次设置）："}
-                </p>
-                <CommandBlock
-                  cmd="cd echomind-wechat
-npm install
-npm run build
-npm run setup"
-                  id="setup"
-                  copied={copied}
-                  onCopy={copyCommand}
-                />
-              </div>
-            </div>
-
-            {/* Bridge Daemon Card */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 shadow-[0_4px_16px_rgba(87,91,140,0.04)] border border-white/60 space-y-4">
-              <h2 className="text-lg font-bold text-[#3a3e6c] flex items-center gap-2">
-                <Terminal className="w-5 h-5" />
-                桥接守护进程
-              </h2>
-
-              <div className="text-sm text-[#5e5e68] space-y-2">
-                <p>
-                  守护进程连接微信和 API Server，需要在终端中单独运行。
-                </p>
-
-                {/* Prerequisites */}
-                <div className="flex gap-2 flex-wrap mt-3">
-                  <span
-                    className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${
-                      serverStatus?.online
-                        ? "bg-emerald-50 text-emerald-600 border-emerald-200/50"
-                        : "bg-red-50 text-red-500 border-red-200/50"
-                    }`}
-                  >
-                    {serverStatus?.online ? (
-                      <CheckCircle className="w-3 h-3" />
-                    ) : (
-                      <XCircle className="w-3 h-3" />
-                    )}
-                    API Server
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border ${
-                      account?.configured
-                        ? "bg-emerald-50 text-emerald-600 border-emerald-200/50"
-                        : "bg-amber-50 text-amber-600 border-amber-200/50"
-                    }`}
-                  >
-                    {account?.configured ? (
-                      <CheckCircle className="w-3 h-3" />
-                    ) : (
-                      <XCircle className="w-3 h-3" />
-                    )}
-                    微信账号
-                  </span>
-                </div>
-              </div>
-
-              <div className="text-xs text-[#7a7a84] bg-[#f8f8fa] rounded-xl px-4 py-3 border border-[#e3e1ed]/30 space-y-2">
-                <p className="font-medium text-[#575b8c]">启动桥接：</p>
-                <CommandBlock
-                  cmd="cd echomind-wechat
-npm start"
-                  id="daemon"
-                  copied={copied}
-                  onCopy={copyCommand}
-                />
-              </div>
-            </div>
-
-            {/* WeChat Commands Reference */}
-            <div className="bg-white/70 backdrop-blur-sm rounded-3xl p-6 shadow-[0_4px_16px_rgba(87,91,140,0.04)] border border-white/60 space-y-4">
-              <h2 className="text-lg font-bold text-[#3a3e6c]">微信端命令</h2>
-              <div className="text-sm space-y-0.5">
-                <CmdRow cmd="直接发文字" desc="快速记录想法" />
-                <CmdRow cmd="/list [n]" desc="列出最近 n 条想法" />
-                <CmdRow cmd="/search <关键词>" desc="语义搜索想法" />
-                <CmdRow cmd="/view <ID>" desc="查看想法详情" />
-                <CmdRow cmd="/chat <ID>" desc="开始 AI 深度对话" />
-                <CmdRow cmd="/exit" desc="退出对话模式" />
-                <CmdRow cmd="/archive <ID>" desc="归档想法" />
-                <CmdRow cmd="/status" desc="系统状态" />
-                <CmdRow cmd="/help" desc="显示帮助" />
-              </div>
+            <div className="grid grid-cols-2 gap-4">
+              <CmdCard icon="list" cmd="直接发文字" desc="快速记录想法" />
+              <CmdCard icon="image" cmd="发送图片" desc="AI 识别并记录" />
+              <CmdCard icon="format_list_numbered" cmd="/list [n]" desc="列出最近 n 条想法" />
+              <CmdCard icon="search" cmd="/search <关键词>" desc="语义搜索想法" />
+              <CmdCard icon="visibility" cmd="/view <ID>" desc="查看想法详情" />
+              <CmdCard icon="chat_bubble" cmd="/chat <ID>" desc="开始 AI 深度对话" />
+              <CmdCard icon="logout" cmd="/exit" desc="退出对话模式" />
+              <CmdCard icon="inventory_2" cmd="/archive <ID>" desc="归档想法" />
+              <CmdCard icon="monitoring" cmd="/status" desc="系统状态" />
+              <CmdCard icon="help" cmd="/help" desc="显示帮助" />
             </div>
           </div>
         </div>
@@ -347,50 +296,22 @@ npm start"
   );
 }
 
-function CmdRow({ cmd, desc }: { cmd: string; desc: string }) {
+function StatusCard({ icon, label, value, active }: { icon: string; label: string; value: string; active: boolean }) {
   return (
-    <div className="flex items-center justify-between py-2 px-3 rounded-xl hover:bg-[#f4f0fa]/50 transition-colors">
-      <code className="text-[#575b8c] font-mono text-xs bg-[#f4f0fa] px-2 py-1 rounded-lg">
-        {cmd}
-      </code>
-      <span className="text-[#7a7a84] text-xs">{desc}</span>
+    <div className={`p-4 rounded-xl transition-all ${active ? "bg-primary/10 ghost-border" : "bg-surface-container-low"}`}>
+      <span className={`material-symbols-outlined text-[20px] mb-2 block ${active ? "text-primary" : "text-on-surface-variant/40"}`}>{icon}</span>
+      <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">{label}</p>
+      <p className={`text-sm font-bold mt-1 ${active ? "text-primary" : "text-on-surface-variant/60"}`}>{value}</p>
     </div>
   );
 }
 
-function CommandBlock({
-  cmd,
-  id,
-  copied,
-  onCopy,
-}: {
-  cmd: string;
-  id: string;
-  copied: string | null;
-  onCopy: (cmd: string, id: string) => void;
-}) {
-  const lines = cmd.split("\n").filter(Boolean);
+function CmdCard({ icon, cmd, desc }: { icon: string; cmd: string; desc: string }) {
   return (
-    <div className="flex items-start gap-2 bg-[#1e1e2e] text-[#cdd6f4] rounded-lg px-3 py-2 font-mono text-xs mt-1">
-      <div className="flex-1 select-all">
-        {lines.map((line, i) => (
-          <div key={i} className="flex gap-2">
-            <span className="text-green-400 select-none">&gt;</span>
-            <code>{line}</code>
-          </div>
-        ))}
-      </div>
-      <button
-        onClick={() => onCopy(cmd, id)}
-        className="shrink-0 text-[#7a7a84] hover:text-white transition-colors p-1 mt-0.5"
-        title="复制"
-      >
-        {copied === id ? (
-          <Check className="w-3.5 h-3.5 text-green-400" />
-        ) : (
-          <Copy className="w-3.5 h-3.5" />
-        )}
-      </button>
+    <div className="p-4 bg-surface-container-lowest rounded-xl hover:bg-surface-container transition-colors group cursor-default">
+      <span className="material-symbols-outlined text-[18px] text-on-surface-variant/40 group-hover:text-primary transition-colors mb-2 block">{icon}</span>
+      <code className="text-[11px] text-primary font-mono block mb-1">{cmd}</code>
+      <p className="text-[10px] text-on-surface-variant">{desc}</p>
     </div>
   );
 }
