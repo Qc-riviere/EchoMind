@@ -1,0 +1,71 @@
+services:
+  bridge:
+    build:
+      context: ../src-tauri
+      dockerfile: echomind-bridge-server/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      BRIDGE_BIND: "0.0.0.0:3000"
+      BRIDGE_DATA_DIR: "/data"
+    volumes:
+      - bridge_data:/data
+    networks:
+      - internal
+    # Do NOT expose port 3000 to host — nginx proxies to it.
+
+  # Optional: WeChat bot running in bridge-mode (no local EchoMind needed).
+  # Comment out if you only want the bridge server and run the bot locally.
+  bot:
+    build:
+      context: ../echomind-wechat
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # bridge client reads these two; bot mode is activated automatically
+      ECHOMIND_BRIDGE_URL: "http://bridge:3000"
+      # ECHOMIND_BRIDGE_TOKEN must be set in .env after first pairing
+    depends_on:
+      - bridge
+    networks:
+      - internal
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file: .env
+    environment:
+      NGINX_ENVSUBST_TEMPLATE_DIR: /etc/nginx/templates
+      NGINX_ENVSUBST_OUTPUT_DIR: /etc/nginx/conf.d
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      # .template files are processed by nginx entrypoint (envsubst) on start
+      - ./nginx/conf.d:/etc/nginx/templates:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_certs:/etc/letsencrypt:ro
+    depends_on:
+      - bridge
+    networks:
+      - internal
+
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_certs:/etc/letsencrypt
+    # Run once to obtain cert, then comment out or use --dry-run first.
+    # Override command in certbot-init.sh; this container is normally idle.
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done'"
+
+volumes:
+  bridge_data:
+  certbot_www:
+  certbot_certs:
+
+networks:
+  internal:
+    driver: bridge
