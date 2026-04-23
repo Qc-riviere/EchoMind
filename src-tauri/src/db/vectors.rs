@@ -1,15 +1,20 @@
 use rusqlite::{params, Connection, Result};
 
+const MAX_DISTANCE_THRESHOLD: f64 = 0.4;
+
 /// Store an embedding for a thought
 pub fn store_embedding(conn: &Connection, thought_id: &str, embedding: &[f32]) -> Result<()> {
+    // Delete existing embedding first
+    conn.execute(
+        "DELETE FROM thought_embeddings WHERE thought_id = ?1",
+        params![thought_id],
+    )?;
+
     // Convert f32 slice to raw bytes for sqlite-vec
-    let bytes: Vec<u8> = embedding
-        .iter()
-        .flat_map(|f| f.to_le_bytes())
-        .collect();
+    let bytes: Vec<u8> = embedding.iter().flat_map(|f| f.to_le_bytes()).collect();
 
     conn.execute(
-        "INSERT OR REPLACE INTO thought_embeddings (thought_id, embedding) VALUES (?1, ?2)",
+        "INSERT INTO thought_embeddings (thought_id, embedding) VALUES (?1, ?2)",
         params![thought_id, bytes],
     )?;
 
@@ -31,13 +36,15 @@ pub fn search_similar(
         "SELECT thought_id, distance
          FROM thought_embeddings
          WHERE embedding MATCH ?1
+           AND distance < ?2
          ORDER BY distance
-         LIMIT ?2",
+         LIMIT ?3",
     )?;
 
-    let rows = stmt.query_map(params![bytes, limit as i64], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-    })?;
+    let rows = stmt.query_map(
+        params![bytes, MAX_DISTANCE_THRESHOLD, limit as i64],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?)),
+    )?;
 
     rows.collect()
 }
@@ -48,7 +55,6 @@ pub fn find_related(
     thought_id: &str,
     limit: usize,
 ) -> Result<Vec<(String, f64)>> {
-    // First get the embedding for this thought
     let embedding: Vec<u8> = conn.query_row(
         "SELECT embedding FROM thought_embeddings WHERE thought_id = ?1",
         params![thought_id],
@@ -60,13 +66,15 @@ pub fn find_related(
          FROM thought_embeddings
          WHERE embedding MATCH ?1
            AND thought_id != ?2
+           AND distance < ?3
          ORDER BY distance
-         LIMIT ?3",
+         LIMIT ?4",
     )?;
 
-    let rows = stmt.query_map(params![embedding, thought_id, limit as i64], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
-    })?;
+    let rows = stmt.query_map(
+        params![embedding, thought_id, MAX_DISTANCE_THRESHOLD, limit as i64],
+        |row| Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?)),
+    )?;
 
     rows.collect()
 }

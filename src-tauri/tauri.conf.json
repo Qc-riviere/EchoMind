@@ -12,16 +12,22 @@
   "app": {
     "windows": [
       {
-        "title": "EchoMind — AI Thinking Partner",
+        "title": "EchoMind",
         "width": 960,
         "height": 700,
         "minWidth": 680,
         "minHeight": 500,
-        "center": true
+        "center": true,
+        "decorations": false,
+        "transparent": true
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/**", "$APPDATA/../**"]
+      }
     }
   },
   "bundle": {
