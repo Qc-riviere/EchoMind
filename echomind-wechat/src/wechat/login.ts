@@ -25,35 +25,35 @@ export async function loginFlow(): Promise<AccountData> {
   console.log("Requesting QR code...");
   const { qrcodeId, qrcodeUrl } = await startQrLogin();
 
-  // Generate QR code PNG from the URL and open with system viewer
+  const QRCode = await import("qrcode");
+
+  try {
+    const terminalQr = await QRCode.toString(qrcodeUrl, {
+      type: "terminal",
+      small: true,
+    });
+    console.log("\nScan this QR code with WeChat:\n");
+    console.log(terminalQr);
+  } catch {
+    console.log("\nFailed to render QR in terminal. Open this link:");
+    console.log(qrcodeUrl);
+  }
+
+  // Also save PNG for environments with a GUI (silently ignored on headless).
   const qrImagePath = path.join(os.tmpdir(), "echomind-wechat-qr.png");
   try {
-    const QRCode = await import("qrcode");
     const pngData = await QRCode.toBuffer(qrcodeUrl, {
       type: "png",
       width: 400,
       margin: 2,
     });
     fs.writeFileSync(qrImagePath, pngData);
-
-    console.log(`\nQR code saved to: ${qrImagePath}`);
-    console.log("Opening QR code image...\n");
-
-    const { exec } = await import("node:child_process");
-    const openCmd =
-      process.platform === "win32"
-        ? `start "" "${qrImagePath}"`
-        : process.platform === "darwin"
-          ? `open "${qrImagePath}"`
-          : `xdg-open "${qrImagePath}"`;
-    exec(openCmd);
+    console.log(`(QR also saved to: ${qrImagePath})`);
   } catch {
-    // Fallback: print the URL directly
-    console.log("\nFailed to generate QR image. Open this link in browser:");
-    console.log(qrcodeUrl);
+    // ignore
   }
 
-  console.log("Scan the QR code with WeChat, then confirm on your phone.");
+  console.log("\nScan the QR code with WeChat, then confirm on your phone.");
 
   while (true) {
     await sleep(QR_POLL_INTERVAL);
