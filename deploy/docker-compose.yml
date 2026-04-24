@@ -1,8 +1,7 @@
 services:
   bridge:
-    build:
-      context: ../src-tauri
-      dockerfile: echomind-bridge-server/Dockerfile
+    image: ghcr.io/qc-riviere/echomind-bridge:latest
+    pull_policy: always
     restart: unless-stopped
     env_file: .env
     environment:
@@ -17,9 +16,8 @@ services:
   # Optional: WeChat bot running in bridge-mode (no local EchoMind needed).
   # Comment out if you only want the bridge server and run the bot locally.
   bot:
-    build:
-      context: ../echomind-wechat
-      dockerfile: Dockerfile
+    image: ghcr.io/qc-riviere/echomind-wechat:latest
+    pull_policy: always
     restart: unless-stopped
     env_file: .env
     environment:
