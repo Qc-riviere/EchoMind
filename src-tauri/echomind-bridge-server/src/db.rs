@@ -117,29 +117,57 @@ impl DeviceStore {
         })
     }
 
-    pub fn list_thoughts(&self, limit: i64) -> Result<Vec<ThoughtRow>, AppError> {
+    pub fn list_thoughts(
+        &self,
+        limit: i64,
+        since: Option<&str>,
+    ) -> Result<Vec<ThoughtRow>, AppError> {
         let conn = self.conn.lock().unwrap();
-        let mut stmt = conn
-            .prepare(
-                "SELECT id, content, domain, tags, created_at, updated_at
-                 FROM thoughts ORDER BY updated_at DESC LIMIT ?1",
-            )
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-        let rows = stmt
-            .query_map(params![limit.clamp(1, 200)], |r| {
-                Ok((
-                    r.get::<_, String>(0)?,
-                    r.get::<_, String>(1)?,
-                    r.get::<_, Option<String>>(2)?,
-                    r.get::<_, Option<String>>(3)?,
-                    r.get::<_, String>(4)?,
-                    r.get::<_, String>(5)?,
-                ))
-            })
-            .map_err(|e| AppError::Internal(e.to_string()))?
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| AppError::Internal(e.to_string()))?;
-        Ok(rows
+        let limit = limit.clamp(1, 500);
+        let rows_iter: Vec<(String, String, Option<String>, Option<String>, String, String)> =
+            if let Some(since) = since {
+                let mut stmt = conn
+                    .prepare(
+                        "SELECT id, content, domain, tags, created_at, updated_at
+                         FROM thoughts WHERE updated_at > ?1
+                         ORDER BY updated_at ASC LIMIT ?2",
+                    )
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                stmt.query_map(params![since, limit], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, Option<String>>(2)?,
+                        r.get::<_, Option<String>>(3)?,
+                        r.get::<_, String>(4)?,
+                        r.get::<_, String>(5)?,
+                    ))
+                })
+                .map_err(|e| AppError::Internal(e.to_string()))?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| AppError::Internal(e.to_string()))?
+            } else {
+                let mut stmt = conn
+                    .prepare(
+                        "SELECT id, content, domain, tags, created_at, updated_at
+                         FROM thoughts ORDER BY updated_at DESC LIMIT ?1",
+                    )
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                stmt.query_map(params![limit], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, Option<String>>(2)?,
+                        r.get::<_, Option<String>>(3)?,
+                        r.get::<_, String>(4)?,
+                        r.get::<_, String>(5)?,
+                    ))
+                })
+                .map_err(|e| AppError::Internal(e.to_string()))?
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| AppError::Internal(e.to_string()))?
+            };
+        Ok(rows_iter
             .into_iter()
             .map(|(id, content, domain, tags_json, created_at, updated_at)| {
                 let tags = tags_json.and_then(|s| serde_json::from_str(&s).ok());

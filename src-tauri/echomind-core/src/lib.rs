@@ -1483,6 +1483,70 @@ impl EchoMind {
         Ok(())
     }
 
+    /// Pull new thoughts from the bridge and merge them into the local DB.
+    /// Uses `bridge_last_sync_at` as a cursor (RFC3339 timestamp), updated on
+    /// success to the largest `updated_at` returned. Returns the number of
+    /// rows inserted or updated.
+    pub async fn bridge_sync_pull(&self) -> Result<usize, String> {
+        if !self.bridge_is_enabled()? {
+            return Ok(0);
+        }
+        let Some(client) = self.bridge_client()? else {
+            return Ok(0);
+        };
+        let since = {
+            let conn = self.conn()?;
+            settings::get_setting(&conn, bridge::settings_keys::LAST_SYNC_AT)
+                .map_err(|e| e.to_string())?
+                .filter(|s| !s.is_empty())
+        };
+
+        let mut changed = 0usize;
+        let mut cursor = since.clone();
+        loop {
+            let batch = client
+                .fetch_thoughts_since(cursor.as_deref(), 200)
+                .await?;
+            if batch.is_empty() {
+                break;
+            }
+            let conn = self.conn()?;
+            let mut max_updated = cursor.clone().unwrap_or_default();
+            for r in &batch {
+                let tags_joined = r.tags.as_ref().map(|v| v.join(","));
+                let applied = thoughts::upsert_from_remote(
+                    &conn,
+                    &r.id,
+                    &r.content,
+                    r.domain.as_deref(),
+                    tags_joined.as_deref(),
+                    &r.created_at,
+                    &r.updated_at,
+                )
+                .map_err(|e| e.to_string())?;
+                if applied {
+                    changed += 1;
+                }
+                if r.updated_at > max_updated {
+                    max_updated = r.updated_at.clone();
+                }
+            }
+            if !max_updated.is_empty() {
+                settings::set_setting(
+                    &conn,
+                    bridge::settings_keys::LAST_SYNC_AT,
+                    &max_updated,
+                )
+                .map_err(|e| e.to_string())?;
+                cursor = Some(max_updated);
+            }
+            if batch.len() < 200 {
+                break;
+            }
+        }
+        Ok(changed)
+    }
+
     // ── Status ────────────────────────────────────────────────
 
     pub fn status(&self) -> Result<serde_json::Value, String> {

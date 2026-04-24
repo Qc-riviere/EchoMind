@@ -163,6 +163,29 @@ impl BridgeClient {
         expect_ok(resp).await
     }
 
+    /// Fetch thoughts from the bridge, optionally filtered by updated_at > since.
+    /// `since` is an RFC 3339 timestamp string (e.g. the last `updated_at`
+    /// we've already synced). Pass `None` on first sync to get most recent.
+    pub async fn fetch_thoughts_since(
+        &self,
+        since: Option<&str>,
+        limit: i64,
+    ) -> Result<Vec<RemoteThought>, String> {
+        let mut url = format!("{}/bridge/thoughts?limit={}", self.base_url, limit);
+        if let Some(s) = since {
+            let encoded = percent_encode(s);
+            url.push_str(&format!("&since={encoded}"));
+        }
+        let req = self.http.get(url);
+        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let v = expect_json(resp).await?;
+        let arr = v["thoughts"].as_array().cloned().unwrap_or_default();
+        Ok(arr
+            .into_iter()
+            .filter_map(|t| serde_json::from_value(t).ok())
+            .collect())
+    }
+
     /// Capture a new thought on the VPS (bridge mode, no local desktop needed).
     pub async fn capture_thought(
         &self,
@@ -245,6 +268,30 @@ pub struct RemoteCaptureResponse {
     pub id: String,
     pub content: String,
     pub created_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RemoteThought {
+    pub id: String,
+    pub content: String,
+    #[serde(default)]
+    pub domain: Option<String>,
+    #[serde(default)]
+    pub tags: Option<Vec<String>>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+fn percent_encode(s: &str) -> String {
+    s.bytes()
+        .map(|b| {
+            if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~') {
+                (b as char).to_string()
+            } else {
+                format!("%{b:02X}")
+            }
+        })
+        .collect()
 }
 
 #[derive(Debug, Serialize, Deserialize)]

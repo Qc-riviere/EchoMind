@@ -170,6 +170,48 @@ pub fn archive_thought(conn: &Connection, id: &str) -> Result<()> {
     Ok(())
 }
 
+/// Insert or update a thought using only remote-known fields (id, content,
+/// domain, tags, created_at, updated_at). Does not touch context / image /
+/// file_summary / is_archived, which are local-only. Returns true if any
+/// row was inserted or updated.
+pub fn upsert_from_remote(
+    conn: &Connection,
+    id: &str,
+    content: &str,
+    domain: Option<&str>,
+    tags: Option<&str>,
+    created_at: &str,
+    updated_at: &str,
+) -> Result<bool> {
+    let existing_updated: Option<String> = conn
+        .query_row(
+            "SELECT updated_at FROM thoughts WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        )
+        .ok();
+
+    match existing_updated {
+        None => {
+            conn.execute(
+                "INSERT INTO thoughts (id, content, domain, tags, is_archived, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, 0, ?5, ?6)",
+                params![id, content, domain, tags, created_at, updated_at],
+            )?;
+            Ok(true)
+        }
+        Some(local_updated) if updated_at.as_bytes() > local_updated.as_bytes() => {
+            conn.execute(
+                "UPDATE thoughts SET content = ?1, domain = ?2, tags = ?3, updated_at = ?4
+                 WHERE id = ?5",
+                params![content, domain, tags, updated_at, id],
+            )?;
+            Ok(true)
+        }
+        _ => Ok(false),
+    }
+}
+
 pub fn update_thought_enrichment(
     conn: &Connection,
     id: &str,

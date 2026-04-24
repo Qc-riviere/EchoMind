@@ -63,6 +63,11 @@ pub async fn cloud_bridge_initial_sync(state: State<'_, AppCore>) -> Result<usiz
 }
 
 #[tauri::command]
+pub async fn cloud_bridge_sync_pull(state: State<'_, AppCore>) -> Result<usize, String> {
+    state.0.bridge_sync_pull().await
+}
+
+#[tauri::command]
 pub async fn cloud_bridge_terminate(state: State<'_, AppCore>) -> Result<(), String> {
     state.0.bridge_terminate().await
 }

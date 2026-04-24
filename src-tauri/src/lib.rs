@@ -51,6 +51,25 @@ pub fn run() {
             app.manage(AppCore(core));
             app.manage(commands::bridge_cmds::BridgeState::default());
 
+            let app_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                loop {
+                    interval.tick().await;
+                    let state: tauri::State<'_, AppCore> = app_handle.state();
+                    match state.0.bridge_sync_pull().await {
+                        Ok(n) if n > 0 => {
+                            let _ = tauri::Emitter::emit(&app_handle, "bridge:synced", n);
+                        }
+                        Err(e) => {
+                            eprintln!("[bridge-sync] {e}");
+                        }
+                        _ => {}
+                    }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -104,6 +123,7 @@ pub fn run() {
             commands::cloud_bridge_cmds::cloud_bridge_set_enabled,
             commands::cloud_bridge_cmds::cloud_bridge_set_rules,
             commands::cloud_bridge_cmds::cloud_bridge_initial_sync,
+            commands::cloud_bridge_cmds::cloud_bridge_sync_pull,
             commands::cloud_bridge_cmds::cloud_bridge_terminate,
             commands::cloud_bridge_cmds::cloud_bridge_push_llm_config,
             commands::cloud_bridge_cmds::cloud_bridge_clear_llm_config,

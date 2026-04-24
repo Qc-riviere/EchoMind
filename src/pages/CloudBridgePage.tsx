@@ -154,6 +154,17 @@ export default function CloudBridgePage() {
     }
   };
 
+  const handleSyncPull = async () => {
+    setError(null);
+    setInfo(null);
+    try {
+      const n = await invoke<number>("cloud_bridge_sync_pull");
+      setInfo(n > 0 ? `已从云端拉取 ${n} 条新想法` : "云端无新增");
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
   const handlePushLlm = async () => {
     if (!llmConsent) { setError("请先勾选知情同意"); return; }
     setLlmPushing(true);
@@ -335,6 +346,12 @@ export default function CloudBridgePage() {
                 className="px-4 py-2 bg-surface-container-high text-on-surface rounded-lg text-sm font-medium"
               >
                 立即全量同步
+              </button>
+              <button
+                onClick={handleSyncPull}
+                className="px-4 py-2 bg-surface-container-high text-on-surface rounded-lg text-sm font-medium"
+              >
+                拉取云端新增
               </button>
             </div>
           </section>

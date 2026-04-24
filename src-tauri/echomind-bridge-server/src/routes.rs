@@ -325,6 +325,7 @@ async fn terminate(
 #[derive(Deserialize)]
 struct ListQuery {
     limit: Option<i64>,
+    since: Option<String>,
 }
 
 async fn bridge_list_thoughts(
@@ -333,7 +334,7 @@ async fn bridge_list_thoughts(
     axum::extract::Query(q): axum::extract::Query<ListQuery>,
 ) -> AppResult<Json<serde_json::Value>> {
     let store = state.store_for(&auth.device_id)?;
-    let thoughts = store.list_thoughts(q.limit.unwrap_or(20))?;
+    let thoughts = store.list_thoughts(q.limit.unwrap_or(100), q.since.as_deref())?;
     Ok(Json(json!({ "thoughts": thoughts })))
 }
 

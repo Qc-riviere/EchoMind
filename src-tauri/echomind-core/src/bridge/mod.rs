@@ -5,7 +5,7 @@ use rand::RngCore;
 
 pub use client::{
     BridgeClient, ChatMessage as BridgeChatMessage, PairResponse, RemoteChatResponse,
-    RemoteLlmStatus, SubsetThoughtPayload,
+    RemoteLlmStatus, RemoteThought, SubsetThoughtPayload,
 };
 pub use rules::SubsetRules;
 
@@ -18,6 +18,8 @@ pub mod settings_keys {
     pub const SYNC_KEY_FP: &str = "bridge_sync_key_fp";
     pub const SUBSET_RULES: &str = "bridge_subset_rules";
     pub const ENABLED: &str = "bridge_enabled";
+    /// RFC3339 cursor: largest `updated_at` we've already pulled from bridge.
+    pub const LAST_SYNC_AT: &str = "bridge_last_sync_at";
 }
 
 /// Generate a 32-byte sync key, base64-encoded. Used to fingerprint the
