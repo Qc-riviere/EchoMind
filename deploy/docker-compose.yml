@@ -24,6 +24,8 @@ services:
       # bridge client reads these two; bot mode is activated automatically
       ECHOMIND_BRIDGE_URL: "http://bridge:3000"
       # ECHOMIND_BRIDGE_TOKEN must be set in .env after first pairing
+    volumes:
+      - bot_data:/data
     depends_on:
       - bridge
     networks:
@@ -61,6 +63,7 @@ services:
 
 volumes:
   bridge_data:
+  bot_data:
   certbot_www:
   certbot_certs:
 
