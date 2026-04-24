@@ -124,7 +124,24 @@ impl DeviceStore {
     ) -> Result<Vec<ThoughtRow>, AppError> {
         let conn = self.conn.lock().unwrap();
         let limit = limit.clamp(1, 500);
-        let rows_iter: Vec<(String, String, Option<String>, Option<String>, String, String)> =
+        let map_row = |r: &rusqlite::Row| -> rusqlite::Result<(
+            String,
+            String,
+            Option<String>,
+            Option<String>,
+            String,
+            String,
+        )> {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, Option<String>>(2)?,
+                r.get::<_, Option<String>>(3)?,
+                r.get::<_, String>(4)?,
+                r.get::<_, String>(5)?,
+            ))
+        };
+        let raw: Vec<(String, String, Option<String>, Option<String>, String, String)> =
             if let Some(since) = since {
                 let mut stmt = conn
                     .prepare(
@@ -133,19 +150,12 @@ impl DeviceStore {
                          ORDER BY updated_at ASC LIMIT ?2",
                     )
                     .map_err(|e| AppError::Internal(e.to_string()))?;
-                stmt.query_map(params![since, limit], |r| {
-                    Ok((
-                        r.get::<_, String>(0)?,
-                        r.get::<_, String>(1)?,
-                        r.get::<_, Option<String>>(2)?,
-                        r.get::<_, Option<String>>(3)?,
-                        r.get::<_, String>(4)?,
-                        r.get::<_, String>(5)?,
-                    ))
-                })
-                .map_err(|e| AppError::Internal(e.to_string()))?
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| AppError::Internal(e.to_string()))?
+                let rows = stmt
+                    .query_map(params![since, limit], map_row)
+                    .map_err(|e| AppError::Internal(e.to_string()))?
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                rows
             } else {
                 let mut stmt = conn
                     .prepare(
@@ -153,21 +163,14 @@ impl DeviceStore {
                          FROM thoughts ORDER BY updated_at DESC LIMIT ?1",
                     )
                     .map_err(|e| AppError::Internal(e.to_string()))?;
-                stmt.query_map(params![limit], |r| {
-                    Ok((
-                        r.get::<_, String>(0)?,
-                        r.get::<_, String>(1)?,
-                        r.get::<_, Option<String>>(2)?,
-                        r.get::<_, Option<String>>(3)?,
-                        r.get::<_, String>(4)?,
-                        r.get::<_, String>(5)?,
-                    ))
-                })
-                .map_err(|e| AppError::Internal(e.to_string()))?
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|e| AppError::Internal(e.to_string()))?
+                let rows = stmt
+                    .query_map(params![limit], map_row)
+                    .map_err(|e| AppError::Internal(e.to_string()))?
+                    .collect::<Result<Vec<_>, _>>()
+                    .map_err(|e| AppError::Internal(e.to_string()))?;
+                rows
             };
-        Ok(rows_iter
+        Ok(raw
             .into_iter()
             .map(|(id, content, domain, tags_json, created_at, updated_at)| {
                 let tags = tags_json.and_then(|s| serde_json::from_str(&s).ok());
