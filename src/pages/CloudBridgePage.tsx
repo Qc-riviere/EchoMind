@@ -22,6 +22,7 @@ interface Status {
   device_id: string | null;
   sync_key_fp: string | null;
   rules: SubsetRules;
+  llm_via_bridge: boolean;
 }
 
 const emptyRules: SubsetRules = {
@@ -116,6 +117,18 @@ export default function CloudBridgePage() {
     if (!status) return;
     try {
       await invoke("cloud_bridge_set_enabled", { enabled: !status.enabled });
+      await refresh();
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  const handleToggleLlmViaBridge = async () => {
+    if (!status) return;
+    try {
+      await invoke("cloud_bridge_set_llm_via_bridge", {
+        enabled: !status.llm_via_bridge,
+      });
       await refresh();
     } catch (e) {
       setError(String(e));
@@ -268,6 +281,27 @@ export default function CloudBridgePage() {
                   type="checkbox"
                   checked={status.enabled}
                   onChange={handleToggleEnabled}
+                  className="w-10 h-5 appearance-none rounded-full bg-surface-container-high checked:bg-primary relative cursor-pointer transition-colors
+                    before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 before:transition-transform
+                    checked:before:translate-x-5"
+                />
+              </label>
+            </div>
+            <div className="flex items-center justify-between gap-4 pt-3 border-t border-outline-variant/20">
+              <div>
+                <p className="text-sm text-on-surface">通过云桥调用 LLM</p>
+                <p className="text-xs text-on-surface-variant/60 mt-1">
+                  开启后桌面 AI 调用经 VPS 转发，绕过本地地理封锁。需要先在下方推送 LLM 配置到 VPS。
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                <span className="text-sm text-on-surface-variant/70">
+                  {status.llm_via_bridge ? "已启用" : "未启用"}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={status.llm_via_bridge}
+                  onChange={handleToggleLlmViaBridge}
                   className="w-10 h-5 appearance-none rounded-full bg-surface-container-high checked:bg-primary relative cursor-pointer transition-colors
                     before:absolute before:w-4 before:h-4 before:rounded-full before:bg-white before:top-0.5 before:left-0.5 before:transition-transform
                     checked:before:translate-x-5"

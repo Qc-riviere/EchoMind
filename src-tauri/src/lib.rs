@@ -121,6 +121,7 @@ pub fn run() {
             commands::cloud_bridge_cmds::cloud_bridge_status,
             commands::cloud_bridge_cmds::cloud_bridge_pair,
             commands::cloud_bridge_cmds::cloud_bridge_set_enabled,
+            commands::cloud_bridge_cmds::cloud_bridge_set_llm_via_bridge,
             commands::cloud_bridge_cmds::cloud_bridge_set_rules,
             commands::cloud_bridge_cmds::cloud_bridge_initial_sync,
             commands::cloud_bridge_cmds::cloud_bridge_sync_pull,

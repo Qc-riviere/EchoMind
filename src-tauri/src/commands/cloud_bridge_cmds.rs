@@ -12,6 +12,7 @@ pub struct CloudBridgeStatus {
     pub device_id: Option<String>,
     pub sync_key_fp: Option<String>,
     pub rules: SubsetRules,
+    pub llm_via_bridge: bool,
 }
 
 #[tauri::command]
@@ -23,6 +24,7 @@ pub fn cloud_bridge_status(state: State<AppCore>) -> Result<CloudBridgeStatus, S
     let sync_key_fp = core.get_setting(settings_keys::SYNC_KEY_FP)?;
     let rules = core.bridge_get_subset_rules()?;
     let enabled = core.bridge_is_enabled()?;
+    let llm_via_bridge = core.bridge_llm_via_bridge_is_on()?;
     Ok(CloudBridgeStatus {
         paired: token.as_deref().is_some_and(|t| !t.is_empty()),
         enabled,
@@ -30,6 +32,7 @@ pub fn cloud_bridge_status(state: State<AppCore>) -> Result<CloudBridgeStatus, S
         device_id,
         sync_key_fp,
         rules,
+        llm_via_bridge,
     })
 }
 
@@ -50,6 +53,14 @@ pub async fn cloud_bridge_pair(
 #[tauri::command]
 pub fn cloud_bridge_set_enabled(state: State<AppCore>, enabled: bool) -> Result<(), String> {
     state.0.bridge_set_enabled(enabled)
+}
+
+#[tauri::command]
+pub fn cloud_bridge_set_llm_via_bridge(
+    state: State<AppCore>,
+    enabled: bool,
+) -> Result<(), String> {
+    state.0.bridge_set_llm_via_bridge(enabled)
 }
 
 #[tauri::command]

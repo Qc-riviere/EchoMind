@@ -438,7 +438,7 @@ impl EchoMind {
                     content: user_content,
                 },
             ];
-            provider.complete(messages, &config).await?
+            self.complete_via_route(messages).await?
         };
 
         // Parse JSON response
@@ -1110,15 +1110,54 @@ impl EchoMind {
     // ── Model listing (pass-through to API) ───────────────────
 
     pub async fn test_llm_connection(&self) -> Result<String, String> {
-        let (provider_type, config) = self.load_llm_config()?;
-        let provider = llm::get_provider(provider_type);
-
         let messages = vec![ChatMessage {
             role: "user".to_string(),
             content: "Say 'Hello from EchoMind!' in one short sentence.".to_string(),
         }];
+        self.complete_via_route(messages).await
+    }
 
+    /// Run a chat completion using the bridge as a relay if the user
+    /// opted in to bridge-mode LLM calls; otherwise call the provider
+    /// directly. Returns the assistant text.
+    pub async fn complete_via_route(
+        &self,
+        messages: Vec<ChatMessage>,
+    ) -> Result<String, String> {
+        if self.bridge_llm_via_bridge_is_on()? {
+            if let Some(client) = self.bridge_client()? {
+                let bridge_msgs: Vec<bridge::BridgeChatMessage> = messages
+                    .iter()
+                    .map(|m| bridge::BridgeChatMessage {
+                        role: m.role.clone(),
+                        content: m.content.clone(),
+                    })
+                    .collect();
+                let resp = client.remote_chat(&bridge_msgs).await?;
+                return Ok(resp.content);
+            }
+        }
+        let (provider_type, config) = self.load_llm_config()?;
+        let provider = llm::get_provider(provider_type);
         provider.complete(messages, &config).await
+    }
+
+    pub fn bridge_llm_via_bridge_is_on(&self) -> Result<bool, String> {
+        let conn = self.conn()?;
+        Ok(settings::get_setting(&conn, bridge::settings_keys::LLM_VIA_BRIDGE)
+            .map_err(|e| e.to_string())?
+            .map(|v| v == "1" || v == "true")
+            .unwrap_or(false))
+    }
+
+    pub fn bridge_set_llm_via_bridge(&self, enabled: bool) -> Result<(), String> {
+        let conn = self.conn()?;
+        settings::set_setting(
+            &conn,
+            bridge::settings_keys::LLM_VIA_BRIDGE,
+            if enabled { "1" } else { "0" },
+        )
+        .map_err(|e| e.to_string())
     }
 
     pub async fn list_models(&self) -> Result<Vec<String>, String> {

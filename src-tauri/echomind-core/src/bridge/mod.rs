@@ -20,6 +20,10 @@ pub mod settings_keys {
     pub const ENABLED: &str = "bridge_enabled";
     /// RFC3339 cursor: largest `updated_at` we've already pulled from bridge.
     pub const LAST_SYNC_AT: &str = "bridge_last_sync_at";
+    /// When set to "1"/"true", desktop LLM calls go through bridge.remote_chat
+    /// instead of hitting the model provider directly. Useful when the
+    /// provider geo-blocks the desktop's IP.
+    pub const LLM_VIA_BRIDGE: &str = "bridge_llm_via_bridge";
 }
 
 /// Generate a 32-byte sync key, base64-encoded. Used to fingerprint the
