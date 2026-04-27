@@ -5,9 +5,10 @@ import { useThemeStore } from "../stores/themeStore";
 import type { Skill, DiscoveredSkill } from "../lib/types";
 
 const LLM_PROVIDERS = [
-  { value: "openai", label: "OpenAI", defaultModel: "gpt-4o-mini" },
-  { value: "claude", label: "Claude", defaultModel: "claude-sonnet-4-20250514" },
-  { value: "gemini", label: "Gemini", defaultModel: "gemini-2.0-flash" },
+  { value: "openai", label: "OpenAI", backend: "openai", defaultModel: "gpt-4o-mini", defaultBaseUrl: "" },
+  { value: "claude", label: "Claude", backend: "claude", defaultModel: "claude-sonnet-4-20250514", defaultBaseUrl: "" },
+  { value: "gemini", label: "Gemini", backend: "gemini", defaultModel: "gemini-2.0-flash", defaultBaseUrl: "" },
+  { value: "deepseek", label: "DeepSeek", backend: "openai", defaultModel: "deepseek-chat", defaultBaseUrl: "https://api.deepseek.com/v1" },
 ];
 
 type SettingsTab = "llm" | "embedding" | "ai" | "skills" | "appearance" | "data" | "about";
@@ -53,24 +54,89 @@ export default function SettingsPage() {
 
   useEffect(() => { fetchSettings(); }, [fetchSettings]);
 
+  // Drafts kept in memory per provider so switching tabs doesn't lose unsaved
+  // edits. Backed by a ref so writes don't re-render mid-typing.
+  const draftsRef = useRef<Record<string, { apiKey: string; model: string; baseUrl: string }>>({});
+  const initializedRef = useRef(false);
+
   useEffect(() => {
-    setProvider(settings["llm_provider"] || "openai");
-    setApiKey(settings["llm_api_key"] || "");
-    setModel(settings["llm_model"] || "");
-    setBaseUrl(settings["llm_base_url"] || "");
+    if (initializedRef.current) return;
+    if (Object.keys(settings).length === 0) return;
+    initializedRef.current = true;
+    // Seed per-provider drafts from saved settings.
+    for (const p of LLM_PROVIDERS) {
+      draftsRef.current[p.value] = {
+        apiKey: settings[`llm_api_key__${p.value}`] ?? "",
+        model: settings[`llm_model__${p.value}`] ?? p.defaultModel,
+        baseUrl: settings[`llm_base_url__${p.value}`] ?? p.defaultBaseUrl,
+      };
+    }
+    const preset = settings["llm_provider_preset"] || settings["llm_provider"] || "openai";
+    // For the active preset, fall back to legacy single-key settings if no per-provider stash exists yet.
+    const activeDraft = draftsRef.current[preset] ?? { apiKey: "", model: "", baseUrl: "" };
+    if (!settings[`llm_api_key__${preset}`] && settings["llm_api_key"]) {
+      activeDraft.apiKey = settings["llm_api_key"];
+    }
+    if (!settings[`llm_model__${preset}`] && settings["llm_model"]) {
+      activeDraft.model = settings["llm_model"];
+    }
+    if (!settings[`llm_base_url__${preset}`] && settings["llm_base_url"]) {
+      activeDraft.baseUrl = settings["llm_base_url"];
+    }
+    draftsRef.current[preset] = activeDraft;
+
+    setProvider(preset);
+    setApiKey(activeDraft.apiKey);
+    setModel(activeDraft.model);
+    setBaseUrl(activeDraft.baseUrl);
+
     setEmbBaseUrl(settings["embedding_base_url"] || "");
     setEmbApiKey(settings["embedding_api_key"] || "");
     setEmbModel(settings["embedding_model"] || "");
     setEmbDimensions(settings["embedding_dimensions"] || "1536");
   }, [settings]);
 
+  // Mirror current form fields into the active provider's draft on every change.
+  useEffect(() => {
+    if (!provider || !initializedRef.current) return;
+    draftsRef.current[provider] = { apiKey, model, baseUrl };
+  }, [provider, apiKey, model, baseUrl]);
+
+  const switchProvider = (next: string) => {
+    if (next === provider) return;
+    const next_def = LLM_PROVIDERS.find((p) => p.value === next);
+    const draft = draftsRef.current[next] ?? {
+      apiKey: "",
+      model: next_def?.defaultModel ?? "",
+      baseUrl: next_def?.defaultBaseUrl ?? "",
+    };
+    setProvider(next);
+    setApiKey(draft.apiKey);
+    setModel(draft.model);
+    setBaseUrl(draft.baseUrl);
+    setShowModelDropdown(false);
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      await setSetting("llm_provider", provider);
+      const def = LLM_PROVIDERS.find((p) => p.value === provider);
+      const backend = def?.backend ?? provider;
+      const finalModel = model || def?.defaultModel || "";
+      const finalBaseUrl = baseUrl || def?.defaultBaseUrl || "";
+      // Active keys (read by backend).
+      await setSetting("llm_provider", backend);
+      await setSetting("llm_provider_preset", provider);
       await setSetting("llm_api_key", apiKey);
-      await setSetting("llm_model", model || LLM_PROVIDERS.find((p) => p.value === provider)?.defaultModel || "");
-      if (baseUrl) await setSetting("llm_base_url", baseUrl); else await deleteSetting("llm_base_url");
+      await setSetting("llm_model", finalModel);
+      if (finalBaseUrl) await setSetting("llm_base_url", finalBaseUrl);
+      else await deleteSetting("llm_base_url");
+      // Per-provider stash (preserved across provider switches).
+      await setSetting(`llm_api_key__${provider}`, apiKey);
+      await setSetting(`llm_model__${provider}`, finalModel);
+      if (finalBaseUrl) await setSetting(`llm_base_url__${provider}`, finalBaseUrl);
+      else await deleteSetting(`llm_base_url__${provider}`);
+
       if (embBaseUrl) await setSetting("embedding_base_url", embBaseUrl); else await deleteSetting("embedding_base_url");
       if (embApiKey) await setSetting("embedding_api_key", embApiKey); else await deleteSetting("embedding_api_key");
       if (embModel) await setSetting("embedding_model", embModel); else await deleteSetting("embedding_model");
@@ -168,7 +234,7 @@ export default function SettingsPage() {
                       {LLM_PROVIDERS.map((p) => (
                         <button
                           key={p.value}
-                          onClick={() => { setProvider(p.value); setModel(p.defaultModel); setBaseUrl(""); setShowModelDropdown(false); }}
+                          onClick={() => switchProvider(p.value)}
                           className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                             provider === p.value
                               ? "bg-primary text-on-primary"
