@@ -1128,9 +1128,9 @@ impl EchoMind {
         match provider_type {
             ProviderType::Gemini => {
                 let base_url = config.base_url.as_deref()
-                    .unwrap_or("https://generativelanguage.googleapis.com");
+                    .unwrap_or("https://generativelanguage.googleapis.com/v1beta");
                 let resp = client
-                    .get(format!("{}/v1beta/models?key={}", base_url, config.api_key))
+                    .get(format!("{}/models?key={}", base_url, config.api_key))
                     .send()
                     .await
                     .map_err(|e| format!("Request failed: {}", e))?;

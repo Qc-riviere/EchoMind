@@ -8,7 +8,7 @@ use super::{AgentMessage, AgentTurn, ChatMessage, LLMProvider, ModelConfig, Tool
 
 pub struct GeminiProvider;
 
-const DEFAULT_BASE_URL: &str = "https://generativelanguage.googleapis.com";
+const DEFAULT_BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta";
 
 #[async_trait]
 impl LLMProvider for GeminiProvider {
@@ -59,7 +59,7 @@ impl LLMProvider for GeminiProvider {
 
         let resp = Client::new()
             .post(format!(
-                "{}/v1beta/models/{}:generateContent?key={}",
+                "{}/models/{}:generateContent?key={}",
                 base_url, config.model, config.api_key
             ))
             .header("content-type", "application/json")
@@ -120,7 +120,7 @@ impl LLMProvider for GeminiProvider {
 
         let resp = Client::new()
             .post(format!(
-                "{}/v1beta/models/{}:streamGenerateContent?alt=sse&key={}",
+                "{}/models/{}:streamGenerateContent?alt=sse&key={}",
                 base_url, config.model, config.api_key
             ))
             .header("content-type", "application/json")
@@ -191,7 +191,7 @@ impl LLMProvider for GeminiProvider {
 
         let resp = Client::new()
             .post(format!(
-                "{}/v1beta/models/{}:generateContent?key={}",
+                "{}/models/{}:generateContent?key={}",
                 base_url, config.model, config.api_key
             ))
             .header("content-type", "application/json")
@@ -296,7 +296,7 @@ impl LLMProvider for GeminiProvider {
 
         let resp = Client::new()
             .post(format!(
-                "{}/v1beta/models/{}:generateContent?key={}",
+                "{}/models/{}:generateContent?key={}",
                 base_url, config.model, config.api_key
             ))
             .header("content-type", "application/json")
