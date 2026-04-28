@@ -404,20 +404,23 @@ async function handleBridgeChatReply(
 ): Promise<CommandResult> {
   const session = getSession(userId);
   const messages: ChatMessage[] = [...(session.messages ?? []), { role: "user", content }];
+  const t0 = Date.now();
   try {
     const result = await bridgeClient!.chat(messages);
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     const assistantMsg: ChatMessage = { role: "assistant", content: result.content };
     updateSession(userId, { messages: [...messages, assistantMsg] });
 
-    let suffix = "";
+    let suffix = `\n\n⏱ ${elapsed}s`;
     if (result.llm_disabled) {
-      suffix = "\n\n⚠ LLM 已因超出预算而禁用，本次为最后回复。";
+      suffix += "\n⚠ LLM 已因超出预算而禁用，本次为最后回复。";
       clearSession(userId);
     }
     return { text: result.content + suffix };
   } catch (e) {
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     clearSession(userId);
-    return { text: `AI 回复失败: ${errorMsg(e)}\n已退出对话模式。` };
+    return { text: `AI 回复失败 (${elapsed}s): ${errorMsg(e)}\n已退出对话模式。` };
   }
 }
 
@@ -428,15 +431,18 @@ async function handleChatReply(
   conversationId: string,
   content: string,
 ): Promise<CommandResult> {
+  const t0 = Date.now();
   try {
     const reply = await client.sendMessage(conversationId, content);
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     updateSession(userId, {});
-    return { text: reply };
+    return { text: `${reply}\n\n⏱ ${elapsed}s` };
   } catch (e) {
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     // Auto-exit chatting on persistent errors (e.g. conversation not found)
     clearSession(userId);
     return {
-      text: `AI 回复失败: ${errorMsg(e)}\n已自动退出对话模式。发送文字记录想法，或 /chat <ID> 重新开始对话`,
+      text: `AI 回复失败 (${elapsed}s): ${errorMsg(e)}\n已自动退出对话模式。发送文字记录想法，或 /chat <ID> 重新开始对话`,
     };
   }
 }
