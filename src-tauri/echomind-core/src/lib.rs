@@ -1211,11 +1211,36 @@ impl EchoMind {
                 Ok(models)
             }
             ProviderType::Claude => {
-                Ok(vec![
-                    "claude-sonnet-4-20250514".to_string(),
-                    "claude-haiku-4-20250506".to_string(),
-                    "claude-opus-4-20250514".to_string(),
-                ])
+                let base_url = config
+                    .base_url
+                    .as_deref()
+                    .unwrap_or("https://api.anthropic.com");
+                let resp = client
+                    .get(format!("{}/v1/models?limit=1000", base_url.trim_end_matches('/')))
+                    .header("x-api-key", &config.api_key)
+                    .header("anthropic-version", "2023-06-01")
+                    .send()
+                    .await
+                    .map_err(|e| format!("Request failed: {}", e))?;
+                let status = resp.status();
+                let text = resp.text().await.map_err(|e| e.to_string())?;
+                if !status.is_success() {
+                    return Err(format!("Anthropic models ({}): {}", status, text));
+                }
+                let json: serde_json::Value =
+                    serde_json::from_str(&text).map_err(|e| e.to_string())?;
+                let mut models: Vec<String> = json["data"]
+                    .as_array()
+                    .map(|arr| {
+                        arr.iter()
+                            .filter_map(|m| m["id"].as_str())
+                            .map(|s| s.to_string())
+                            .collect()
+                    })
+                    .unwrap_or_default();
+                // Newest first by descending id (model ids are date-versioned).
+                models.sort_by(|a, b| b.cmp(a));
+                Ok(models)
             }
         }
     }
