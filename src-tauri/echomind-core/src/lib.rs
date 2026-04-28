@@ -381,7 +381,10 @@ impl EchoMind {
   "file_summary": "如果用户附带了文件或图片，用2-3句话总结其核心内容；如果没有则为空字符串"
 }
 
-只返回 JSON，不要其他内容。"#;
+严格规则：
+- 只返回 JSON，不要任何其他文字、注释或 markdown 围栏
+- JSON 字符串值内绝对不要使用 ASCII 双引号 "。如果需要引用，用中文「」或单引号 '
+- 不要在字符串值中使用换行符"#;
 
         let mut user_content = thought.content.clone();
         let mut file_summary: Option<String> = None;
