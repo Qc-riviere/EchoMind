@@ -115,7 +115,33 @@ export default function SettingsPage() {
     setModel(draft.model);
     setBaseUrl(draft.baseUrl);
     setShowModelDropdown(false);
+    setAvailableModels([]);
+    setTestResult(null);
   };
+
+  const modelDropdownRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!showModelDropdown) return;
+    const onClick = (e: MouseEvent) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target as Node)) {
+        setShowModelDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [showModelDropdown]);
+
+  const embModelDropdownRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!showEmbModelDropdown) return;
+    const onClick = (e: MouseEvent) => {
+      if (embModelDropdownRef.current && !embModelDropdownRef.current.contains(e.target as Node)) {
+        setShowEmbModelDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [showEmbModelDropdown]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -257,6 +283,7 @@ export default function SettingsPage() {
                         type={showKey ? "text" : "password"}
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
+                        style={{ paddingRight: "2.75rem" }}
                         placeholder="sk-..."
                         className={inputClass}
                       />
@@ -270,7 +297,7 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Model */}
-                  <div className="space-y-2 relative">
+                  <div className="space-y-2 relative" ref={modelDropdownRef}>
                     <label className={labelClass}>Model</label>
                     <div className="flex gap-2">
                       <input type="text" value={model} onChange={(e) => setModel(e.target.value)} placeholder="e.g. gpt-4o-mini" className={inputClass} />
@@ -372,6 +399,7 @@ export default function SettingsPage() {
                       onChange={(e) => setEmbApiKey(e.target.value)}
                       placeholder="留空则与 LLM 共用 API Key"
                       className={inputClass}
+                      style={{ paddingRight: "2.75rem" }}
                     />
                     <button
                       onClick={() => setShowEmbKey(!showEmbKey)}
@@ -386,7 +414,7 @@ export default function SettingsPage() {
 
                 {/* Model + Dimensions */}
                 <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2 relative">
+                  <div className="space-y-2 relative" ref={embModelDropdownRef}>
                     <label className={labelClass}>Model Name</label>
                     <div className="flex gap-2">
                       <input
