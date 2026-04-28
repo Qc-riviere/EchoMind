@@ -40,7 +40,7 @@ export default function MainLayout() {
         <Sidebar />
         <main className="flex-1 flex flex-col overflow-hidden">
           {/* Top App Bar */}
-          <header className="flex justify-between items-center w-full px-8 py-3 shrink-0 z-50 bg-surface">
+          <header className="flex justify-between items-center w-full px-8 py-3 shrink-0 bg-surface">
             <div className="flex items-center gap-4">
               <span className="hidden md:block text-lg font-semibold text-primary font-headline">ECHOMIND</span>
               {breadcrumb && (
