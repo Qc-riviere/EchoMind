@@ -30,6 +30,9 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             let app_dir = app
                 .path()
@@ -60,6 +63,13 @@ pub fn run() {
                     let state: tauri::State<'_, AppCore> = app_handle.state();
                     match state.0.bridge_sync_pull().await {
                         Ok(n) if n > 0 => {
+                            use tauri_plugin_notification::NotificationExt;
+                            let _ = app_handle
+                                .notification()
+                                .builder()
+                                .title("EchoMind")
+                                .body(format!("从云端同步到 {n} 条新灵感"))
+                                .show();
                             let _ = tauri::Emitter::emit(&app_handle, "bridge:synced", n);
                         }
                         Err(e) => {
@@ -76,6 +86,8 @@ pub fn run() {
             greet,
             commands::thought_cmds::create_thought,
             commands::thought_cmds::list_thoughts,
+            commands::thought_cmds::list_home_thoughts,
+            commands::ai_cmds::summarize_thoughts,
             commands::thought_cmds::get_thought,
             commands::thought_cmds::update_thought,
             commands::thought_cmds::archive_thought,

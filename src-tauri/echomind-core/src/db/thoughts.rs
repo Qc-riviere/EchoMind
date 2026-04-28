@@ -36,6 +36,40 @@ pub fn create_thought_with_image(
     get_thought(conn, &id)
 }
 
+/// Top thoughts by total message count across their conversations.
+/// Excludes archived. Only returns thoughts that have at least one message
+/// (i.e. someone has actually chatted about them).
+pub fn list_hot_thoughts(conn: &Connection, limit: i64) -> Result<Vec<Thought>> {
+    let mut stmt = conn.prepare(
+        "SELECT t.id, t.content, t.context, t.domain, t.tags, t.image_path,
+                t.file_summary, t.is_archived, t.created_at, t.updated_at
+         FROM thoughts t
+         JOIN conversations c ON c.thought_id = t.id
+         JOIN messages m       ON m.conversation_id = c.id
+         WHERE t.is_archived = 0
+         GROUP BY t.id
+         ORDER BY COUNT(m.id) DESC, MAX(m.created_at) DESC
+         LIMIT ?1",
+    )?;
+
+    let rows = stmt.query_map(params![limit], |row| {
+        Ok(Thought {
+            id: row.get(0)?,
+            content: row.get(1)?,
+            context: row.get(2)?,
+            domain: row.get(3)?,
+            tags: row.get(4)?,
+            image_path: row.get(5)?,
+            file_summary: row.get(6)?,
+            is_archived: row.get::<_, i32>(7)? != 0,
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
+        })
+    })?;
+
+    rows.collect()
+}
+
 pub fn list_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
     let mut stmt = conn.prepare(
         "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at

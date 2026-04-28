@@ -20,6 +20,11 @@ pub fn list_thoughts(state: State<AppCore>) -> Result<Vec<echomind_core::Thought
 }
 
 #[tauri::command]
+pub fn list_home_thoughts(state: State<AppCore>) -> Result<echomind_core::HomeThoughts, String> {
+    state.0.list_home_thoughts()
+}
+
+#[tauri::command]
 pub fn get_thought(state: State<AppCore>, id: String) -> Result<echomind_core::Thought, String> {
     state.0.get_thought(&id)
 }

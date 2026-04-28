@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import ConfirmDialog from "./ConfirmDialog";
 import { invoke } from "@tauri-apps/api/core";
 import ThoughtImage from "./ThoughtImage";
+import { notify } from "../lib/notify";
 
 interface Props {
   thought: Thought | null;
@@ -105,6 +106,7 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
       }));
       // Re-embed in background so search/related uses the new content
       invoke("embed_thought", { thoughtId: enriched.id }).catch(() => {});
+      notify("EchoMind", "AI 已完成重新分析").catch(() => {});
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     } catch (e) {

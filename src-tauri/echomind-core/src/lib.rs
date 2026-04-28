@@ -34,6 +34,12 @@ pub struct GraphData {
     pub edges: Vec<GraphEdge>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HomeThoughts {
+    pub recent: Vec<db::thoughts::Thought>,
+    pub hot: Vec<db::thoughts::Thought>,
+}
+
 use agent::builtin_tools;
 use db::{conversations, settings, thoughts, vectors};
 use llm::{embedding, AgentMessage, ChatMessage, EmbeddingConfig, ModelConfig, ProviderType};
@@ -126,6 +132,16 @@ impl EchoMind {
     pub fn list_thoughts(&self) -> Result<Vec<Thought>, String> {
         let conn = self.conn()?;
         thoughts::list_thoughts(&conn).map_err(|e| e.to_string())
+    }
+
+    /// Return two slices for the home page: 5 most recent thoughts and 5 most-
+    /// chatted thoughts. `hot` may be empty if no conversations exist yet.
+    pub fn list_home_thoughts(&self) -> Result<HomeThoughts, String> {
+        let conn = self.conn()?;
+        let mut recent = thoughts::list_thoughts(&conn).map_err(|e| e.to_string())?;
+        recent.truncate(5);
+        let hot = thoughts::list_hot_thoughts(&conn, 5).map_err(|e| e.to_string())?;
+        Ok(HomeThoughts { recent, hot })
     }
 
     pub fn get_thought(&self, id: &str) -> Result<Thought, String> {
@@ -1117,6 +1133,52 @@ impl EchoMind {
             role: "user".to_string(),
             content: "Say 'Hello from EchoMind!' in one short sentence.".to_string(),
         }];
+        self.complete_via_route(messages).await
+    }
+
+    /// Summarize a batch of thoughts into a markdown digest using the
+    /// configured LLM (respecting the bridge-route toggle).
+    pub async fn summarize_thoughts(&self, ids: &[String]) -> Result<String, String> {
+        if ids.len() < 2 {
+            return Err("至少选择 2 条灵感才能总结".into());
+        }
+        if ids.len() > 20 {
+            return Err("一次最多总结 20 条灵感".into());
+        }
+        let mut buf = String::new();
+        {
+            let conn = self.conn()?;
+            for (i, id) in ids.iter().enumerate() {
+                let t = thoughts::get_thought(&conn, id).map_err(|e| e.to_string())?;
+                buf.push_str(&format!(
+                    "灵感 {}（{}）：\n{}\n",
+                    i + 1,
+                    t.created_at,
+                    t.content
+                ));
+                if let Some(ctx) = &t.context {
+                    if !ctx.is_empty() {
+                        buf.push_str(&format!("背景：{ctx}\n"));
+                    }
+                }
+                if let Some(tags) = &t.tags {
+                    if !tags.is_empty() {
+                        buf.push_str(&format!("标签：{tags}\n"));
+                    }
+                }
+                buf.push('\n');
+            }
+        }
+        let messages = vec![
+            ChatMessage {
+                role: "system".to_string(),
+                content: "你是灵感整理助手。把用户提供的多条灵感笔记归纳成一段 Markdown 总结：先用一句话提炼共同主题，再用 3-5 条要点列出各灵感之间的关联或差异，最后给一条可执行的建议。语气精炼，可以使用列表与中文。".to_string(),
+            },
+            ChatMessage {
+                role: "user".to_string(),
+                content: format!("请总结以下 {} 条灵感：\n\n{}", ids.len(), buf),
+            },
+        ];
         self.complete_via_route(messages).await
     }
 

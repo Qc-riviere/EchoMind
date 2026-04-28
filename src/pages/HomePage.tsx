@@ -1,31 +1,137 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import ThoughtInput from "../components/ThoughtInput";
 import ThoughtList from "../components/ThoughtList";
 import ApiKeyGuide from "../components/ApiKeyGuide";
 import ThoughtDrawer from "../components/ThoughtDrawer";
+import SelectionBar from "../components/SelectionBar";
+import SummaryModal from "../components/SummaryModal";
+import { notify } from "../lib/notify";
 import type { Thought } from "../lib/types";
 import { formatDistanceToNow } from "date-fns";
 
+interface HomeThoughts {
+  recent: Thought[];
+  hot: Thought[];
+}
+
 export default function HomePage() {
   const [selectedThought, setSelectedThought] = useState<Thought | null>(null);
+  const [home, setHome] = useState<HomeThoughts>({ recent: [], hot: [] });
+
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summaryText, setSummaryText] = useState("");
+
+  const loadHome = useCallback(async () => {
+    try {
+      const data = await invoke<HomeThoughts>("list_home_thoughts");
+      setHome(data);
+    } catch { /* ignore; bottom-level lists handle their own errors */ }
+  }, []);
+
+  useEffect(() => {
+    loadHome();
+    const t = setInterval(loadHome, 30000);
+    return () => clearInterval(t);
+  }, [loadHome]);
+
+  const allDisplayed = useMemo(() => {
+    const map = new Map<string, Thought>();
+    [...home.recent, ...home.hot].forEach((t) => map.set(t.id, t));
+    return map;
+  }, [home]);
+
+  const selectedThoughts = useMemo(
+    () => Array.from(selectedIds).map((id) => allDisplayed.get(id)).filter(Boolean) as Thought[],
+    [selectedIds, allDisplayed],
+  );
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const cancelSelect = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleSummarize = async () => {
+    if (selectedIds.size < 2) return;
+    setSummaryOpen(true);
+    setSummarizing(true);
+    setSummaryText("");
+    try {
+      const result = await invoke<string>("summarize_thoughts", { ids: Array.from(selectedIds) });
+      setSummaryText(result);
+      notify("EchoMind", "AI 总结已完成").catch(() => {});
+    } catch (e) {
+      setSummaryText(`总结失败：${String(e)}`);
+    } finally {
+      setSummarizing(false);
+    }
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-8 py-12">
-      <ThoughtInput />
+      <ThoughtInput onCaptured={loadHome} />
       <ApiKeyGuide />
 
       <div className="grid grid-cols-12 gap-12">
         {/* Inspiration Feed */}
-        <div className="col-span-12 lg:col-span-8">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-xl font-headline font-bold text-on-surface">Recent Thoughts</h3>
-          </div>
-          <ThoughtList
-            onThoughtClick={(thought) => setSelectedThought(thought)}
-            activeThoughtId={selectedThought?.id}
-          />
+        <div className="col-span-12 lg:col-span-8 space-y-12">
+          <section>
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-xl font-headline font-bold text-on-surface">最近</h3>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSelectMode((v) => !v)}
+                  className={`flex items-center gap-1.5 text-xs uppercase tracking-wider transition-colors ${
+                    selectMode ? "text-primary" : "text-on-surface-variant/60 hover:text-on-surface"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {selectMode ? "check_box" : "check_box_outline_blank"}
+                  </span>
+                  {selectMode ? "退出多选" : "多选"}
+                </button>
+                <span className="text-xs text-on-surface-variant/50">最近 5 条</span>
+              </div>
+            </div>
+            <ThoughtList
+              thoughts={home.recent}
+              onThoughtClick={(thought) => setSelectedThought(thought)}
+              activeThoughtId={selectedThought?.id}
+              selectMode={selectMode}
+              selectedIds={selectedIds}
+              onToggleSelect={toggleSelect}
+            />
+          </section>
+
+          {home.hot.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-headline font-bold text-on-surface">对话最多</h3>
+                <span className="text-xs text-on-surface-variant/50">高频回看</span>
+              </div>
+              <ThoughtList
+                thoughts={home.hot}
+                hideEmpty
+                onThoughtClick={(thought) => setSelectedThought(thought)}
+                activeThoughtId={selectedThought?.id}
+                selectMode={selectMode}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+              />
+            </section>
+          )}
         </div>
 
         {/* Right Discovery Panel */}
@@ -41,6 +147,27 @@ export default function HomePage() {
       <ThoughtDrawer
         thought={selectedThought}
         onClose={() => setSelectedThought(null)}
+      />
+
+      {selectMode && selectedIds.size > 0 && (
+        <SelectionBar
+          count={selectedIds.size}
+          onSummarize={handleSummarize}
+          onCancel={cancelSelect}
+          busy={summarizing}
+        />
+      )}
+
+      <SummaryModal
+        isOpen={summaryOpen}
+        thoughts={selectedThoughts}
+        summary={summaryText}
+        loading={summarizing}
+        onClose={() => setSummaryOpen(false)}
+        onSavedAsThought={() => {
+          cancelSelect();
+          loadHome();
+        }}
       />
     </div>
   );

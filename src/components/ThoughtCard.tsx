@@ -12,9 +12,12 @@ interface Props {
   showRelated?: boolean;
   onClick?: () => void;
   isActive?: boolean;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export default function ThoughtCard({ thought, showRelated = false, onClick, isActive = false }: Props) {
+export default function ThoughtCard({ thought, showRelated = false, onClick, isActive = false, selectMode = false, selected = false, onToggleSelect }: Props) {
   const archiveThought = useThoughtStore((s) => s.archiveThought);
   const enrichAndEmbed = useThoughtStore((s) => s.enrichAndEmbed);
   const enrichingIds = useThoughtStore((s) => s.enrichingIds);
@@ -35,15 +38,34 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
     }
   };
 
+  const handleClick = () => {
+    if (selectMode) {
+      onToggleSelect?.();
+    } else {
+      onClick?.();
+    }
+  };
+
   return (
     <div
-      onClick={onClick}
+      onClick={handleClick}
       className={`group relative rounded-2xl overflow-hidden transition-all duration-500 cursor-pointer ${
-        isActive
+        selected
+          ? "bg-surface-container-high translate-y-[-4px] ring-2 ring-primary"
+          : isActive
           ? "bg-surface-container-high translate-y-[-4px] ring-1 ring-primary/30"
           : "bg-surface-container-lowest hover:translate-y-[-4px]"
       }`}
     >
+      {selectMode && (
+        <div className="absolute top-4 left-4 z-10 pointer-events-none">
+          <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${
+            selected ? "bg-primary border-primary" : "bg-surface-container-low/80 border-on-surface-variant/40"
+          }`}>
+            {selected && <span className="material-symbols-outlined text-[16px] text-on-primary">check</span>}
+          </div>
+        </div>
+      )}
       <div className={`flex flex-col ${hasImage ? "md:flex-row items-stretch" : ""} h-full`}>
         {/* Image section (1/3 width) */}
         {hasImage && (

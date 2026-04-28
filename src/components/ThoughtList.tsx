@@ -6,16 +6,41 @@ import type { Thought } from "../lib/types";
 interface Props {
   onThoughtClick?: (thought: Thought) => void;
   activeThoughtId?: string;
+  /// If provided, render these directly instead of subscribing to the store.
+  thoughts?: Thought[];
+  /// Hide the empty-state card (caller will render its own placeholder).
+  hideEmpty?: boolean;
+  /// Selection mode flag — when true, cards show a checkbox and clicking
+  /// toggles selection instead of opening the drawer.
+  selectMode?: boolean;
+  /// Set of currently selected thought ids (used when `selectMode` is true).
+  selectedIds?: Set<string>;
+  /// Called with a thought id when the user toggles selection on a card.
+  onToggleSelect?: (id: string) => void;
 }
 
-export default function ThoughtList({ onThoughtClick, activeThoughtId }: Props) {
-  const { thoughts, loading, error, fetchThoughts, startPolling, stopPolling } = useThoughtStore();
+export default function ThoughtList({
+  onThoughtClick,
+  activeThoughtId,
+  thoughts: thoughtsProp,
+  hideEmpty,
+  selectMode,
+  selectedIds,
+  onToggleSelect,
+}: Props) {
+  const store = useThoughtStore();
+  const useStore = thoughtsProp === undefined;
 
   useEffect(() => {
-    fetchThoughts();
-    startPolling();
-    return () => stopPolling();
-  }, [fetchThoughts, startPolling, stopPolling]);
+    if (!useStore) return;
+    store.fetchThoughts();
+    store.startPolling();
+    return () => store.stopPolling();
+  }, [useStore, store.fetchThoughts, store.startPolling, store.stopPolling]);
+
+  const thoughts = thoughtsProp ?? store.thoughts;
+  const loading = useStore && store.loading;
+  const error = useStore ? store.error : null;
 
   if (loading && thoughts.length === 0) {
     return (
@@ -35,6 +60,7 @@ export default function ThoughtList({ onThoughtClick, activeThoughtId }: Props) 
   }
 
   if (thoughts.length === 0) {
+    if (hideEmpty) return null;
     return (
       <div className="text-center py-20 space-y-4 bg-surface-container-low rounded-2xl">
         <span className="material-symbols-outlined text-6xl text-primary/40">lightbulb</span>
@@ -52,9 +78,12 @@ export default function ThoughtList({ onThoughtClick, activeThoughtId }: Props) 
         <ThoughtCard
           key={thought.id}
           thought={thought}
-          showRelated={i === 0}
+          showRelated={useStore && i === 0 && !selectMode}
           onClick={() => onThoughtClick?.(thought)}
           isActive={thought.id === activeThoughtId}
+          selectMode={selectMode}
+          selected={selectedIds?.has(thought.id) ?? false}
+          onToggleSelect={() => onToggleSelect?.(thought.id)}
         />
       ))}
     </div>

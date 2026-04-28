@@ -34,7 +34,11 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export default function ThoughtInput() {
+interface ThoughtInputProps {
+  onCaptured?: (thoughtId: string) => void;
+}
+
+export default function ThoughtInput({ onCaptured }: ThoughtInputProps = {}) {
   const [input, setInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [recentThoughtId, setRecentThoughtId] = useState<string | null>(null);
@@ -93,6 +97,7 @@ export default function ThoughtInput() {
       setInput("");
       setRecentThoughtId(thought.id);
       enrichAndEmbed(thought.id);
+      onCaptured?.(thought.id);
     } catch (e) {
       console.error("Failed to save thought:", e);
     } finally {

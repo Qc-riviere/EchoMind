@@ -212,7 +212,7 @@ export default function SettingsPage() {
   const labelClass = "text-[10px] font-bold text-on-surface-variant uppercase tracking-widest";
 
   return (
-    <div className="max-w-5xl mx-auto px-8 py-12 w-full">
+    <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 sm:py-12 w-full overflow-hidden">
       {/* Header */}
       <div className="mb-12 flex items-center gap-4">
         <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -232,14 +232,14 @@ export default function SettingsPage() {
               <button
                 key={item.key}
                 onClick={() => setActiveTab(item.key)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-sm ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-sm min-w-0 ${
                   activeTab === item.key
                     ? "bg-primary/10 text-primary font-medium"
                     : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">{item.icon}</span>
-                {item.label}
+                <span className="material-symbols-outlined text-[18px] shrink-0">{item.icon}</span>
+                <span className="truncate">{item.label}</span>
               </button>
             ))}
           </nav>

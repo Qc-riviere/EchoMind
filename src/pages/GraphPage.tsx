@@ -176,7 +176,7 @@ export default function GraphPage() {
               const label = n.label;
               const fontSize = Math.max(10, 12 / scale);
               ctx.font = `${fontSize}px sans-serif`;
-              ctx.fillStyle = "rgba(255,255,255,0.85)";
+              ctx.fillStyle = "rgba(0,0,0,0.75)";
               ctx.textAlign = "center";
               ctx.textBaseline = "top";
               ctx.fillText(label, n.x ?? 0, (n.y ?? 0) + nodeSize(n) + 2);

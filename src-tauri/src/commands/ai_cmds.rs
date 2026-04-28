@@ -68,3 +68,11 @@ pub async fn suggest_resources(
 ) -> Result<Vec<serde_json::Value>, String> {
     state.0.suggest_resources(&thought_id).await
 }
+
+#[tauri::command]
+pub async fn summarize_thoughts(
+    state: State<'_, AppCore>,
+    ids: Vec<String>,
+) -> Result<String, String> {
+    state.0.summarize_thoughts(&ids).await
+}
