@@ -204,9 +204,9 @@ export default function ChatHubPage() {
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="text-center space-y-4">
           <span className="material-symbols-outlined text-6xl text-on-surface-variant/20">forum</span>
-          <h2 className="text-lg font-headline font-bold text-on-surface">Deep Questioning</h2>
+          <h2 className="text-lg font-headline font-bold text-on-surface">对话</h2>
           <p className="text-sm text-on-surface-variant/60 max-w-md">
-            Select a conversation from the sidebar, or start a new one by clicking "Question" on any thought card.
+            从侧边栏选一个对话，或在任意灵感卡片上点「对话」开始新会话。
           </p>
         </div>
       </div>
@@ -221,7 +221,7 @@ export default function ChatHubPage() {
         <div className="flex items-center gap-3 px-8 py-4 border-b border-outline-variant/10 shrink-0">
           <div className="flex-1 min-w-0">
             <h1 className="text-xs font-headline font-bold text-primary uppercase tracking-[0.2em]">
-              Deep Questioning
+              对话
             </h1>
             {thought && (
               <p className="text-[11px] text-on-surface-variant truncate mt-0.5">

@@ -7,12 +7,14 @@ import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import "../stores/themeStore"; // Initialize theme on load
 
 const BREADCRUMB_MAP: Record<string, string> = {
-  "/": "Dashboard",
-  "/search": "Search",
-  "/archive": "Archive",
-  "/chat": "Deep Questioning",
-  "/settings": "System Architecture",
-  "/wechat": "Infrastructure",
+  "/": "灵感备忘录",
+  "/search": "搜索",
+  "/archive": "归档",
+  "/chat": "对话",
+  "/settings": "设置",
+  "/wechat": "微信桥",
+  "/cloud": "云桥",
+  "/graph": "图谱",
 };
 
 export default function MainLayout() {

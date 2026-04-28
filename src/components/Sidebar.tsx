@@ -69,7 +69,7 @@ export default function Sidebar() {
         <div className="flex flex-col gap-0.5">
           <h1 className="text-xl font-bold tracking-widest text-primary font-headline">EchoMind</h1>
           <span className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/60">
-            Cognitive Sanctuary
+            灵感备忘录
           </span>
         </div>
       </div>
@@ -95,7 +95,7 @@ export default function Sidebar() {
           >
             chat_bubble
           </span>
-          <span className="text-sm flex-1 text-left">Chat</span>
+          <span className="text-sm flex-1 text-left">对话</span>
           <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${chatExpanded ? "rotate-180" : ""}`}>
             expand_more
           </span>

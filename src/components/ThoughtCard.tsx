@@ -138,14 +138,14 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
               className="flex items-center gap-1.5 text-[10px] text-on-surface-variant hover:text-primary uppercase tracking-wider transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
-              Deep Question
+              对话
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); archiveThought(thought.id); }}
               className="flex items-center gap-1.5 text-[10px] text-on-surface-variant hover:text-error uppercase tracking-wider transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">inventory_2</span>
-              Archive
+              归档
             </button>
           </div>
 

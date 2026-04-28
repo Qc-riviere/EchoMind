@@ -144,7 +144,7 @@ export default function ChatPage() {
           {thought && (
             <div className="max-w-4xl mx-auto">
               <div className="flex items-start gap-3 mb-2">
-                <span className="text-xs font-headline font-bold text-primary uppercase tracking-widest">Deep Questioning</span>
+                <span className="text-xs font-headline font-bold text-primary uppercase tracking-widest">对话</span>
               </div>
               <p className="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">
                 {thought.file_summary || thought.content}

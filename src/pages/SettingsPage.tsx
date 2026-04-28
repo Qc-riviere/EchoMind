@@ -331,11 +331,18 @@ export default function SettingsPage() {
                     )}
                   </div>
 
-                  {/* Base URL */}
-                  <div className="space-y-2">
-                    <label className={labelClass}>Base URL (Optional)</label>
-                    <input type="text" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className={inputClass} />
-                  </div>
+                  {/* Advanced */}
+                  <details className="group border-t border-outline-variant/10 pt-4">
+                    <summary className="cursor-pointer flex items-center gap-2 text-xs font-headline uppercase tracking-widest text-on-surface-variant/60 hover:text-on-surface-variant select-none list-none [&::-webkit-details-marker]:hidden">
+                      <span className="material-symbols-outlined text-[16px] transition-transform group-open:rotate-90">chevron_right</span>
+                      高级选项
+                    </summary>
+                    <div className="mt-4 space-y-2">
+                      <label className={labelClass}>Base URL (Optional)</label>
+                      <input type="text" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className={inputClass} />
+                      <p className="text-[10px] text-on-surface-variant/50">DeepSeek 已自动填充。其他 provider 一般留空。</p>
+                    </div>
+                  </details>
                 </div>
               </section>
 
@@ -381,13 +388,18 @@ export default function SettingsPage() {
             <section>
               <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">Embedding Configuration</h3>
               <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-6">
-                {/* Hint */}
-                {!embApiKey && (
-                  <div className="flex items-center gap-3 text-sm text-primary bg-primary/5 rounded-xl px-4 py-3">
-                    <span className="material-symbols-outlined text-[18px]">lock</span>
-                    <span>Reuse LLM Key — Inherit authentication from the primary provider.</span>
-                  </div>
-                )}
+                {/* Hint - always visible */}
+                <div className="flex items-center gap-3 text-sm text-on-surface-variant bg-surface-container px-4 py-3 rounded-xl">
+                  <span className="material-symbols-outlined text-[18px]">info</span>
+                  <span>默认与 LLM 共用 API Key 和模型，无需配置。如需独立的 embedding provider，展开下面高级选项。</span>
+                </div>
+
+                <details className="group border-t border-outline-variant/10 pt-4">
+                  <summary className="cursor-pointer flex items-center gap-2 text-xs font-headline uppercase tracking-widest text-on-surface-variant/60 hover:text-on-surface-variant select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="material-symbols-outlined text-[16px] transition-transform group-open:rotate-90">chevron_right</span>
+                    高级选项 — 独立配置 Embedding
+                  </summary>
+                  <div className="mt-4 space-y-6">
 
                 {/* Independent API Key */}
                 <div className="space-y-2">
@@ -469,6 +481,8 @@ export default function SettingsPage() {
                     className={inputClass}
                   />
                 </div>
+                  </div>
+                </details>
               </div>
             </section>
           )}
@@ -495,16 +509,22 @@ export default function SettingsPage() {
                   desc="Automatically generate AI context when saving a new thought."
                   defaultOn
                 />
-                <div className="h-px w-full bg-outline-variant/10" />
-                <div className="space-y-3">
-                  <label className={labelClass}>Model Creativity (Temperature)</label>
-                  <input type="range" min="0" max="100" defaultValue="70" className="w-full accent-primary" />
-                  <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
-                    <span>Analytical</span>
-                    <span>Balanced</span>
-                    <span>Creative</span>
+
+                <details className="group border-t border-outline-variant/10 pt-4">
+                  <summary className="cursor-pointer flex items-center gap-2 text-xs font-headline uppercase tracking-widest text-on-surface-variant/60 hover:text-on-surface-variant select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="material-symbols-outlined text-[16px] transition-transform group-open:rotate-90">chevron_right</span>
+                    高级选项
+                  </summary>
+                  <div className="mt-4 space-y-3">
+                    <label className={labelClass}>Model Creativity (Temperature)</label>
+                    <input type="range" min="0" max="100" defaultValue="70" className="w-full accent-primary" />
+                    <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
+                      <span>Analytical</span>
+                      <span>Balanced</span>
+                      <span>Creative</span>
+                    </div>
                   </div>
-                </div>
+                </details>
               </div>
             </section>
           )}
@@ -545,28 +565,35 @@ export default function SettingsPage() {
                     Import
                   </button>
                 </div>
-                <div className="h-px w-full bg-outline-variant/10" />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-on-surface text-sm">Rebuild Vector Index</h4>
-                    <p className="text-xs text-on-surface-variant mt-1">Re-embed all thoughts for semantic search. May take a while.</p>
+                <details className="group border-t border-outline-variant/10 pt-4">
+                  <summary className="cursor-pointer flex items-center gap-2 text-xs font-headline uppercase tracking-widest text-on-surface-variant/60 hover:text-on-surface-variant select-none list-none [&::-webkit-details-marker]:hidden">
+                    <span className="material-symbols-outlined text-[16px] transition-transform group-open:rotate-90">chevron_right</span>
+                    高级选项 — 危险操作
+                  </summary>
+                  <div className="mt-4 space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-on-surface text-sm">Rebuild Vector Index</h4>
+                        <p className="text-xs text-on-surface-variant mt-1">Re-embed all thoughts for semantic search. May take a while.</p>
+                      </div>
+                      <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all">
+                        <span className="material-symbols-outlined text-[18px]">refresh</span>
+                        Rebuild
+                      </button>
+                    </div>
+                    <div className="h-px w-full bg-outline-variant/10" />
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-error text-sm">Clear All Data</h4>
+                        <p className="text-xs text-on-surface-variant mt-1">Permanently delete all thoughts, conversations, and embeddings.</p>
+                      </div>
+                      <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-error-container/20 text-error hover:bg-error-container/30 transition-all">
+                        <span className="material-symbols-outlined text-[18px]">delete_forever</span>
+                        Clear
+                      </button>
+                    </div>
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all">
-                    <span className="material-symbols-outlined text-[18px]">refresh</span>
-                    Rebuild
-                  </button>
-                </div>
-                <div className="h-px w-full bg-outline-variant/10" />
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-error text-sm">Clear All Data</h4>
-                    <p className="text-xs text-on-surface-variant mt-1">Permanently delete all thoughts, conversations, and embeddings.</p>
-                  </div>
-                  <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-error-container/20 text-error hover:bg-error-container/30 transition-all">
-                    <span className="material-symbols-outlined text-[18px]">delete_forever</span>
-                    Clear
-                  </button>
-                </div>
+                </details>
               </div>
             </section>
           )}
@@ -580,7 +607,7 @@ export default function SettingsPage() {
                   <img src="/logo.svg" alt="EchoMind" className="w-12 h-12" />
                   <div>
                     <h4 className="text-lg font-headline font-bold text-on-surface">EchoMind</h4>
-                    <p className="text-xs text-on-surface-variant">Cognitive Sanctuary · v0.1.0</p>
+                    <p className="text-xs text-on-surface-variant">灵感备忘录 · v0.1.0</p>
                   </div>
                 </div>
                 <div className="h-px w-full bg-outline-variant/10" />
