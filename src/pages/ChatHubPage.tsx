@@ -198,19 +198,9 @@ export default function ChatHubPage() {
       .finally(() => setResourcesLoading(false));
   };
 
-  // No thoughtId — empty state
+  // No thoughtId — show recent + hot picker
   if (!thoughtId) {
-    return (
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <span className="material-symbols-outlined text-6xl text-on-surface-variant/20">forum</span>
-          <h2 className="text-lg font-headline font-bold text-on-surface">对话</h2>
-          <p className="text-sm text-on-surface-variant/60 max-w-md">
-            从侧边栏选一个对话，或在任意灵感卡片上点「对话」开始新会话。
-          </p>
-        </div>
-      </div>
-    );
+    return <ChatHubPicker />;
   }
 
   return (
@@ -511,5 +501,109 @@ export default function ChatHubPage() {
         onCancel={() => setWithdrawTarget(null)}
       />
     </div>
+  );
+}
+
+interface HomeThoughts {
+  recent: Thought[];
+  hot: Thought[];
+}
+
+function ChatHubPicker() {
+  const navigate = useNavigate();
+  const [home, setHome] = useState<HomeThoughts>({ recent: [], hot: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    invoke<HomeThoughts>("list_home_thoughts")
+      .then(setHome)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const open = (id: string) => navigate(`/thought/${id}/chat`);
+
+  const empty = !loading && home.recent.length === 0 && home.hot.length === 0;
+
+  return (
+    <div className="absolute inset-0 overflow-y-auto no-scrollbar">
+      <div className="max-w-5xl mx-auto px-8 py-12">
+        <div className="mb-10 text-center space-y-3">
+          <span className="material-symbols-outlined text-5xl text-primary/40">forum</span>
+          <h2 className="text-xl font-headline font-bold text-on-surface">挑一个灵感开始对话</h2>
+          <p className="text-sm text-on-surface-variant/60 max-w-md mx-auto">
+            从侧边栏选已有对话，或从下方挑一个灵感继续深聊。
+          </p>
+        </div>
+
+        {loading && (
+          <div className="flex items-center justify-center py-16 text-on-surface-variant gap-3">
+            <span className="material-symbols-outlined animate-spin">progress_activity</span>
+            正在加载…
+          </div>
+        )}
+
+        {empty && (
+          <div className="text-center py-20 bg-surface-container-low rounded-2xl">
+            <span className="material-symbols-outlined text-5xl text-primary/30">lightbulb</span>
+            <p className="text-sm text-on-surface-variant mt-3">还没有灵感，先去首页记一条吧</p>
+          </div>
+        )}
+
+        {!loading && !empty && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <ChatPickerColumn title="最近" thoughts={home.recent} onPick={open} />
+            {home.hot.length > 0 && (
+              <ChatPickerColumn title="对话最多" thoughts={home.hot} onPick={open} />
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ChatPickerColumn({
+  title,
+  thoughts,
+  onPick,
+}: {
+  title: string;
+  thoughts: Thought[];
+  onPick: (id: string) => void;
+}) {
+  return (
+    <section>
+      <h3 className="text-sm font-headline font-bold uppercase tracking-[0.2em] text-primary mb-4">
+        {title}
+      </h3>
+      <div className="space-y-2">
+        {thoughts.map((t) => {
+          const firstLine = t.content.split("\n")[0];
+          const preview = firstLine.length > 80 ? firstLine.slice(0, 80) + "…" : firstLine;
+          return (
+            <button
+              key={t.id}
+              onClick={() => onPick(t.id)}
+              className="w-full text-left p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all ghost-border group"
+            >
+              <p className="text-sm text-on-surface group-hover:text-primary transition-colors leading-snug">
+                {preview}
+              </p>
+              <div className="flex items-center gap-2 mt-2">
+                {t.domain && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary/70 font-medium">
+                    {t.domain}
+                  </span>
+                )}
+                <span className="text-[10px] text-on-surface-variant/50 font-mono">
+                  {new Date(t.created_at).toLocaleDateString("zh-CN")}
+                </span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
