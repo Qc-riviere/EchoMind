@@ -20,6 +20,21 @@
         "center": true,
         "decorations": false,
         "transparent": true
+      },
+      {
+        "label": "capture",
+        "title": "EchoMind 速记",
+        "url": "index.html?capture=1",
+        "width": 560,
+        "height": 180,
+        "center": true,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "visible": false,
+        "focus": true
       }
     ],
     "security": {

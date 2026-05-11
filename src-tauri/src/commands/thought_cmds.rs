@@ -25,6 +25,20 @@ pub fn list_home_thoughts(state: State<AppCore>) -> Result<echomind_core::HomeTh
 }
 
 #[tauri::command]
+pub fn set_pinned_thought(
+    state: State<AppCore>,
+    id: String,
+    pinned: bool,
+) -> Result<(), String> {
+    state.0.set_pinned(&id, pinned)
+}
+
+#[tauri::command]
+pub fn count_today_thoughts(state: State<AppCore>) -> Result<i64, String> {
+    state.0.count_today_thoughts()
+}
+
+#[tauri::command]
 pub fn get_thought(state: State<AppCore>, id: String) -> Result<echomind_core::Thought, String> {
     state.0.get_thought(&id)
 }

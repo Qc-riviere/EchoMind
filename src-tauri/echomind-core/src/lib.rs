@@ -38,6 +38,7 @@ pub struct GraphData {
 pub struct HomeThoughts {
     pub recent: Vec<db::thoughts::Thought>,
     pub hot: Vec<db::thoughts::Thought>,
+    pub pinned: Option<db::thoughts::Thought>,
 }
 
 use agent::builtin_tools;
@@ -138,10 +139,35 @@ impl EchoMind {
     /// chatted thoughts. `hot` may be empty if no conversations exist yet.
     pub fn list_home_thoughts(&self) -> Result<HomeThoughts, String> {
         let conn = self.conn()?;
+        let pinned = thoughts::get_pinned_thought(&conn).map_err(|e| e.to_string())?;
+        let pinned_id = pinned.as_ref().map(|t| t.id.clone());
         let mut recent = thoughts::list_thoughts(&conn).map_err(|e| e.to_string())?;
+        // Drop the pinned thought from `recent` to avoid duplicate display.
+        if let Some(ref pid) = pinned_id {
+            recent.retain(|t| &t.id != pid);
+        }
         recent.truncate(5);
         let hot = thoughts::list_hot_thoughts(&conn, 5).map_err(|e| e.to_string())?;
-        Ok(HomeThoughts { recent, hot })
+        Ok(HomeThoughts { recent, hot, pinned })
+    }
+
+    pub fn set_pinned(&self, id: &str, pinned: bool) -> Result<(), String> {
+        let conn = self.conn()?;
+        thoughts::set_pinned(&conn, id, pinned).map_err(|e| e.to_string())
+    }
+
+    /// Count thoughts created today (local-time start of day).
+    pub fn count_today_thoughts(&self) -> Result<i64, String> {
+        let now_local = chrono::Local::now();
+        let start_local = now_local
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .unwrap()
+            .and_local_timezone(chrono::Local)
+            .unwrap();
+        let start_utc = start_local.with_timezone(&chrono::Utc).to_rfc3339();
+        let conn = self.conn()?;
+        thoughts::count_thoughts_since(&conn, &start_utc).map_err(|e| e.to_string())
     }
 
     pub fn get_thought(&self, id: &str) -> Result<Thought, String> {

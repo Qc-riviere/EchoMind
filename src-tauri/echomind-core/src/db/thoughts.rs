@@ -11,6 +11,7 @@ pub struct Thought {
     pub image_path: Option<String>,
     pub file_summary: Option<String>,
     pub is_archived: bool,
+    pub is_pinned: bool,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -42,7 +43,7 @@ pub fn create_thought_with_image(
 pub fn list_hot_thoughts(conn: &Connection, limit: i64) -> Result<Vec<Thought>> {
     let mut stmt = conn.prepare(
         "SELECT t.id, t.content, t.context, t.domain, t.tags, t.image_path,
-                t.file_summary, t.is_archived, t.created_at, t.updated_at
+                t.file_summary, t.is_archived, t.created_at, t.updated_at, t.is_pinned
          FROM thoughts t
          JOIN conversations c ON c.thought_id = t.id
          JOIN messages m       ON m.conversation_id = c.id
@@ -64,6 +65,7 @@ pub fn list_hot_thoughts(conn: &Connection, limit: i64) -> Result<Vec<Thought>> 
             is_archived: row.get::<_, i32>(7)? != 0,
             created_at: row.get(8)?,
             updated_at: row.get(9)?,
+            is_pinned: row.get::<_, i32>(10)? != 0,
         })
     })?;
 
@@ -72,7 +74,7 @@ pub fn list_hot_thoughts(conn: &Connection, limit: i64) -> Result<Vec<Thought>> 
 
 pub fn list_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
     let mut stmt = conn.prepare(
-        "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at
+        "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at, is_pinned
          FROM thoughts
          WHERE is_archived = 0
          ORDER BY created_at DESC",
@@ -90,6 +92,7 @@ pub fn list_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
             is_archived: row.get::<_, i32>(7)? != 0,
             created_at: row.get(8)?,
             updated_at: row.get(9)?,
+            is_pinned: row.get::<_, i32>(10)? != 0,
         })
     })?;
 
@@ -98,7 +101,7 @@ pub fn list_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
 
 pub fn get_thought(conn: &Connection, id: &str) -> Result<Thought> {
     conn.query_row(
-        "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at
+        "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at, is_pinned
          FROM thoughts WHERE id = ?1",
         params![id],
         |row| {
@@ -113,6 +116,7 @@ pub fn get_thought(conn: &Connection, id: &str) -> Result<Thought> {
                 is_archived: row.get::<_, i32>(7)? != 0,
                 created_at: row.get(8)?,
                 updated_at: row.get(9)?,
+                is_pinned: row.get::<_, i32>(10)? != 0,
             })
         },
     )
@@ -131,7 +135,7 @@ pub fn update_thought(conn: &Connection, id: &str, content: &str) -> Result<Thou
 
 pub fn list_archived_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
     let mut stmt = conn.prepare(
-        "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at
+        "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at, is_pinned
          FROM thoughts
          WHERE is_archived = 1
          ORDER BY updated_at DESC",
@@ -149,6 +153,7 @@ pub fn list_archived_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
             is_archived: row.get::<_, i32>(7)? != 0,
             created_at: row.get(8)?,
             updated_at: row.get(9)?,
+            is_pinned: row.get::<_, i32>(10)? != 0,
         })
     })?;
 
@@ -244,6 +249,63 @@ pub fn upsert_from_remote(
         }
         _ => Ok(false),
     }
+}
+
+/// Fetch the single pinned thought, if any. Returns None if nothing is pinned
+/// (or the pinned thought has been archived/deleted).
+pub fn get_pinned_thought(conn: &Connection) -> Result<Option<Thought>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at, is_pinned
+         FROM thoughts
+         WHERE is_pinned = 1 AND is_archived = 0
+         LIMIT 1",
+    )?;
+    let mut rows = stmt.query_map([], |row| {
+        Ok(Thought {
+            id: row.get(0)?,
+            content: row.get(1)?,
+            context: row.get(2)?,
+            domain: row.get(3)?,
+            tags: row.get(4)?,
+            image_path: row.get(5)?,
+            file_summary: row.get(6)?,
+            is_archived: row.get::<_, i32>(7)? != 0,
+            created_at: row.get(8)?,
+            updated_at: row.get(9)?,
+            is_pinned: row.get::<_, i32>(10)? != 0,
+        })
+    })?;
+    match rows.next() {
+        Some(r) => r.map(Some),
+        None => Ok(None),
+    }
+}
+
+/// Pin or unpin a thought. Pinning enforces single-pin: any previously pinned
+/// thought is unpinned first.
+pub fn set_pinned(conn: &Connection, id: &str, pinned: bool) -> Result<()> {
+    if pinned {
+        conn.execute("UPDATE thoughts SET is_pinned = 0 WHERE is_pinned = 1", [])?;
+        conn.execute(
+            "UPDATE thoughts SET is_pinned = 1 WHERE id = ?1",
+            params![id],
+        )?;
+    } else {
+        conn.execute(
+            "UPDATE thoughts SET is_pinned = 0 WHERE id = ?1",
+            params![id],
+        )?;
+    }
+    Ok(())
+}
+
+/// Count thoughts created since the given UTC timestamp (RFC3339).
+pub fn count_thoughts_since(conn: &Connection, since: &str) -> Result<i64> {
+    conn.query_row(
+        "SELECT COUNT(*) FROM thoughts WHERE created_at >= ?1 AND is_archived = 0",
+        params![since],
+        |row| row.get(0),
+    )
 }
 
 pub fn update_thought_enrichment(

@@ -15,9 +15,10 @@ interface Props {
   selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
+  onChanged?: () => void;
 }
 
-export default function ThoughtCard({ thought, showRelated = false, onClick, isActive = false, selectMode = false, selected = false, onToggleSelect }: Props) {
+export default function ThoughtCard({ thought, showRelated = false, onClick, isActive = false, selectMode = false, selected = false, onToggleSelect, onChanged }: Props) {
   const archiveThought = useThoughtStore((s) => s.archiveThought);
   const enrichAndEmbed = useThoughtStore((s) => s.enrichAndEmbed);
   const enrichingIds = useThoughtStore((s) => s.enrichingIds);
@@ -64,6 +65,11 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
           }`}>
             {selected && <span className="material-symbols-outlined text-[16px] text-on-primary">check</span>}
           </div>
+        </div>
+      )}
+      {thought.is_pinned && !selectMode && (
+        <div className="absolute top-4 right-4 z-10 pointer-events-none">
+          <span className="material-symbols-outlined text-[18px] text-primary rotate-45">push_pin</span>
         </div>
       )}
       <div className={`flex flex-col ${hasImage ? "md:flex-row items-stretch" : ""} h-full`}>
@@ -154,7 +160,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
           </div>
 
           {/* Action buttons (visible on hover) */}
-          <div className="flex items-center gap-2 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={(e) => { e.stopPropagation(); navigate(`/thought/${thought.id}/chat`); }}
               className="flex items-center gap-1.5 text-[10px] text-on-surface-variant hover:text-primary uppercase tracking-wider transition-colors"
@@ -163,7 +169,24 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
               对话
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); archiveThought(thought.id); }}
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await invoke("set_pinned_thought", { id: thought.id, pinned: !thought.is_pinned });
+                  onChanged?.();
+                } catch { /* ignore */ }
+              }}
+              className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wider transition-colors ${
+                thought.is_pinned
+                  ? "text-primary"
+                  : "text-on-surface-variant hover:text-primary"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px]">push_pin</span>
+              {thought.is_pinned ? "已置顶" : "置顶"}
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); archiveThought(thought.id); onChanged?.(); }}
               className="flex items-center gap-1.5 text-[10px] text-on-surface-variant hover:text-error uppercase tracking-wider transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">inventory_2</span>

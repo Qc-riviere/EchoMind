@@ -1,6 +1,38 @@
-use tauri::Manager;
+use tauri::{Manager, WindowEvent};
+use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
 
 mod commands;
+
+const CAPTURE_SHORTCUT: &str = "CmdOrCtrl+Shift+I";
+
+fn show_capture_window(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("capture") {
+        let _ = win.show();
+        let _ = win.set_focus();
+        let _ = win.center();
+    }
+}
+
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.show();
+        let _ = win.unminimize();
+        let _ = win.set_focus();
+    }
+}
+
+fn refresh_tray_tooltip(app: &tauri::AppHandle) {
+    let state: tauri::State<'_, AppCore> = app.state();
+    let n = state.0.count_today_thoughts().unwrap_or(0);
+    let label = if n == 0 {
+        "EchoMind · 今日还没记".to_string()
+    } else {
+        format!("EchoMind · 今日新增 {n}")
+    };
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_tooltip(Some(&label));
+    }
+}
 
 pub struct AppCore(pub echomind_core::EchoMind);
 
@@ -33,6 +65,27 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin({
+            use tauri_plugin_global_shortcut::{Builder as GsBuilder, ShortcutState};
+            GsBuilder::new()
+                .with_handler(|app, _shortcut, event| {
+                    if event.state() == ShortcutState::Pressed {
+                        show_capture_window(app);
+                    }
+                })
+                .build()
+        })
+        .on_window_event(|window, event| {
+            if window.label() == "capture" {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    // Hide instead of closing — keep the window alive for next hotkey trigger.
+                    let _ = window.hide();
+                    api.prevent_close();
+                } else if let WindowEvent::Focused(false) = event {
+                    let _ = window.hide();
+                }
+            }
+        })
         .setup(|app| {
             let app_dir = app
                 .path()
@@ -54,6 +107,49 @@ pub fn run() {
             app.manage(AppCore(core));
             app.manage(commands::bridge_cmds::BridgeState::default());
 
+            // Register the global capture shortcut. Failures are non-fatal — the
+            // user can still capture from the main window.
+            {
+                use tauri_plugin_global_shortcut::GlobalShortcutExt;
+                if let Err(e) = app.global_shortcut().register(CAPTURE_SHORTCUT) {
+                    eprintln!("[hotkey] failed to register {CAPTURE_SHORTCUT}: {e}");
+                }
+            }
+
+            // Build the system tray. Clicking the icon shows/focuses the main
+            // window. Tooltip shows today's thought count and is refreshed
+            // periodically (and on demand via emit-based hooks below).
+            let tray_handle = app.handle().clone();
+            TrayIconBuilder::with_id("main")
+                .icon(app.default_window_icon().expect("missing icon").clone())
+                .tooltip("EchoMind")
+                .on_tray_icon_event(move |_tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        show_main_window(&tray_handle);
+                    }
+                })
+                .build(app)?;
+
+            refresh_tray_tooltip(&app.handle());
+
+            // Periodic tray tooltip refresh — covers day-rollover and external
+            // mutations (WeChat bridge sync, manual edits) without needing per-
+            // command hooks.
+            let tray_refresh_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                loop {
+                    interval.tick().await;
+                    refresh_tray_tooltip(&tray_refresh_handle);
+                }
+            });
+
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
@@ -71,6 +167,7 @@ pub fn run() {
                                 .body(format!("从云端同步到 {n} 条新灵感"))
                                 .show();
                             let _ = tauri::Emitter::emit(&app_handle, "bridge:synced", n);
+                            refresh_tray_tooltip(&app_handle);
                         }
                         Err(e) => {
                             eprintln!("[bridge-sync] {e}");
@@ -87,6 +184,8 @@ pub fn run() {
             commands::thought_cmds::create_thought,
             commands::thought_cmds::list_thoughts,
             commands::thought_cmds::list_home_thoughts,
+            commands::thought_cmds::set_pinned_thought,
+            commands::thought_cmds::count_today_thoughts,
             commands::ai_cmds::summarize_thoughts,
             commands::thought_cmds::get_thought,
             commands::thought_cmds::update_thought,

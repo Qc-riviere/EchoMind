@@ -14,11 +14,12 @@ import { formatDistanceToNow } from "date-fns";
 interface HomeThoughts {
   recent: Thought[];
   hot: Thought[];
+  pinned: Thought | null;
 }
 
 export default function HomePage() {
   const [selectedThought, setSelectedThought] = useState<Thought | null>(null);
-  const [home, setHome] = useState<HomeThoughts>({ recent: [], hot: [] });
+  const [home, setHome] = useState<HomeThoughts>({ recent: [], hot: [], pinned: null });
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -41,7 +42,7 @@ export default function HomePage() {
 
   const allDisplayed = useMemo(() => {
     const map = new Map<string, Thought>();
-    [...home.recent, ...home.hot].forEach((t) => map.set(t.id, t));
+    [...(home.pinned ? [home.pinned] : []), ...home.recent, ...home.hot].forEach((t) => map.set(t.id, t));
     return map;
   }, [home]);
 
@@ -87,6 +88,28 @@ export default function HomePage() {
       <div className="grid grid-cols-12 gap-12">
         {/* Inspiration Feed */}
         <div className="col-span-12 lg:col-span-8 space-y-12">
+          {home.pinned && (
+            <section>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-headline font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px] rotate-45">push_pin</span>
+                  最重要的事
+                </h3>
+              </div>
+              <div className="ring-1 ring-primary/30 rounded-2xl">
+                <ThoughtList
+                  thoughts={[home.pinned]}
+                  onThoughtClick={(thought) => setSelectedThought(thought)}
+                  activeThoughtId={selectedThought?.id}
+                  selectMode={selectMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelect}
+                  onChanged={loadHome}
+                />
+              </div>
+            </section>
+          )}
+
           <section>
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xl font-headline font-bold text-on-surface">最近</h3>
@@ -112,6 +135,7 @@ export default function HomePage() {
               selectMode={selectMode}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
+              onChanged={loadHome}
             />
           </section>
 
@@ -129,6 +153,7 @@ export default function HomePage() {
                 selectMode={selectMode}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
+                onChanged={loadHome}
               />
             </section>
           )}

@@ -87,6 +87,14 @@ pub fn initialize_database(db_path: &Path) -> Result<Connection> {
         conn.execute_batch("ALTER TABLE thoughts ADD COLUMN file_summary TEXT;")?;
     }
 
+    // Migration: add is_pinned column (single-pin "current focus" thought)
+    let has_is_pinned: bool = conn
+        .prepare("SELECT is_pinned FROM thoughts LIMIT 0")
+        .is_ok();
+    if !has_is_pinned {
+        conn.execute_batch("ALTER TABLE thoughts ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0;")?;
+    }
+
     // Resolve desired embedding dimension from settings, defaulting to the
     // local-model default (512) for fresh installs and falling back to 1536
     // when any cloud embedding has already been configured.

@@ -7,6 +7,7 @@ export interface Thought {
   image_path: string | null;
   file_summary: string | null;
   is_archived: boolean;
+  is_pinned: boolean;
   created_at: string;
   updated_at: string;
 }

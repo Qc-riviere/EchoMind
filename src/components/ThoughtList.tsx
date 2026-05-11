@@ -17,6 +17,8 @@ interface Props {
   selectedIds?: Set<string>;
   /// Called with a thought id when the user toggles selection on a card.
   onToggleSelect?: (id: string) => void;
+  /// Called when a card mutates state that the caller cares about (pin, archive).
+  onChanged?: () => void;
 }
 
 export default function ThoughtList({
@@ -27,6 +29,7 @@ export default function ThoughtList({
   selectMode,
   selectedIds,
   onToggleSelect,
+  onChanged,
 }: Props) {
   const store = useThoughtStore();
   const useStore = thoughtsProp === undefined;
@@ -84,6 +87,7 @@ export default function ThoughtList({
           selectMode={selectMode}
           selected={selectedIds?.has(thought.id) ?? false}
           onToggleSelect={() => onToggleSelect?.(thought.id)}
+          onChanged={onChanged}
         />
       ))}
     </div>
