@@ -408,6 +408,7 @@ node dist/main.js daemon
 - **2026-04-17b** | 架构认知修正：实现用的是 iLink 官方协议（非 wechaty）| 重写 §1 架构图、§5.1 daemon 技术栈、§5.3（删 Redis）、§5.4（加入胶囊/LLM key 推送）、§5.5（新增 Persona 胶囊 + 离线 LLM 详细设计）、§6（删风控 → 改 iLink 注意事项）、§7（重排 Phase）、§8（成本 ¥40→¥10）、§9 新增 5–9 号决策 |
 - **2026-04-17c** | 场景认知修正：bot 是单人工具（你用手机 WX 操作自己的第二大脑），**不**涉及朋友对话。采用 Obsidian Sync 模式：明确付费 + 知情同意 + 用户选上云范围 | 作废 §5.5 Persona 胶囊整节改为"上云子集规则"、§2 核心原则重写（不再假装零知识）、§4 隐私边界加入知情同意提示、§5.1 daemon 加入 echomind-server + 子集 SQLite、§5.4 配对流程加入 subset_rules、§7 重写 Phase（去掉 Persona 相关、加入子集同步）、§8 成本 ¥10→¥15-25（需存储）、§9 新增 10–13 号决策、§10 三层描述修正（Bridge 非零知识） |
 - **2026-05-12** | 协议名称澄清 + 灰度卡点全景盘点 | (1) 全文涉及"iLink"语境恰当上下文化为「微信 ClawBot（产品名）+ iLink 协议（底层）+ `@tencent-weixin/openclaw-weixin` npm 包（腾讯官方 scope）」；(2) H8 商业化风险整段推翻——这是 2026 腾讯官方放开协议，无商用风险；(3) 新增 §13「公开发布前卡点清单」，按 P0/P1/P2 分级 |
+- **2026-05-12** | P0 #1 + #2 落地 | (1) 新增 `.github/workflows/desktop-release.yml`：tauri-action 矩阵 build Windows + macOS universal，push tag `v*` 触发，产物推 Release 草稿；(2) 复盘发现 `.github/workflows/docker-publish.yml` 已存在并覆盖 bridge-server + wechat 两个镜像，P0 #2 实际已完成，§13 卡点清单更新状态 |
 
 ---
 
@@ -419,8 +420,8 @@ node dist/main.js daemon
 
 | # | 卡点 | 为什么阻断 | 解法 |
 |---|---|---|---|
-| 1 | **没有 release binary** | 普通用户没有 Rust 工具链，自己 `pnpm tauri build` 不可能 | 加 GHA workflow：tag → 自动 build Win .msi + Mac .dmg → 推 GitHub Release |
-| 2 | **没有 echomind-bridge-server docker 镜像** | VPS 部署必须先 `docker pull`；现在任何人都没法一行命令起 bridge | 加 GHA workflow：build & push 到 `ghcr.io/qc-riviere/echomind-bridge-server` |
+| 1 | ~~没有 release binary~~ ✅ | 普通用户没有 Rust 工具链 | `.github/workflows/desktop-release.yml`：push tag `v*` → matrix build Win + macOS universal → 推 GitHub Release（草稿） |
+| 2 | ~~没有 bridge-server docker 镜像~~ ✅ | VPS 部署需要 `docker pull` | `.github/workflows/docker-publish.yml`：master push 触发，build & push `ghcr.io/qc-riviere/echomind-bridge:latest` + sha；同 workflow 也覆盖 `echomind-wechat` 镜像 |
 | 3 | **`/bridge/thoughts/capture` 路由未实现**（§7 Phase 4，§11 注明） | bridge 独立模式下手机微信发文字不能新建灵感——L2 用户在桌面关机时只能查不能写，"远程操作"叙事破裂 | Phase 4 子任务，1-2 天 |
 | 4 | **新手 onboarding 缺失** | 用户装完 → 看到全英文 + 复杂 Settings → 不知道下一步 | 写首次启动引导（4 步：填 LLM Key → 测试连接 → 录第一条 → 介绍微信桥可选） |
 
@@ -455,8 +456,8 @@ node dist/main.js daemon
 
 ```
 本周（解阻断）：
-  ├── P0 #1  GHA: app build & release
-  ├── P0 #2  GHA: bridge-server docker push
+  ├── ✅ P0 #1  GHA: app build & release（desktop-release.yml）
+  ├── ✅ P0 #2  GHA: bridge-server docker push（docker-publish.yml，已存在）
   └── P1 #9  Settings 加"测试 LLM 连接"按钮（半小时）
 
 两周内：
