@@ -16,7 +16,7 @@
 
 **模式**：明确对标 Obsidian Sync 的「永久免费核心 + 可选付费扩展 + 明确隐私代价」三层架构（L1 Core 免费 / L2 Bridge 订阅 ¥20-30 月 / L3 Sync 未实现），用户自带 LLM Key（BYO Key），平台不承担 token 成本。
 
-**当前状态**：L1 Core + L2 Bridge Phase 1–3 已完成，Phase 4（部署稳定性）进行中；下一步进入灰度发布验证 H1（用户需求）+ H7（付费意愿）。
+**当前状态**：L1 Core + L2 Bridge Phase 1–3 已完成，Phase 4（部署稳定性）剩三项；公开发布前 P0 阻断卡点（自动 Release / Docker 镜像 / bridge capture 路由 / 新手引导）**已全部清零**（见 `docs/architecture-hybrid-cloud.md` §13）。下一步进入 Closed Alpha 验证 H1（用户需求）+ H7（付费意愿）。
 
 **核心数字**：
 - 单人开发约 3 个月
@@ -168,10 +168,20 @@
 
 ### Now → 4 周内（Phase 4 收尾 + Closed Alpha 准备）
 
-- [ ] 完成 Phase 4 五项：Docker Compose + nginx TLS / `/bridge/thoughts/capture` / `/chat` 速率限制 / Budget Tauri 事件 / 断线重连
+✅ 已清（2026-05-12 收尾）：
+- [x] `desktop-release.yml` GHA workflow（tag `v*` → Win .msi + macOS universal .dmg → Release）— v0.1.0-rc1 实跑通过
+- [x] `docker-publish.yml`（bridge + wechat 镜像推 ghcr.io）— 早已存在
+- [x] `/bridge/thoughts/capture` 路由 — 复盘发现已实现（gap：bridge 端无 enrich/embed，挪 P1 #11b）
+- [x] 测试 LLM 连接按钮 — SettingsPage 已存在 + Onboarding Step 2 复用
+- [x] 新手 4 步引导（`src/components/Onboarding.tsx`）
+
+🚧 仍待办：
+- [ ] Phase 4 剩余三项：`/chat` 速率限制 + Budget Tauri 事件 + 断线重连
 - [ ] 部署 staging VPS 跑 14 天压力测试（模拟 50 用户并发）
 - [ ] 阅读 OpenClaw 官方文档与 `@tencent-weixin/openclaw-weixin` README，记录限流上限（轻量任务，0.5 天）
 - [ ] 申请 Apple Developer ID + 准备 Mac 签名（Windows 暂缓）
+- [ ] 自己 e2e 走完 onboarding + 微信桥扫码（P1 #8），找漏修补
+- [ ] 错误信息翻译层（P1 #7，API 报错 → 人类可读）
 - [ ] 建 Closed Alpha 申请表（Tally / 飞书表单）+ 微信反馈群
 
 ### 5-8 周（Closed Alpha + Phase 4 验证）
@@ -208,11 +218,12 @@
 
 #### 准备（1 周）
 
-**安装包**：
-1. 本地跑 `pnpm tauri build` 生成 Windows `.msi` 和 Mac `.dmg`
-2. 上传到 GitHub Release（设置 `prerelease=true`）
-3. 在 Mac 用 `xcrun notarytool submit` 公证（可选，灰度阶段先不做也行，但用户要"右键打开"绕 Gatekeeper）
-4. Windows 不签名时 SmartScreen 会提示"未识别"，告诉用户点"详细信息 → 仍要运行"
+**安装包**（已自动化）：
+1. 本地打 tag：`git tag v0.1.0-alpha1 && git push origin v0.1.0-alpha1`
+2. GHA `desktop-release.yml` 自动 build Win + macOS universal → 推 GitHub Release（草稿状态）
+3. 检查 Release assets 有 `.msi` 和 `.dmg` 后手动 publish
+4. Mac 未公证时用户首次启动需"右键 → 打开"绕 Gatekeeper（Alpha 阶段可接受；Beta 前买 Apple Dev $99/年做 notarize）
+5. Windows 不签名时 SmartScreen 会提示"未识别"，告诉用户点"详细信息 → 仍要运行"
 
 **VPS 准备**：
 1. 买一台 2C2G VPS（腾讯云轻量 / 阿里云轻量 ¥40-60/月）

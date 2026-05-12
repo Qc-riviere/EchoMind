@@ -5,6 +5,7 @@
 ## 核心特性
 
 ### 记录
+- **30 秒上手** — 首次启动 4 步引导：选 Provider → 填 Key 测连接 → 录第一条 → 介绍微信桥
 - **全局速记浮窗** — `Ctrl+Shift+I` 任何场景下唤出无边框小窗，Enter 保存，Esc/失焦自动隐藏。窗口常驻不可见，热键响应即时
 - **托盘常驻** — 系统托盘图标 hover 显示「今日新增 N」，点击聚焦主窗
 - **微信速记** — 手机微信发条消息即落库，桌面端 30s 内同步并发系统通知
@@ -99,7 +100,7 @@ pnpm tauri dev
 pnpm tauri build
 ```
 
-首次使用在设置页面配置 LLM API Key（支持 OpenAI / Gemini / Claude）。
+首次启动会自动弹出 4 步引导（欢迎 → 选 Provider 填 Key 测连接 → 录第一条灵感 → 微信桥可选），全程约 30 秒。也可在设置页随时改。支持 OpenAI / Claude / Gemini / DeepSeek（默认推荐 DeepSeek，国内充值方便）。
 
 ---
 

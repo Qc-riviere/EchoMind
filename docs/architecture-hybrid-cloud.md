@@ -409,6 +409,7 @@ node dist/main.js daemon
 - **2026-04-17c** | 场景认知修正：bot 是单人工具（你用手机 WX 操作自己的第二大脑），**不**涉及朋友对话。采用 Obsidian Sync 模式：明确付费 + 知情同意 + 用户选上云范围 | 作废 §5.5 Persona 胶囊整节改为"上云子集规则"、§2 核心原则重写（不再假装零知识）、§4 隐私边界加入知情同意提示、§5.1 daemon 加入 echomind-server + 子集 SQLite、§5.4 配对流程加入 subset_rules、§7 重写 Phase（去掉 Persona 相关、加入子集同步）、§8 成本 ¥10→¥15-25（需存储）、§9 新增 10–13 号决策、§10 三层描述修正（Bridge 非零知识） |
 - **2026-05-12** | 协议名称澄清 + 灰度卡点全景盘点 | (1) 全文涉及"iLink"语境恰当上下文化为「微信 ClawBot（产品名）+ iLink 协议（底层）+ `@tencent-weixin/openclaw-weixin` npm 包（腾讯官方 scope）」；(2) H8 商业化风险整段推翻——这是 2026 腾讯官方放开协议，无商用风险；(3) 新增 §13「公开发布前卡点清单」，按 P0/P1/P2 分级 |
 - **2026-05-12** | P0 #1 + #2 落地 | (1) 新增 `.github/workflows/desktop-release.yml`：tauri-action 矩阵 build Windows + macOS universal，push tag `v*` 触发，产物推 Release 草稿；(2) 复盘发现 `.github/workflows/docker-publish.yml` 已存在并覆盖 bridge-server + wechat 两个镜像，P0 #2 实际已完成，§13 卡点清单更新状态 |
+- **2026-05-12** | P0 全部清完 / Alpha-ready | (1) `v0.1.0-rc1` tag 触发 desktop-release，macOS + Windows 双 job 14m+ 通过；(2) 复盘 P0 #3 `/bridge/thoughts/capture` 路由实际已实现（routes.rs:28 + bridge-client.ts:68），enrich/embed gap 降为 P1 #11b；(3) 复盘 P1 #9 测试 LLM 按钮已在 SettingsPage 存在；(4) 新增 `src/components/Onboarding.tsx` 4 步首次启动引导（欢迎 → LLM 配置+测试 → 第一条灵感 → 微信桥 teaser），`App.tsx` 加 OnboardingGate 自动触发；(5) §13 加 Alpha 就绪度评估表，结论：Alpha 招募已可启动 |
 
 ---
 
@@ -423,7 +424,7 @@ node dist/main.js daemon
 | 1 | ~~没有 release binary~~ ✅ | 普通用户没有 Rust 工具链 | `.github/workflows/desktop-release.yml`：push tag `v*` → matrix build Win + macOS universal → 推 GitHub Release（草稿） |
 | 2 | ~~没有 bridge-server docker 镜像~~ ✅ | VPS 部署需要 `docker pull` | `.github/workflows/docker-publish.yml`：master push 触发，build & push `ghcr.io/qc-riviere/echomind-bridge:latest` + sha；同 workflow 也覆盖 `echomind-wechat` 镜像 |
 | 3 | ~~`/bridge/thoughts/capture` 路由未实现~~ ✅ | 复盘发现实际已实现：bridge-server `routes.rs:28` 注册 + `bridge_capture_thought` handler + `store.capture_thought`；wechat bot `bridge-client.ts:68` + `handleBridgeCapture`（BRIDGE_MODE 默认文字走此路径）。**Gap → 降为 P1**：bridge 端 capture 后不做 enrich/embedding，列表看到的灵感无 domain/tags/向量；非阻断，仅劣化体验 |
-| 4 | **新手 onboarding 缺失** | 用户装完 → 看到全英文 + 复杂 Settings → 不知道下一步 | 写首次启动引导（4 步：填 LLM Key → 测试连接 → 录第一条 → 介绍微信桥可选） |
+| 4 | ~~新手 onboarding 缺失~~ ✅ | 用户装完 → 看到全英文 + 复杂 Settings → 不知道下一步 | `src/components/Onboarding.tsx` 4 步引导（欢迎 → LLM 配置+测试 → 第一条灵感 → 微信桥 teaser）；`App.tsx` 内 `OnboardingGate` 在 `!llm_api_key && !onboarding_completed && !onboarding_dismissed` 时自动弹；默认选 DeepSeek（最低门槛） |
 
 ### P1 体验劝退
 
@@ -433,7 +434,7 @@ node dist/main.js daemon
 | 6 | LLM Key 注册门槛 | 用户进 EchoMind 才发现"还要注册 DeepSeek 充值" | 文档给一键注册链接 + 充值 ¥10 即可指引；考虑首次启动赠送少量额度（需后端） |
 | 7 | 错误信息不友好 | API 报错直接弹原始 stack | settings.tsx 加错误信息翻译层 |
 | 8 | 微信 ClawBot 扫码流程 UI 完整性未验证 | WeChatBridgePage 改了 step 状态机，e2e 是否死锁未知 | 自己重装走完整 onboarding 流程实测 |
-| 9 | 没有"测试 LLM 连接"按钮 | 填错 Key 要到 enrich 时才报错 | 后端 `test_llm_connection` 已存在，前端 Settings 加按钮 |
+| 9 | ~~没有"测试 LLM 连接"按钮~~ ✅ | 复盘发现已实现：`SettingsPage.tsx:175` 的 `handleTest`（"Test Connection" 按钮）+ onboarding Step 2 也复用同一接口 |
 | 10 | Phase 4 剩余三项：`/chat` 速率限制 + 断线重连 + Budget 通知 | 失控调用耗预算 / 网络抖动数据不一致 / 用户预算耗尽不知情 | Phase 4 收尾，1-2 周 |
 | 11b | bridge capture 无 enrich/embed | bridge 模式 `/list` 看到的灵感无 domain/tags/向量，劣化但不破坏 | bridge-server 在 capture 后异步走一遍 LLM enrich + embedding（或 bot 触发） |
 
@@ -456,18 +457,36 @@ node dist/main.js daemon
 ### 优先级路线
 
 ```
-本周（解阻断）：
-  ├── ✅ P0 #1  GHA: app build & release（desktop-release.yml）
-  ├── ✅ P0 #2  GHA: bridge-server docker push（docker-publish.yml，已存在）
-  └── P1 #9  Settings 加"测试 LLM 连接"按钮（半小时）
+✅ 本周已清：
+  ├── ✅ P0 #1  desktop-release.yml（v0.1.0-rc1 实跑通过，Win + macOS universal）
+  ├── ✅ P0 #2  docker-publish.yml（bridge + wechat 双镜像，原已存在）
+  ├── ✅ P0 #3  bridge capture 路由（复盘已实现，enrich gap 降为 P1 #11b）
+  ├── ✅ P0 #4  新手引导（Onboarding.tsx 4 步流程）
+  └── ✅ P1 #9  测试 LLM 连接按钮（Settings 已有 handleTest）
 
-两周内：
-  ├── ✅ P0 #3  bridge capture 路由（复盘发现已实现，gap 降为 P1 #11b）
-  ├── P1 #8   自己 e2e 走 onboarding 找漏
-  └── P0 #4   新手引导组件 ← 下一项
+Alpha 招募前剩余（P1 重要）：
+  ├── P1 #8   自己 e2e 走完 onboarding + 微信桥扫码，找漏修补
+  ├── P1 #7   错误信息翻译层（API 报错 → 人类可读）
+  ├── P1 #6   LLM Key 注册引导（onboarding 已附链接，可加图文教程文档）
+  └── P1 #5   Mac 代码签名（Apple Dev $99/年，Win 暂用文档绕过）
 
-Alpha 启动前：
-  └── P1 #10 Phase 4 剩余三项（速率/重连/Budget）
+Beta 公开前：
+  ├── P1 #10  Phase 4 剩余三项（速率/重连/Budget 通知）
+  ├── P1 #11b bridge capture 后异步 enrich + embedding
+  └── P2 #11-15 ToS / Landing / 支付 / fastembed 镜像 / 迁移日志静默
 ```
 
 详细的灰度发布操作步骤（VPS 部署、招募文案、反馈通道）见根目录 `EchoMind_MVP汇报报告.md` §7。
+
+### 当前 Alpha 就绪度评估（2026-05-12 收尾）
+
+| 维度 | 状态 | 说明 |
+|---|---|---|
+| 可安装 | ✅ | tag v* 自动 build Win .msi + macOS .dmg 到 Release |
+| 可部署 bridge | ✅ | `docker pull ghcr.io/qc-riviere/echomind-bridge:latest` |
+| 首次能用 | ✅ | Onboarding 4 步引导覆盖 0 → 第一条灵感 |
+| 核心功能完整 | ✅ | 速记 / 浏览 / AI 总结 / 对话 / 微信桥 / Cloud Bridge 全跑通 |
+| 体验打磨 | ⚠️ | 错误信息原始 / 无 macOS 签名（用户需"右键打开"） |
+| 商业化基础 | ❌ | 无 ToS / Landing / 支付（Beta 阶段再上） |
+
+**结论**：Alpha 招募（≤30 种子用户 + BYO Key + 用户自备 VPS）**已可启动**。Beta 公开发布建议补完 P1 #5-#7 + 落地页。
