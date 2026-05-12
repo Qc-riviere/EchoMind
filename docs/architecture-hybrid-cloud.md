@@ -422,7 +422,7 @@ node dist/main.js daemon
 |---|---|---|---|
 | 1 | ~~没有 release binary~~ ✅ | 普通用户没有 Rust 工具链 | `.github/workflows/desktop-release.yml`：push tag `v*` → matrix build Win + macOS universal → 推 GitHub Release（草稿） |
 | 2 | ~~没有 bridge-server docker 镜像~~ ✅ | VPS 部署需要 `docker pull` | `.github/workflows/docker-publish.yml`：master push 触发，build & push `ghcr.io/qc-riviere/echomind-bridge:latest` + sha；同 workflow 也覆盖 `echomind-wechat` 镜像 |
-| 3 | **`/bridge/thoughts/capture` 路由未实现**（§7 Phase 4，§11 注明） | bridge 独立模式下手机微信发文字不能新建灵感——L2 用户在桌面关机时只能查不能写，"远程操作"叙事破裂 | Phase 4 子任务，1-2 天 |
+| 3 | ~~`/bridge/thoughts/capture` 路由未实现~~ ✅ | 复盘发现实际已实现：bridge-server `routes.rs:28` 注册 + `bridge_capture_thought` handler + `store.capture_thought`；wechat bot `bridge-client.ts:68` + `handleBridgeCapture`（BRIDGE_MODE 默认文字走此路径）。**Gap → 降为 P1**：bridge 端 capture 后不做 enrich/embedding，列表看到的灵感无 domain/tags/向量；非阻断，仅劣化体验 |
 | 4 | **新手 onboarding 缺失** | 用户装完 → 看到全英文 + 复杂 Settings → 不知道下一步 | 写首次启动引导（4 步：填 LLM Key → 测试连接 → 录第一条 → 介绍微信桥可选） |
 
 ### P1 体验劝退
@@ -435,6 +435,7 @@ node dist/main.js daemon
 | 8 | 微信 ClawBot 扫码流程 UI 完整性未验证 | WeChatBridgePage 改了 step 状态机，e2e 是否死锁未知 | 自己重装走完整 onboarding 流程实测 |
 | 9 | 没有"测试 LLM 连接"按钮 | 填错 Key 要到 enrich 时才报错 | 后端 `test_llm_connection` 已存在，前端 Settings 加按钮 |
 | 10 | Phase 4 剩余三项：`/chat` 速率限制 + 断线重连 + Budget 通知 | 失控调用耗预算 / 网络抖动数据不一致 / 用户预算耗尽不知情 | Phase 4 收尾，1-2 周 |
+| 11b | bridge capture 无 enrich/embed | bridge 模式 `/list` 看到的灵感无 domain/tags/向量，劣化但不破坏 | bridge-server 在 capture 后异步走一遍 LLM enrich + embedding（或 bot 触发） |
 
 ### P2 长期改进
 
@@ -461,9 +462,9 @@ node dist/main.js daemon
   └── P1 #9  Settings 加"测试 LLM 连接"按钮（半小时）
 
 两周内：
-  ├── P0 #3  /bridge/thoughts/capture 路由
-  ├── P1 #8  自己 e2e 走 onboarding 找漏
-  └── P0 #4  新手引导组件
+  ├── ✅ P0 #3  bridge capture 路由（复盘发现已实现，gap 降为 P1 #11b）
+  ├── P1 #8   自己 e2e 走 onboarding 找漏
+  └── P0 #4   新手引导组件 ← 下一项
 
 Alpha 启动前：
   └── P1 #10 Phase 4 剩余三项（速率/重连/Budget）
