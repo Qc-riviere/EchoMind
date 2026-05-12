@@ -49,14 +49,14 @@ export default function WeChatBridgePage() {
       setAccount(acct);
       setDaemonRunning(daemon);
       if (daemon && status.online && acct.configured) {
-        if (step !== "scanning" && step !== "scanned") setStep("ready");
+        setStep((prev) => (prev === "scanning" || prev === "scanned" ? prev : "ready"));
       }
     } catch {
       setServerStatus({ online: false });
       setAccount({ configured: false });
       setDaemonRunning(false);
     } finally { setLoading(false); }
-  }, [step]);
+  }, []);
 
   useEffect(() => { refresh(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, [refresh]);
   useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
@@ -208,7 +208,7 @@ export default function WeChatBridgePage() {
                   {step === "starting-server" ? "正在启动服务..." : "正在连接微信桥接..."}
                 </p>
               </div>
-            ) : isReady && step !== "scanning" ? (
+            ) : isReady ? (
               <div className="text-center space-y-5">
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
                   <span className="material-symbols-outlined text-3xl text-primary">wifi</span>
