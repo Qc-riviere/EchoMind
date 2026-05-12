@@ -407,3 +407,65 @@ node dist/main.js daemon
 - **2026-04-17** | 初始决策（§9 全部 4 项）+ 确定三层架构视图（§10）| 与 Obsidian 模式对齐，明确隐私边界和付费模块边界
 - **2026-04-17b** | 架构认知修正：实现用的是 iLink 官方协议（非 wechaty）| 重写 §1 架构图、§5.1 daemon 技术栈、§5.3（删 Redis）、§5.4（加入胶囊/LLM key 推送）、§5.5（新增 Persona 胶囊 + 离线 LLM 详细设计）、§6（删风控 → 改 iLink 注意事项）、§7（重排 Phase）、§8（成本 ¥40→¥10）、§9 新增 5–9 号决策 |
 - **2026-04-17c** | 场景认知修正：bot 是单人工具（你用手机 WX 操作自己的第二大脑），**不**涉及朋友对话。采用 Obsidian Sync 模式：明确付费 + 知情同意 + 用户选上云范围 | 作废 §5.5 Persona 胶囊整节改为"上云子集规则"、§2 核心原则重写（不再假装零知识）、§4 隐私边界加入知情同意提示、§5.1 daemon 加入 echomind-server + 子集 SQLite、§5.4 配对流程加入 subset_rules、§7 重写 Phase（去掉 Persona 相关、加入子集同步）、§8 成本 ¥10→¥15-25（需存储）、§9 新增 10–13 号决策、§10 三层描述修正（Bridge 非零知识） |
+- **2026-05-12** | 协议名称澄清 + 灰度卡点全景盘点 | (1) 全文涉及"iLink"语境恰当上下文化为「微信 ClawBot（产品名）+ iLink 协议（底层）+ `@tencent-weixin/openclaw-weixin` npm 包（腾讯官方 scope）」；(2) H8 商业化风险整段推翻——这是 2026 腾讯官方放开协议，无商用风险；(3) 新增 §13「公开发布前卡点清单」，按 P0/P1/P2 分级 |
+
+---
+
+## 13. 公开发布前卡点清单（2026-05-12 盘点）
+
+按"别人能不能用"维度按严重度排序。**P0 不解决 = 没人能用；P1 不解决 = 装了能用但流失高；P2 = Beta 前考虑**。
+
+### P0 阻断性卡点
+
+| # | 卡点 | 为什么阻断 | 解法 |
+|---|---|---|---|
+| 1 | **没有 release binary** | 普通用户没有 Rust 工具链，自己 `pnpm tauri build` 不可能 | 加 GHA workflow：tag → 自动 build Win .msi + Mac .dmg → 推 GitHub Release |
+| 2 | **没有 echomind-bridge-server docker 镜像** | VPS 部署必须先 `docker pull`；现在任何人都没法一行命令起 bridge | 加 GHA workflow：build & push 到 `ghcr.io/qc-riviere/echomind-bridge-server` |
+| 3 | **`/bridge/thoughts/capture` 路由未实现**（§7 Phase 4，§11 注明） | bridge 独立模式下手机微信发文字不能新建灵感——L2 用户在桌面关机时只能查不能写，"远程操作"叙事破裂 | Phase 4 子任务，1-2 天 |
+| 4 | **新手 onboarding 缺失** | 用户装完 → 看到全英文 + 复杂 Settings → 不知道下一步 | 写首次启动引导（4 步：填 LLM Key → 测试连接 → 录第一条 → 介绍微信桥可选） |
+
+### P1 体验劝退
+
+| # | 卡点 | 影响 | 解法 |
+|---|---|---|---|
+| 5 | Mac Gatekeeper / Win SmartScreen 拦截 | 30%+ 用户在"右键打开"步骤直接弃用 | Beta 前买 Apple Dev $99/年；Win 暂用文档教程 |
+| 6 | LLM Key 注册门槛 | 用户进 EchoMind 才发现"还要注册 DeepSeek 充值" | 文档给一键注册链接 + 充值 ¥10 即可指引；考虑首次启动赠送少量额度（需后端） |
+| 7 | 错误信息不友好 | API 报错直接弹原始 stack | settings.tsx 加错误信息翻译层 |
+| 8 | 微信 ClawBot 扫码流程 UI 完整性未验证 | WeChatBridgePage 改了 step 状态机，e2e 是否死锁未知 | 自己重装走完整 onboarding 流程实测 |
+| 9 | 没有"测试 LLM 连接"按钮 | 填错 Key 要到 enrich 时才报错 | 后端 `test_llm_connection` 已存在，前端 Settings 加按钮 |
+| 10 | Phase 4 剩余三项：`/chat` 速率限制 + 断线重连 + Budget 通知 | 失控调用耗预算 / 网络抖动数据不一致 / 用户预算耗尽不知情 | Phase 4 收尾，1-2 周 |
+
+### P2 长期改进
+
+| # | 卡点 | 影响 | 解法 |
+|---|---|---|---|
+| 11 | 没有用户协议 / 隐私政策 | 合规必备，"知情同意"叙事需要文案落地 | 法律咨询 + 草拟 |
+| 12 | 没有 Landing Page | 公开发布入口 | Vercel 部署 1 页 |
+| 13 | 没有支付通道 | 收订阅必备 | Stripe + 国内 Pingxx，Beta 前接 |
+| 14 | fastembed 模型首次下载 400MB+ | 国内 HuggingFace 不稳 | 文档提示 hf-mirror，长期可分发本地缓存 |
+| 15 | 首次启动数据库迁移日志暴露 | console 一堆 ALTER TABLE，不专业 | 静默化 |
+
+### 不算卡点（伪问题）
+
+- ~~iLink Bot 协议合规风险~~：已澄清为腾讯官方协议（见 §12 2026-05-12 决策日志）
+- ~~VPS 部署境内 vs 境外~~：境内 + Docker Compose 已规划
+- ~~sqlite-vec 性能不够~~：理论值 OK，待基准
+
+### 优先级路线
+
+```
+本周（解阻断）：
+  ├── P0 #1  GHA: app build & release
+  ├── P0 #2  GHA: bridge-server docker push
+  └── P1 #9  Settings 加"测试 LLM 连接"按钮（半小时）
+
+两周内：
+  ├── P0 #3  /bridge/thoughts/capture 路由
+  ├── P1 #8  自己 e2e 走 onboarding 找漏
+  └── P0 #4  新手引导组件
+
+Alpha 启动前：
+  └── P1 #10 Phase 4 剩余三项（速率/重连/Budget）
+```
+
+详细的灰度发布操作步骤（VPS 部署、招募文案、反馈通道）见根目录 `EchoMind_MVP汇报报告.md` §7。

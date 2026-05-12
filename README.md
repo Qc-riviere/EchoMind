@@ -1,13 +1,26 @@
 # EchoMind
 
-带记忆的 AI 思考伙伴（第二大脑）
+灵感备忘录 · 跨设备记录 + AI 自动整理 + 偶尔深度对话
 
 ## 核心特性
 
-- **快速记录** — 随时捕捉灵感，AI 自动补全上下文、领域、标签
-- **语义检索** — 自然语言搜索历史想法，不再迷失在笔记海洋
-- **关联发现** — 记录新想法时自动提示相似历史，激活跨时间关联
-- **拷问对话** — 结构化框架帮你深入思考，将想法提炼成洞见
+### 记录
+- **全局速记浮窗** — `Ctrl+Shift+I` 任何场景下唤出无边框小窗，Enter 保存，Esc/失焦自动隐藏。窗口常驻不可见，热键响应即时
+- **托盘常驻** — 系统托盘图标 hover 显示「今日新增 N」，点击聚焦主窗
+- **微信速记** — 手机微信发条消息即落库，桌面端 30s 内同步并发系统通知
+- **AI 自动补全** — 上下文、领域、标签自动生成，无需手动整理
+
+### 浏览
+- **首页双列表** — 「最近 5」+「对话最多 5」，分别覆盖时间维度和注意力维度
+- **置顶最重要的事** — 单条灵感可置顶到首页顶部，对应「人生当前主线」
+- **语义检索** — 自然语言搜索历史想法
+- **关联发现** — 新想法落库时自动提示相似历史
+
+### 整理
+- **多选 AI 总结** — 勾选 2–20 条灵感，AI 一键归纳为中心论点+要点。可保存为新灵感或导出 MD/DOCX/PDF
+- **对话深挖** — 单条灵感开启对话，结构化框架引导思考；首页/侧边栏可回到任意历史会话
+
+### 多端
 - **微信桥接** — 手机微信远程操作第二大脑（本地 / VPS 两种模式）
 - **云端同步** — 可选把筛选后的想法子集推送到 VPS，桌面关机也能用手机访问
 
@@ -19,7 +32,7 @@
 | 桌面壳 | Tauri 2.0 (Rust) |
 | 本地数据库 | SQLite + sqlite-vec（向量搜索） |
 | LLM | OpenAI / Google Gemini / Anthropic Claude |
-| 微信 Bot | Node.js daemon（iLink 官方 Bot 协议） |
+| 微信 Bot | Node.js daemon（基于腾讯官方 `@tencent-weixin/openclaw-weixin`，iLink 协议） |
 | 云端桥服务 | Rust + axum + rusqlite（echomind-bridge-server） |
 
 ## 项目结构
@@ -60,7 +73,7 @@ echomind-wechat/                  # 微信 Bot daemon（Node.js）
 │   ├── echomind/
 │   │   ├── client.ts             # 本地 EchoMind 服务器 HTTP 客户端
 │   │   └── bridge-client.ts     # VPS Bridge 服务器 HTTP 客户端
-│   ├── wechat/                   # iLink Bot API 封装
+│   ├── wechat/                   # 微信 ClawBot 封装（腾讯官方 iLink 协议）
 │   └── session.ts                # 用户会话管理
 └── package.json
 ```
@@ -92,14 +105,22 @@ pnpm tauri build
 
 ## 微信桥接（可选）
 
+> EchoMind 接入的是 **腾讯 2026 年官方放开的个人号 Bot API**——产品名 **微信 ClawBot**，底层协议 **iLink（智联）**，npm 包 [`@tencent-weixin/openclaw-weixin`](https://www.npmjs.com/package/@tencent-weixin/openclaw-weixin)（腾讯官方 scope）。
+>
+> **无封号风险、无商用限制**。bot 是独立 contact 加入用户微信，主号完全不受影响。区别于 wechaty / PadWechat 等已被禁的第三方协议。
+>
+> 背书链接：[GitHub Tencent/openclaw-weixin](https://github.com/Tencent/openclaw-weixin) · [OpenClaw 官方文档 - WeChat Channel](https://docs.openclaw.ai/channels/wechat)
+
 ### 本地模式（桌面需在线）
 
-1. 在 WeChat Bridge 页面点击"扫码连接"
-2. 用微信扫码绑定 iLink Bot
-3. 点击"启动桥接"，桌面 daemon 开始运行
-4. 手机微信发消息给 Bot 即可操作第二大脑
+1. 在 WeChat Bridge 页面点击"启动微信桥"
+2. 桌面 daemon 自动调起腾讯官方 CLI（`@tencent-weixin/openclaw-weixin-cli`）弹出二维码
+3. 用自己的微信扫码授权，CLI 自动拿到 bot_token 并保存
+4. 手机微信发消息给 bot 即可操作第二大脑
 
 Bot 命令：`/list`、`/search <词>`、`/view <ID>`、`/chat <ID>`、`/archive <ID>`、`/status`、`/help`
+
+`/chat` 回复带耗时尾注（`⏱ 1.8s`），便于判断模型响应速度。直接发文字（不带斜杠）即新建一条灵感，桌面端 30s 内拉到并弹系统通知。
 
 ### 云端模式（VPS 独立运行，桌面离线也可用）
 
