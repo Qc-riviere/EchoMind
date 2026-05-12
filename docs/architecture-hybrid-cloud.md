@@ -484,6 +484,7 @@ Beta 公开前：
 |---|---|---|
 | 可安装 | ✅ | tag v* 自动 build Win .msi + macOS .dmg 到 Release |
 | 可部署 bridge | ✅ | `docker pull ghcr.io/qc-riviere/echomind-bridge:latest` |
+| Staging 实际运行 | ✅ | VPS 49.128.204.149 (1c1g) 已部署，Cloud Bridge + WeChat 双向互通验证通过（2026-05-12） |
 | 首次能用 | ✅ | Onboarding 4 步引导覆盖 0 → 第一条灵感 |
 | 核心功能完整 | ✅ | 速记 / 浏览 / AI 总结 / 对话 / 微信桥 / Cloud Bridge 全跑通 |
 | 体验打磨 | ⚠️ | 错误信息原始 / 无 macOS 签名（用户需"右键打开"） |

@@ -177,7 +177,8 @@
 
 🚧 仍待办：
 - [ ] Phase 4 剩余三项：`/chat` 速率限制 + Budget Tauri 事件 + 断线重连
-- [ ] 部署 staging VPS 跑 14 天压力测试（模拟 50 用户并发）
+- [x] 部署 staging VPS（49.128.204.149，1c1g）—— Cloud Bridge + WeChat 互通已验证
+- [ ] VPS 跑 14 天稳定性观察（H9 数据收集，已在运行中）
 - [ ] 阅读 OpenClaw 官方文档与 `@tencent-weixin/openclaw-weixin` README，记录限流上限（轻量任务，0.5 天）
 - [ ] 申请 Apple Developer ID + 准备 Mac 签名（Windows 暂缓）
 - [ ] 自己 e2e 走完 onboarding + 微信桥扫码（P1 #8），找漏修补
