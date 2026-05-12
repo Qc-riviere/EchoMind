@@ -1,5 +1,3 @@
-import { formatDistanceToNow } from "date-fns";
-import { zhCN } from "date-fns/locale";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import type { Thought } from "../lib/types";
@@ -29,7 +27,6 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
   const enrichError = enrichErrors[thought.id];
   const hasImage = thought.image_path && isImageFile(thought.image_path);
 
-  const timeAgo = formatDistanceToNow(new Date(thought.created_at), { addSuffix: true, locale: zhCN });
   const dateStr = new Date(thought.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).toUpperCase();
 
   const handleOpenFile = async (e: React.MouseEvent) => {
