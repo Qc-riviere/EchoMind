@@ -19,3 +19,7 @@ src-tauri/sqlite-vec/sqlite-vec.tar.gz
 Thumbs.db
 实现计划.md
 灵感笔记.md
+
+# Personal / ad-hoc — Suzhou competition application + helper script
+output_docs/
+scripts/
