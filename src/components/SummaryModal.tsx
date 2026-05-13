@@ -89,7 +89,12 @@ export default function SummaryModal({ isOpen, onClose, thoughts, summary, loadi
         .map((t, i) => `${i + 1}. ${t.content.split("\n")[0].slice(0, 60)}`)
         .join("\n");
       const content = `[AI 总结 · ${thoughts.length} 条灵感]\n\n${summary}\n\n---\n来源：\n${sourceList}`;
-      await invoke("create_thought", { content });
+      const created = await invoke<{ id: string }>("create_thought", { content });
+      // Fire-and-forget enrich + embed so the saved summary picks up
+      // domain/tags/vector — search and "对话最多" need it to surface.
+      invoke("enrich_thought", { thoughtId: created.id })
+        .then(() => invoke("embed_thought", { thoughtId: created.id }))
+        .catch((err) => console.error("[summary] enrich/embed failed:", err));
       await notify("EchoMind", "总结已保存为新灵感");
       onSavedAsThought?.();
       onClose();

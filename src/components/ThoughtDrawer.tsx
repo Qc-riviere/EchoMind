@@ -100,10 +100,16 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
       }
       const enriched = await invoke<Thought>("enrich_thought", { thoughtId: displayThought.id });
       setDisplayThought(enriched);
-      // Sync to global store so home/list reflects the new enrichment
-      setThoughts((state) => ({
-        thoughts: state.thoughts.map((t) => (t.id === enriched.id ? enriched : t)),
-      }));
+      // Sync to global store so home/list reflects the new enrichment.
+      // Also clear any stale enrichErrors[id] from a prior failed attempt
+      // — otherwise the red banner sticks even after a successful re-run.
+      setThoughts((state) => {
+        const { [enriched.id]: _removed, ...remainingErrors } = state.enrichErrors;
+        return {
+          thoughts: state.thoughts.map((t) => (t.id === enriched.id ? enriched : t)),
+          enrichErrors: remainingErrors,
+        };
+      });
       // Re-embed in background so search/related uses the new content
       invoke("embed_thought", { thoughtId: enriched.id }).catch(() => {});
       notify("EchoMind", "AI 已完成重新分析").catch(() => {});

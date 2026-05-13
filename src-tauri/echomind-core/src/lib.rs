@@ -9,6 +9,8 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Mutex;
 
+use rusqlite::OptionalExtension;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1658,6 +1660,10 @@ impl EchoMind {
 
         let mut changed = 0usize;
         let mut cursor = since.clone();
+        // IDs we just inserted that arrived without domain/tags from the
+        // bridge — these need a local enrich + embed pass so they get the
+        // same AI metadata as desktop-captured thoughts.
+        let mut needs_enrich: Vec<String> = Vec::new();
         loop {
             let batch = client
                 .fetch_thoughts_since(cursor.as_deref(), 200)
@@ -1668,6 +1674,17 @@ impl EchoMind {
             let conn = self.conn()?;
             let mut max_updated = cursor.clone().unwrap_or_default();
             for r in &batch {
+                // Detect "newly inserted" by checking existence before upsert.
+                // Cheaper than touching `upsert_from_remote`'s public signature.
+                let already_exists: bool = conn
+                    .query_row(
+                        "SELECT 1 FROM thoughts WHERE id = ?1",
+                        rusqlite::params![&r.id],
+                        |_| Ok(()),
+                    )
+                    .optional()
+                    .map_err(|e| e.to_string())?
+                    .is_some();
                 let tags_joined = r.tags.as_ref().map(|v| v.join(","));
                 let applied = thoughts::upsert_from_remote(
                     &conn,
@@ -1681,6 +1698,19 @@ impl EchoMind {
                 .map_err(|e| e.to_string())?;
                 if applied {
                     changed += 1;
+                    if !already_exists {
+                        let domain_blank = r
+                            .domain
+                            .as_deref()
+                            .map_or(true, |s| s.trim().is_empty());
+                        let tags_blank = r
+                            .tags
+                            .as_ref()
+                            .map_or(true, |v| v.is_empty());
+                        if domain_blank && tags_blank {
+                            needs_enrich.push(r.id.clone());
+                        }
+                    }
                 }
                 if r.updated_at > max_updated {
                     max_updated = r.updated_at.clone();
@@ -1699,6 +1729,22 @@ impl EchoMind {
                 break;
             }
         }
+
+        // Enrich + embed bridge-sourced thoughts that arrived bare (no
+        // domain/tags). LLM calls are sequential per item — typical wechat
+        // burst is 1-3 thoughts, so total cost is a few seconds; each
+        // failure is logged and skipped so one bad enrich doesn't block
+        // the rest of the sync.
+        for id in &needs_enrich {
+            if let Err(e) = self.enrich_thought(id).await {
+                eprintln!("[bridge-sync] enrich {} failed: {}", id, e);
+                continue;
+            }
+            if let Err(e) = self.embed_thought(id).await {
+                eprintln!("[bridge-sync] embed {} failed: {}", id, e);
+            }
+        }
+
         Ok(changed)
     }
 

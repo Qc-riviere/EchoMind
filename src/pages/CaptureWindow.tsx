@@ -44,12 +44,20 @@ export default function CaptureWindow() {
     setSaving(true);
     setError(null);
     try {
-      await invoke("create_thought", { content });
+      const created = await invoke<{ id: string }>("create_thought", { content });
       // Notify other windows (HomePage etc.) to refresh — capture lives in
       // its own webview, so without this the main window only picks the new
       // thought up on its 30s poll tick.
       await emit("thought:created");
       await dismiss();
+      // Fire-and-forget: enrich + embed so quick captures get the same
+      // domain/tags/vector as ones via the main ThoughtInput. Re-emit
+      // thought:created when enrichment lands so HomePage picks up the
+      // fully-enriched copy.
+      invoke("enrich_thought", { thoughtId: created.id })
+        .then(() => invoke("embed_thought", { thoughtId: created.id }))
+        .then(() => emit("thought:created"))
+        .catch((err) => console.error("[capture] enrich/embed failed:", err));
     } catch (e) {
       setError(errorMsg(e));
       setSaving(false);
