@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -78,6 +78,18 @@ export default function HomePage() {
     return map;
   }, [home, allThoughts]);
 
+  const listSectionRef = useRef<HTMLElement>(null);
+  const skipScrollRef = useRef(true);
+  useEffect(() => {
+    // Skip the initial render and the scroll-after-new-thought reset
+    // (already handled by being on page 1 = top of list).
+    if (skipScrollRef.current) {
+      skipScrollRef.current = false;
+      return;
+    }
+    listSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [pageSafe]);
+
   const selectedThoughts = useMemo(
     () => Array.from(selectedIds).map((id) => allDisplayed.get(id)).filter(Boolean) as Thought[],
     [selectedIds, allDisplayed],
@@ -142,7 +154,7 @@ export default function HomePage() {
             </section>
           )}
 
-          <section>
+          <section ref={listSectionRef} className="scroll-mt-6">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xl font-headline font-bold text-on-surface">所有想法</h3>
               <div className="flex items-center gap-3">
