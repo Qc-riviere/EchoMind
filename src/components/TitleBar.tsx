@@ -22,21 +22,24 @@ export default function TitleBar() {
       <div className="flex items-center -mr-2">
         <button
           onClick={handleMinimize}
+          aria-label="最小化窗口"
           className="w-10 h-9 flex items-center justify-center text-on-surface-variant/50 hover:bg-surface-container-high hover:text-on-surface transition-colors"
         >
-          <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor"/></svg>
+          <svg width="10" height="1" viewBox="0 0 10 1" aria-hidden="true"><rect width="10" height="1" fill="currentColor"/></svg>
         </button>
         <button
           onClick={handleToggleMaximize}
+          aria-label="最大化或还原"
           className="w-10 h-9 flex items-center justify-center text-on-surface-variant/50 hover:bg-surface-container-high hover:text-on-surface transition-colors"
         >
-          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1"/></svg>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1"/></svg>
         </button>
         <button
           onClick={handleClose}
+          aria-label="关闭窗口"
           className="w-10 h-9 flex items-center justify-center text-on-surface-variant/50 hover:bg-error hover:text-on-error transition-colors"
         >
-          <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.2"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.2"/></svg>
+          <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.2"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.2"/></svg>
         </button>
       </div>
     </div>

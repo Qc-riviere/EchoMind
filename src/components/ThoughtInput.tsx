@@ -162,8 +162,8 @@ export default function ThoughtInput({ onCaptured }: ThoughtInputProps = {}) {
                   <p className="text-sm font-medium text-on-surface truncate">{attachment.name}</p>
                   <p className="text-[11px] text-on-surface-variant">{formatSize(attachment.size)}</p>
                 </div>
-                <button onClick={() => setAttachment(null)} className="text-on-surface-variant hover:text-on-surface transition-colors">
-                  <span className="material-symbols-outlined text-[18px]">close</span>
+                <button onClick={() => setAttachment(null)} aria-label="移除附件" className="text-on-surface-variant hover:text-on-surface transition-colors">
+                  <span className="material-symbols-outlined text-[18px]" aria-hidden="true">close</span>
                 </button>
               </div>
             )}

@@ -223,32 +223,25 @@ export default function ChatPage() {
         <div className="absolute bottom-6 left-0 right-0 px-8">
           <div className="max-w-4xl mx-auto glass-panel p-2 rounded-[1.5rem] shadow-2xl border border-outline-variant/10">
             <div className="flex items-end gap-3 p-2">
-              <button className="p-3 text-outline hover:text-primary transition-all shrink-0">
-                <span className="material-symbols-outlined text-[20px]">edit_note</span>
-              </button>
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => { setInput(e.target.value); autoResize(); }}
-                placeholder="Ask EchoMind to analyze deeply..."
-                className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-on-surface placeholder:text-outline/50 resize-none py-3 min-h-[24px] max-h-[200px] overflow-y-auto text-sm"
+                placeholder="向 EchoMind 提问、追问或拷问…"
+                aria-label="对话输入"
+                className="flex-1 bg-transparent border-none focus:ring-0 focus:outline-none text-on-surface placeholder:text-outline/50 resize-none py-3 min-h-[24px] max-h-[200px] overflow-y-auto text-sm pl-3"
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 disabled={isStreaming}
                 rows={1}
               />
-              <div className="flex items-center gap-2 shrink-0">
-                <button className="p-3 text-outline hover:text-primary transition-all group relative">
-                  <span className="material-symbols-outlined text-[20px]">history</span>
-                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-surface-container-high text-[11px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest whitespace-nowrap">Recall</span>
-                </button>
-                <button
-                  onClick={handleSend}
-                  disabled={!input.trim() || isStreaming}
-                  className="w-12 h-12 bg-primary-container text-on-primary-container rounded-xl flex items-center justify-center hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined">send</span>
-                </button>
-              </div>
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || isStreaming}
+                aria-label="发送"
+                className="w-12 h-12 shrink-0 bg-primary-container text-on-primary-container rounded-xl flex items-center justify-center hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">send</span>
+              </button>
             </div>
             <div className="flex gap-2 overflow-x-auto pb-2 px-4 no-scrollbar">
               {QUICK_CHIPS.map((chip) => (

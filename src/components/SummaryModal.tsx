@@ -144,8 +144,8 @@ export default function SummaryModal({ isOpen, onClose, thoughts, summary, loadi
             <span className="material-symbols-outlined text-primary text-[20px]">auto_awesome</span>
             <h2 className="font-headline font-semibold text-on-surface">AI 总结 · {thoughts.length} 条灵感</h2>
           </div>
-          <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">
-            <span className="material-symbols-outlined">close</span>
+          <button onClick={onClose} aria-label="关闭" className="text-on-surface-variant hover:text-on-surface">
+            <span className="material-symbols-outlined" aria-hidden="true">close</span>
           </button>
         </div>
 

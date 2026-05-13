@@ -213,3 +213,20 @@ h1, h2, h3, h4, h5, h6 {
     scroll-behavior: auto !important;
   }
 }
+
+/* Global keyboard focus indicator — applies to anything interactive
+   that doesn't carry an explicit Tailwind focus-visible: ring class.
+   Mouse clicks won't trigger :focus-visible, so this only shows up
+   during keyboard nav, which is exactly when it's needed. */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
