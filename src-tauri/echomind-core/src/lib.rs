@@ -567,8 +567,55 @@ impl EchoMind {
         vectors::store_embedding(&conn, thought_id, &emb).map_err(|e| e.to_string())
     }
 
+    /// Drop and recreate `thought_embeddings` when its stored dimension
+    /// disagrees with the current embedding config. vec0 virtual tables lock
+    /// dimensions at CREATE time, so switching providers (e.g. OpenAI 1536 →
+    /// local 512) requires recreating the table. Caller must re-embed after.
+    fn ensure_vec_table_dimensions(
+        conn: &rusqlite::Connection,
+        target_dims: u32,
+    ) -> Result<(), String> {
+        let sql: Option<String> = conn
+            .query_row(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='thought_embeddings'",
+                [],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?;
+
+        let current_dims: Option<u32> = sql.as_deref().and_then(|s| {
+            let start = s.find("float[")? + "float[".len();
+            let end = s[start..].find(']')? + start;
+            s[start..end].trim().parse::<u32>().ok()
+        });
+
+        if current_dims == Some(target_dims) {
+            return Ok(());
+        }
+
+        conn.execute("DROP TABLE IF EXISTS thought_embeddings", [])
+            .map_err(|e| e.to_string())?;
+        conn.execute_batch(&format!(
+            "CREATE VIRTUAL TABLE thought_embeddings USING vec0(
+                thought_id TEXT PRIMARY KEY,
+                embedding float[{}]
+            );",
+            target_dims
+        ))
+        .map_err(|e| e.to_string())?;
+
+        Ok(())
+    }
+
     /// Re-embed all non-archived thoughts. Useful after embedding logic changes.
     pub async fn reembed_all_thoughts(&self) -> Result<usize, String> {
+        let emb_config = self.load_embedding_config()?;
+        {
+            let conn = self.conn()?;
+            Self::ensure_vec_table_dimensions(&conn, emb_config.dimensions)?;
+        }
+
         let thought_ids: Vec<String> = {
             let conn = self.conn()?;
             thoughts::list_thoughts(&conn)
