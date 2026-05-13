@@ -10,6 +10,21 @@ export default function CaptureWindow() {
 
   useEffect(() => {
     inputRef.current?.focus();
+    // Window is reused (visible:false instead of destroyed), so refocus + reset
+    // every time it's shown again via the global hotkey.
+    const win = getCurrentWindow();
+    const unlisten = win.onFocusChanged(({ payload: focused }) => {
+      if (focused) {
+        setText("");
+        setError(null);
+        setSaving(false);
+        // RAF to ensure DOM updated before focusing
+        requestAnimationFrame(() => inputRef.current?.focus());
+      }
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
   }, []);
 
   const dismiss = async () => {
@@ -18,6 +33,7 @@ export default function CaptureWindow() {
     } catch { /* ignore */ }
     setText("");
     setError(null);
+    setSaving(false);
   };
 
   const submit = async () => {
