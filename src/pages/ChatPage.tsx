@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { save } from "@tauri-apps/plugin-dialog";
+import { writeTextFile, writeFile } from "@tauri-apps/plugin-fs";
 import { useChatStore } from "../stores/chatStore";
+import { buildChatMarkdown, buildChatDocxBlob } from "../lib/chatExporters";
+import { errorMsg } from "../lib/errorMsg";
+import { notify } from "../lib/notify";
 import type { Thought } from "../lib/types";
 
 const QUICK_CHIPS = [
@@ -86,6 +91,7 @@ export default function ChatPage() {
   const [thought, setThought] = useState<Thought | null>(null);
   const [input, setInput] = useState("");
   const [panelOpen, setPanelOpen] = useState(true);
+  const [exportOpen, setExportOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasSentInitialRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -132,14 +138,94 @@ export default function ChatPage() {
     }
   }, []);
 
+  const exportableMessages = messages.filter((m) => !m.withdrawn && m.role !== "system");
+  const canExport = exportableMessages.length > 0 && !isStreaming;
+  const defaultStem = `EchoMind对话-${
+    thought
+      ? (thought.file_summary || thought.content).split("\n")[0].slice(0, 20).replace(/[\\/:*?"<>|]/g, "")
+      : new Date().toISOString().slice(0, 10)
+  }`;
+
+  const handleExportMd = async () => {
+    setExportOpen(false);
+    try {
+      const path = await save({
+        defaultPath: `${defaultStem}.md`,
+        filters: [{ name: "Markdown", extensions: ["md"] }],
+      });
+      if (!path) return;
+      await writeTextFile(path, buildChatMarkdown(thought, exportableMessages));
+      await notify("EchoMind", "已导出 Markdown");
+    } catch (e) {
+      console.error("Export chat MD failed:", e);
+      await notify("EchoMind", `导出失败：${errorMsg(e)}`);
+    }
+  };
+
+  const handleExportDocx = async () => {
+    setExportOpen(false);
+    try {
+      const path = await save({
+        defaultPath: `${defaultStem}.docx`,
+        filters: [{ name: "Word Document", extensions: ["docx"] }],
+      });
+      if (!path) return;
+      const bytes = await buildChatDocxBlob(thought, exportableMessages);
+      await writeFile(path, bytes);
+      await notify("EchoMind", "已导出 DOCX");
+    } catch (e) {
+      console.error("Export chat DOCX failed:", e);
+      await notify("EchoMind", `导出失败：${errorMsg(e)}`);
+    }
+  };
+
+  const handleExportPdf = () => {
+    setExportOpen(false);
+    window.print();
+  };
+
   const resources = thought ? generateResources(thought) : [];
 
   return (
-    <div className="absolute inset-0 flex overflow-hidden">
+    <div className="absolute inset-0 flex overflow-hidden print:static print:overflow-visible print:block">
       {/* Main chat column */}
-      <div className="flex-1 flex flex-col relative min-w-0">
+      <div className="flex-1 flex flex-col relative min-w-0 print:flex-none">
+        {/* Top-right action stack: export + (optional) panel toggle */}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2 print:hidden">
+          <div className="relative">
+            <button
+              onClick={() => setExportOpen((v) => !v)}
+              disabled={!canExport}
+              aria-label="导出对话"
+              title="导出对话"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-[12px] text-on-surface-variant hover:text-primary transition-all ghost-border disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">download</span>
+              导出
+              <span className="material-symbols-outlined text-[14px]" aria-hidden="true">expand_more</span>
+            </button>
+            {exportOpen && (
+              <div className="absolute top-full mt-2 right-0 bg-surface-container-high rounded-xl border border-outline-variant/20 shadow-xl overflow-hidden min-w-[140px]">
+                <button onClick={handleExportMd} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container-highest transition-colors">Markdown</button>
+                <button onClick={handleExportDocx} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container-highest transition-colors">DOCX</button>
+                <button onClick={handleExportPdf} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container-highest transition-colors">PDF（打印）</button>
+              </div>
+            )}
+          </div>
+          {!panelOpen && (
+            <button
+              onClick={() => setPanelOpen(true)}
+              aria-label="展开侧栏"
+              className="p-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant/50 hover:text-primary transition-all ghost-border"
+              title="展开侧栏"
+            >
+              <span className="material-symbols-outlined text-[20px]" aria-hidden="true">menu_open</span>
+            </button>
+          )}
+        </div>
+
         {/* Scrollable message area */}
-        <div className="flex-1 overflow-y-auto px-8 pt-6 space-y-8 pb-48 no-scrollbar">
+        <div className="flex-1 overflow-y-auto px-8 pt-6 space-y-8 pb-48 no-scrollbar print:overflow-visible print:pb-0">
           {/* Thought context header */}
           {thought && (
             <div className="max-w-4xl mx-auto">
@@ -168,9 +254,10 @@ export default function ChatPage() {
                     {!msg.withdrawn && (
                       <button
                         onClick={() => withdrawMessage(msg.id)}
-                        className="absolute -left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-surface-container-highest rounded-full"
+                        aria-label="撤回此条"
+                        className="absolute -left-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-surface-container-highest rounded-full print:hidden"
                       >
-                        <span className="material-symbols-outlined text-[14px] text-on-surface-variant">undo</span>
+                        <span className="material-symbols-outlined text-[14px] text-on-surface-variant" aria-hidden="true">undo</span>
                       </button>
                     )}
                   </div>
@@ -220,7 +307,7 @@ export default function ChatPage() {
         </div>
 
         {/* Floating input bar */}
-        <div className="absolute bottom-6 left-0 right-0 px-8">
+        <div className="absolute bottom-6 left-0 right-0 px-8 print:hidden">
           <div className="max-w-4xl mx-auto glass-panel p-2 rounded-[1.5rem] shadow-2xl border border-outline-variant/10">
             <div className="flex items-end gap-3 p-2">
               <textarea
@@ -263,22 +350,12 @@ export default function ChatPage() {
           </div>
         </div>
 
-        {/* Panel toggle button (when collapsed) */}
-        {!panelOpen && (
-          <button
-            onClick={() => setPanelOpen(true)}
-            className="absolute top-4 right-4 p-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant/50 hover:text-primary transition-all ghost-border"
-            title="Show resources"
-          >
-            <span className="material-symbols-outlined text-[20px]">menu_open</span>
-          </button>
-        )}
       </div>
 
       {/* Right panel - Contextual Resources */}
       {panelOpen && (
         <aside
-          className="flex flex-col bg-surface-container-low border-l border-outline-variant/5 overflow-y-auto no-scrollbar shrink-0"
+          className="flex flex-col bg-surface-container-low border-l border-outline-variant/5 overflow-y-auto no-scrollbar shrink-0 print:hidden"
           style={{ width: 304 }}
         >
           <div className="p-6">
