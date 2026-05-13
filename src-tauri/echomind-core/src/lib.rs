@@ -374,13 +374,25 @@ impl EchoMind {
                         .filter(|m| m.contains("embedding-") && !m.contains("openai") && !m.starts_with("text-embedding-3") && m != "text-embedding-ada-002")
                         .unwrap_or_else(|| "gemini-embedding-exp-03-07".to_string()),
                 ),
-                _ => (
+                "openai" => (
                     llm_key,
                     "https://api.openai.com/v1/embeddings".to_string(),
                     emb_model
                         .filter(|m| !m.contains("004") && !m.contains("gecko"))
                         .unwrap_or_else(|| "text-embedding-3-small".to_string()),
                 ),
+                // Providers without an OpenAI-compatible embedding endpoint
+                // (anthropic/claude, deepseek, etc.) — fall back to local bge-small-zh-v1.5
+                // which always outputs 512-dim vectors. Hard-coded to avoid mismatch with
+                // any stale `embedding_dimensions` setting (e.g. 1536 from a failed OpenAI attempt).
+                _ => {
+                    return Ok(EmbeddingConfig {
+                        api_key: String::new(),
+                        model: "bge-small-zh-v1.5".to_string(),
+                        base_url: "local".to_string(),
+                        dimensions: crate::llm::local_embedding::LOCAL_EMBED_DIM as u32,
+                    });
+                }
             }
         };
 
