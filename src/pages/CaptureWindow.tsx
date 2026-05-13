@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export default function CaptureWindow() {
@@ -43,6 +44,10 @@ export default function CaptureWindow() {
     setError(null);
     try {
       await invoke("create_thought", { content });
+      // Notify other windows (HomePage etc.) to refresh — capture lives in
+      // its own webview, so without this the main window only picks the new
+      // thought up on its 30s poll tick.
+      await emit("thought:created");
       await dismiss();
     } catch (e) {
       setError(String(e));

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import ThoughtInput from "../components/ThoughtInput";
 import ThoughtList from "../components/ThoughtList";
 import ApiKeyGuide from "../components/ApiKeyGuide";
@@ -37,7 +38,14 @@ export default function HomePage() {
   useEffect(() => {
     loadHome();
     const t = setInterval(loadHome, 30000);
-    return () => clearInterval(t);
+    let unlisten: UnlistenFn | null = null;
+    listen("thought:created", () => loadHome()).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      clearInterval(t);
+      unlisten?.();
+    };
   }, [loadHome]);
 
   const allDisplayed = useMemo(() => {
