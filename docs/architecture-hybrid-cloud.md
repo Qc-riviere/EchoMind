@@ -411,6 +411,7 @@ node dist/main.js daemon
 - **2026-05-12** | P0 #1 + #2 落地 | (1) 新增 `.github/workflows/desktop-release.yml`：tauri-action 矩阵 build Windows + macOS universal，push tag `v*` 触发，产物推 Release 草稿；(2) 复盘发现 `.github/workflows/docker-publish.yml` 已存在并覆盖 bridge-server + wechat 两个镜像，P0 #2 实际已完成，§13 卡点清单更新状态 |
 - **2026-05-12** | P0 全部清完 / Alpha-ready | (1) `v0.1.0-rc1` tag 触发 desktop-release，macOS + Windows 双 job 14m+ 通过；(2) 复盘 P0 #3 `/bridge/thoughts/capture` 路由实际已实现（routes.rs:28 + bridge-client.ts:68），enrich/embed gap 降为 P1 #11b；(3) 复盘 P1 #9 测试 LLM 按钮已在 SettingsPage 存在；(4) 新增 `src/components/Onboarding.tsx` 4 步首次启动引导（欢迎 → LLM 配置+测试 → 第一条灵感 → 微信桥 teaser），`App.tsx` 加 OnboardingGate 自动触发；(5) §13 加 Alpha 就绪度评估表，结论：Alpha 招募已可启动 |
 - **2026-05-13** | UI/UX 体系性整顿 + P1 路线锁定 | 通过 ui-ux-pro-max skill 全 app review，按优先级 1→10 整改：(1) 全局字号下限 11px（96 处 9-10px 批改）；(2) Sidebar/MainLayout/SettingsPage 全中文化，删 MainLayout 假搜索/假图标；(3) prefers-reduced-motion 媒体查询；(4) HomePage 主列表改全量分页 9/页 + HotChats 移右栏直跳对话 + 滚动复位。同时锁定 Alpha 前 P1 执行顺序 A→E（先错误翻译层，再 a11y，再 bridge enrich，最后 e2e + 文档） |
+- **2026-05-13b** | P1 #7 / #11b / a11y 三连清 + UX 修复一组 | (A) `src/lib/errorMsg.ts` 集中错误翻译层，11 文件 27 处替换；(B) 全局 `:focus-visible` outline CSS + TitleBar/SummaryModal/ThoughtDrawer/ThoughtInput/ChatPage 关键图标 aria-label，ChatPage 删 2 个死按钮 + Drawer 4 操作按钮中文化；(C) `bridge_sync_pull` 检测新 inserted 且 domain/tags 空时自动 enrich+embed，CaptureWindow / SummaryModal「保存」也补齐 enrich；(D) WeChatBridgePage 云桥模式横幅，不再误报「未启动」；(E) 多选交互重做——卡片右上 ⋯ hover 自动变 ☐ 复选框，删丑大圆圈和「多选模式」开关，SelectionBar 自动按 selectedIds.size 显示；(F) ThoughtDrawer.handleReanalyze 成功后清 enrichErrors，红框不再赖在分析过的卡片上 |
 
 ---
 
@@ -433,11 +434,11 @@ node dist/main.js daemon
 |---|---|---|---|
 | 5 | Mac Gatekeeper / Win SmartScreen 拦截 | 30%+ 用户在"右键打开"步骤直接弃用 | Beta 前买 Apple Dev $99/年；Win 暂用文档教程 |
 | 6 | LLM Key 注册门槛 | 用户进 EchoMind 才发现"还要注册 DeepSeek 充值" | 文档给一键注册链接 + 充值 ¥10 即可指引；考虑首次启动赠送少量额度（需后端） |
-| 7 | 错误信息不友好 | API 报错直接弹原始 stack | settings.tsx 加错误信息翻译层 |
+| 7 | ~~错误信息不友好~~ ✅ | API 报错直接弹原始 stack | `src/lib/errorMsg.ts` 集中翻译层覆盖鉴权/额度/速率/模型/上下文/网络/Bridge JWT/5xx/文件/数据库 ~10 类，11 文件 27 处 `String(e)` → `errorMsg(e)` |
 | 8 | 微信 ClawBot 扫码流程 UI 完整性未验证 | WeChatBridgePage 改了 step 状态机，e2e 是否死锁未知 | 自己重装走完整 onboarding 流程实测 |
 | 9 | ~~没有"测试 LLM 连接"按钮~~ ✅ | 复盘发现已实现：`SettingsPage.tsx:175` 的 `handleTest`（"Test Connection" 按钮）+ onboarding Step 2 也复用同一接口 |
 | 10 | Phase 4 剩余三项：`/chat` 速率限制 + 断线重连 + Budget 通知 | 失控调用耗预算 / 网络抖动数据不一致 / 用户预算耗尽不知情 | Phase 4 收尾，1-2 周 |
-| 11b | bridge capture 无 enrich/embed | bridge 模式 `/list` 看到的灵感无 domain/tags/向量，劣化但不破坏 | bridge-server 在 capture 后异步走一遍 LLM enrich + embedding（或 bot 触发） |
+| 11b | ~~bridge capture 无 enrich/embed~~ ✅ | bridge 模式 `/list` 看到的灵感无 domain/tags/向量 | `bridge_sync_pull` 检测到新 inserted 且 domain/tags 为空时自动 enrich + embed；同 commit 也补齐了 CaptureWindow / SummaryModal「保存为新灵感」遗漏的 enrich 路径 |
 
 ### P2 长期改进
 
@@ -465,11 +466,11 @@ node dist/main.js daemon
   ├── ✅ P0 #4  新手引导（Onboarding.tsx 4 步流程）
   └── ✅ P1 #9  测试 LLM 连接按钮（Settings 已有 handleTest）
 
-Alpha 招募前剩余（P1 重要）—— 执行顺序 A → E：
-  ├── A. P1 #7    错误信息翻译层（lib/errorMsg.ts + 关键 callsite 替换）  ← 进行中
-  ├── B. UI a11y  全局 focus-visible + 关键图标 aria-label 注入
-  ├── C. P1 #11b  bridge capture 后异步 enrich + embedding
-  ├── D. P1 #8    自己 e2e 走完 onboarding + 微信桥扫码，找漏修补
+Alpha 招募前剩余 —— 执行进度：
+  ├── ✅ A. P1 #7    错误信息翻译层（lib/errorMsg.ts，11 文件 27 处替换）
+  ├── ✅ B. UI a11y  全局 focus-visible CSS + TitleBar/Modal/Drawer/ChatPage 关键 aria-label
+  ├── ✅ C. P1 #11b  bridge capture 后 enrich + embed（bridge_sync_pull + capture/summary）
+  ├── D. P1 #8    自己 e2e 走完 onboarding + 微信桥扫码，找漏修补 ← 用户侧
   ├── E. P1 #6    LLM Key 注册引导（onboarding 已附链接 → 加图文教程 docs）
   └──    P1 #5    Mac 代码签名（Apple Dev $99/年，需用户决定何时购买）
 
@@ -481,7 +482,12 @@ UI/UX 体系性改进（2026-05-13 通过 ui-ux-pro-max skill 完成）：
   ├── ✅ 全局字号下限 11px（96 处 sub-12px 修正）
   ├── ✅ Sidebar / MainLayout / SettingsPage 中文化
   ├── ✅ MainLayout 假搜索框 + 假图标按钮删除
-  └── ✅ prefers-reduced-motion 媒体查询
+  ├── ✅ prefers-reduced-motion 媒体查询
+  ├── ✅ 全局 :focus-visible outline + TitleBar/Modal/Drawer 关键 aria-label
+  ├── ✅ ChatPage 删 2 个死按钮 + send aria-label + placeholder 中文
+  ├── ✅ Drawer 操作按钮中文化（重新分析 / 对话 / 归档 / 保存）
+  ├── ✅ 多选交互重做：删丑大圆圈 + 卡片右上 ⋯ hover 即变 ☐，无需进入「多选模式」
+  └── ✅ WeChatBridgePage 云桥模式下显示「已通过云桥连接」横幅而非误报「未启动」
 ```
 
 详细的灰度发布操作步骤（VPS 部署、招募文案、反馈通道）见根目录 `EchoMind_MVP汇报报告.md` §7。
@@ -495,7 +501,7 @@ UI/UX 体系性改进（2026-05-13 通过 ui-ux-pro-max skill 完成）：
 | Staging 实际运行 | ✅ | VPS 49.128.204.149 (1c1g) 已部署，Cloud Bridge + WeChat 双向互通验证通过（2026-05-12） |
 | 首次能用 | ✅ | Onboarding 4 步引导覆盖 0 → 第一条灵感 |
 | 核心功能完整 | ✅ | 速记 / 浏览 / AI 总结 / 对话 / 微信桥 / Cloud Bridge 全跑通 |
-| 体验打磨 | ⚠️ | 错误信息原始 / 无 macOS 签名（用户需"右键打开"） |
+| 体验打磨 | ⚠️ | 错误信息已中文翻译 ✓ / 全局 a11y focus + aria-label ✓ / 多选交互重做 ✓ ；剩 macOS 签名（用户需"右键打开"） |
 | 商业化基础 | ❌ | 无 ToS / Landing / 支付（Beta 阶段再上） |
 
 **结论**：Alpha 招募（≤30 种子用户 + BYO Key + 用户自备 VPS）**已可启动**。Beta 公开发布建议补完 P1 #5-#7 + 落地页。
