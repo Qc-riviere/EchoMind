@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { GraphNode, Thought } from "../lib/types";
 import { useGraphStore } from "../stores/graphStore";
 import { useThoughtStore } from "../stores/thoughtStore";
+import { useThemeStore } from "../stores/themeStore";
 import ThoughtDrawer from "../components/ThoughtDrawer";
 
 // react-force-graph mutates node objects to add x/y/vx/vy/index props.
@@ -29,6 +30,18 @@ const DOMAIN_COLORS: Record<string, string> = {
   education: "#93c5fd",
   finance: "#fde68a",
 };
+const DOMAIN_LABELS_CN: Record<string, string> = {
+  technology: "技术",
+  science: "科学",
+  design: "设计",
+  business: "商业",
+  personal: "个人",
+  creative: "创作",
+  philosophy: "哲学",
+  health: "健康",
+  education: "教育",
+  finance: "金融",
+};
 const DEFAULT_COLOR = "#9ca3af";
 const RECENT_COLOR = "#4ade80";
 
@@ -42,10 +55,18 @@ export default function GraphPage() {
   const { data, loading, error, threshold, loadGraph, setThreshold } = useGraphStore();
   const thoughts = useThoughtStore((s) => s.thoughts);
   const fetchThoughts = useThoughtStore((s) => s.fetchThoughts);
+  const theme = useThemeStore((s) => s.theme);
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 800, h: 600 });
   const [selected, setSelected] = useState<Thought | null>(null);
   const [hovered, setHovered] = useState<FGNode | null>(null);
+
+  const isDark = useMemo(() => {
+    if (theme === "dark") return true;
+    if (theme === "light") return false;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }, [theme]);
+  const labelColor = isDark ? "rgba(230,230,235,0.85)" : "rgba(0,0,0,0.75)";
 
   // Initial load.
   useEffect(() => {
@@ -101,14 +122,14 @@ export default function GraphPage() {
       {/* Header */}
       <div className="px-8 py-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-headline font-bold text-on-surface">Mind Graph</h1>
+          <h1 className="text-2xl font-headline font-bold text-on-surface">思维图谱</h1>
           <p className="text-xs text-on-surface-variant/60 mt-1">
-            {graphData.nodes.length} thoughts · {graphData.links.length} connections
+            {graphData.nodes.length} 条想法 · {graphData.links.length} 条关联
           </p>
         </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-[11px] text-on-surface-variant">
-            <span>Similarity</span>
+            <span>相似度阈值</span>
             <input
               type="range"
               min={0.2}
@@ -125,7 +146,7 @@ export default function GraphPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-[11px] text-on-surface transition-colors"
           >
             <span className="material-symbols-outlined text-[16px]">refresh</span>
-            Refresh
+            刷新
           </button>
         </div>
       </div>
@@ -148,9 +169,9 @@ export default function GraphPage() {
         {!loading && !error && graphData.nodes.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-on-surface-variant gap-3">
             <span className="material-symbols-outlined text-5xl text-primary/40">hub</span>
-            <p className="text-sm">No embedded thoughts yet</p>
+            <p className="text-sm">还没有向量化的想法</p>
             <p className="text-[11px] text-on-surface-variant/50">
-              Record thoughts and let AI process them — they'll appear here
+              记录想法并让 AI 处理后，它们会出现在这里
             </p>
           </div>
         )}
@@ -176,7 +197,7 @@ export default function GraphPage() {
               const label = n.label;
               const fontSize = Math.max(10, 12 / scale);
               ctx.font = `${fontSize}px sans-serif`;
-              ctx.fillStyle = "rgba(0,0,0,0.75)";
+              ctx.fillStyle = labelColor;
               ctx.textAlign = "center";
               ctx.textBaseline = "top";
               ctx.fillText(label, n.x ?? 0, (n.y ?? 0) + nodeSize(n) + 2);
@@ -189,8 +210,36 @@ export default function GraphPage() {
           <div className="absolute bottom-4 left-4 max-w-sm p-3 rounded-lg bg-surface-container-high/95 backdrop-blur border border-outline-variant/20 pointer-events-none">
             <p className="text-xs text-on-surface line-clamp-3">{hovered.label}</p>
             <div className="mt-1.5 flex gap-2 text-[11px] text-on-surface-variant/60">
-              {hovered.domain && <span className="font-semibold uppercase">{hovered.domain}</span>}
+              {hovered.domain && (
+                <span className="font-semibold">
+                  {DOMAIN_LABELS_CN[hovered.domain.trim().toLowerCase()] ?? hovered.domain}
+                </span>
+              )}
               <span className="font-mono">{new Date(hovered.created_at).toLocaleDateString()}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Color legend */}
+        {!loading && !error && graphData.nodes.length > 0 && (
+          <div className="absolute top-4 right-4 max-w-[220px] p-3 rounded-lg bg-surface-container-high/90 backdrop-blur border border-outline-variant/20 text-[11px] text-on-surface-variant pointer-events-none">
+            <div className="font-semibold text-on-surface mb-2">图例</div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="w-2.5 h-2.5 rounded-full" style={{ background: RECENT_COLOR }} />
+              <span>近 24 小时新建</span>
+            </div>
+            <div className="text-on-surface-variant/70 mb-1">其他颜色按主题分类：</div>
+            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+              {Object.entries(DOMAIN_COLORS).map(([key, color]) => (
+                <div key={key} className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: color }} />
+                  <span>{DOMAIN_LABELS_CN[key] ?? key}</span>
+                </div>
+              ))}
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: DEFAULT_COLOR }} />
+                <span>未分类</span>
+              </div>
             </div>
           </div>
         )}
