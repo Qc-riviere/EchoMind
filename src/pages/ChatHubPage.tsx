@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { errorMsg } from "../lib/errorMsg";
 import { useNavigate, useParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { openUrl as tauriOpenUrl } from "@tauri-apps/plugin-opener";
@@ -157,7 +158,7 @@ export default function ChatHubPage() {
     setResourcesLoading(true);
     invoke<Resource[]>("suggest_resources", { thoughtId })
       .then(setResources)
-      .catch((e) => setResourcesError(String(e)))
+      .catch((e) => setResourcesError(errorMsg(e)))
       .finally(() => setResourcesLoading(false));
   }, [thoughtId]);
 
@@ -194,7 +195,7 @@ export default function ChatHubPage() {
     setResourcesLoading(true);
     invoke<Resource[]>("suggest_resources", { thoughtId })
       .then(setResources)
-      .catch((e) => setResourcesError(String(e)))
+      .catch((e) => setResourcesError(errorMsg(e)))
       .finally(() => setResourcesLoading(false));
   };
 

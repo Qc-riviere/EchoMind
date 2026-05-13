@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettingStore } from "../stores/settingStore";
 import { useThemeStore } from "../stores/themeStore";
@@ -180,7 +181,7 @@ export default function SettingsPage() {
       const response = await invoke<string>("test_llm_connection");
       setTestResult({ ok: true, message: response });
     } catch (e) {
-      setTestResult({ ok: false, message: String(e) });
+      setTestResult({ ok: false, message: errorMsg(e) });
     } finally { setTesting(false); }
   };
 
@@ -682,7 +683,7 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
       setDiscovered(results.filter((d) => !existingNames.has(d.name)));
       setScanDone(true);
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     } finally {
       setScanning(false);
     }
@@ -739,7 +740,7 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
       setEditorFilename("");
       loadSkills();
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     }
   };
 
@@ -749,7 +750,7 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
       setDeleteTarget(null);
       loadSkills();
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     }
   };
 

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import type { Thought } from "../lib/types";
 import ThoughtCard from "../components/ThoughtCard";
@@ -20,7 +21,7 @@ export default function SearchPage() {
       const count = await invoke<number>("reembed_all_thoughts");
       setReindexMessage(`已重新索引 ${count} 条想法`);
     } catch (e) {
-      setReindexMessage(`索引失败：${String(e)}`);
+      setReindexMessage(`索引失败：${errorMsg(e)}`);
     } finally {
       setReindexing(false);
     }
@@ -36,7 +37,7 @@ export default function SearchPage() {
       setResults(found);
       setSearched(true);
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     } finally {
       setSearching(false);
     }

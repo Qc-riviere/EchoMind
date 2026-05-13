@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -99,7 +100,7 @@ export default function WeChatBridgePage() {
         } catch {}
       }, 3000);
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
       setStep("error");
     } finally { setActionLoading(false); }
   };
@@ -132,7 +133,7 @@ export default function WeChatBridgePage() {
       await refresh();
       setStep("ready");
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
       setStep("idle");
     } finally { setActionLoading(false); }
   };

@@ -410,6 +410,7 @@ node dist/main.js daemon
 - **2026-05-12** | 协议名称澄清 + 灰度卡点全景盘点 | (1) 全文涉及"iLink"语境恰当上下文化为「微信 ClawBot（产品名）+ iLink 协议（底层）+ `@tencent-weixin/openclaw-weixin` npm 包（腾讯官方 scope）」；(2) H8 商业化风险整段推翻——这是 2026 腾讯官方放开协议，无商用风险；(3) 新增 §13「公开发布前卡点清单」，按 P0/P1/P2 分级 |
 - **2026-05-12** | P0 #1 + #2 落地 | (1) 新增 `.github/workflows/desktop-release.yml`：tauri-action 矩阵 build Windows + macOS universal，push tag `v*` 触发，产物推 Release 草稿；(2) 复盘发现 `.github/workflows/docker-publish.yml` 已存在并覆盖 bridge-server + wechat 两个镜像，P0 #2 实际已完成，§13 卡点清单更新状态 |
 - **2026-05-12** | P0 全部清完 / Alpha-ready | (1) `v0.1.0-rc1` tag 触发 desktop-release，macOS + Windows 双 job 14m+ 通过；(2) 复盘 P0 #3 `/bridge/thoughts/capture` 路由实际已实现（routes.rs:28 + bridge-client.ts:68），enrich/embed gap 降为 P1 #11b；(3) 复盘 P1 #9 测试 LLM 按钮已在 SettingsPage 存在；(4) 新增 `src/components/Onboarding.tsx` 4 步首次启动引导（欢迎 → LLM 配置+测试 → 第一条灵感 → 微信桥 teaser），`App.tsx` 加 OnboardingGate 自动触发；(5) §13 加 Alpha 就绪度评估表，结论：Alpha 招募已可启动 |
+- **2026-05-13** | UI/UX 体系性整顿 + P1 路线锁定 | 通过 ui-ux-pro-max skill 全 app review，按优先级 1→10 整改：(1) 全局字号下限 11px（96 处 9-10px 批改）；(2) Sidebar/MainLayout/SettingsPage 全中文化，删 MainLayout 假搜索/假图标；(3) prefers-reduced-motion 媒体查询；(4) HomePage 主列表改全量分页 9/页 + HotChats 移右栏直跳对话 + 滚动复位。同时锁定 Alpha 前 P1 执行顺序 A→E（先错误翻译层，再 a11y，再 bridge enrich，最后 e2e + 文档） |
 
 ---
 
@@ -464,16 +465,23 @@ node dist/main.js daemon
   ├── ✅ P0 #4  新手引导（Onboarding.tsx 4 步流程）
   └── ✅ P1 #9  测试 LLM 连接按钮（Settings 已有 handleTest）
 
-Alpha 招募前剩余（P1 重要）：
-  ├── P1 #8   自己 e2e 走完 onboarding + 微信桥扫码，找漏修补
-  ├── P1 #7   错误信息翻译层（API 报错 → 人类可读）
-  ├── P1 #6   LLM Key 注册引导（onboarding 已附链接，可加图文教程文档）
-  └── P1 #5   Mac 代码签名（Apple Dev $99/年，Win 暂用文档绕过）
+Alpha 招募前剩余（P1 重要）—— 执行顺序 A → E：
+  ├── A. P1 #7    错误信息翻译层（lib/errorMsg.ts + 关键 callsite 替换）  ← 进行中
+  ├── B. UI a11y  全局 focus-visible + 关键图标 aria-label 注入
+  ├── C. P1 #11b  bridge capture 后异步 enrich + embedding
+  ├── D. P1 #8    自己 e2e 走完 onboarding + 微信桥扫码，找漏修补
+  ├── E. P1 #6    LLM Key 注册引导（onboarding 已附链接 → 加图文教程 docs）
+  └──    P1 #5    Mac 代码签名（Apple Dev $99/年，需用户决定何时购买）
 
 Beta 公开前：
   ├── P1 #10  Phase 4 剩余三项（速率/重连/Budget 通知）
-  ├── P1 #11b bridge capture 后异步 enrich + embedding
   └── P2 #11-15 ToS / Landing / 支付 / fastembed 镜像 / 迁移日志静默
+
+UI/UX 体系性改进（2026-05-13 通过 ui-ux-pro-max skill 完成）：
+  ├── ✅ 全局字号下限 11px（96 处 sub-12px 修正）
+  ├── ✅ Sidebar / MainLayout / SettingsPage 中文化
+  ├── ✅ MainLayout 假搜索框 + 假图标按钮删除
+  └── ✅ prefers-reduced-motion 媒体查询
 ```
 
 详细的灰度发布操作步骤（VPS 部署、招募文案、反馈通道）见根目录 `EchoMind_MVP汇报报告.md` §7。

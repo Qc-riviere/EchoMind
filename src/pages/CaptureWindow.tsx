@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -50,7 +51,7 @@ export default function CaptureWindow() {
       await emit("thought:created");
       await dismiss();
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
       setSaving(false);
     }
   };

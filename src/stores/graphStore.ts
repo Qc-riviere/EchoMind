@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import type { GraphData, GraphEdge, GraphNode } from "../lib/types";
 
@@ -32,7 +33,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       });
       set({ data, loading: false });
     } catch (e) {
-      set({ error: String(e), loading: false });
+      set({ error: errorMsg(e), loading: false });
     }
   },
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 
 interface RemoteLlmStatus {
@@ -77,7 +78,7 @@ export default function CloudBridgePage() {
         }
       }
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     } finally {
       setLoading(false);
     }
@@ -107,7 +108,7 @@ export default function CloudBridgePage() {
       setDeviceCode("");
       await refresh();
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     } finally {
       setPairing(false);
     }
@@ -119,7 +120,7 @@ export default function CloudBridgePage() {
       await invoke("cloud_bridge_set_enabled", { enabled: !status.enabled });
       await refresh();
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     }
   };
 
@@ -131,7 +132,7 @@ export default function CloudBridgePage() {
       });
       await refresh();
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     }
   };
 
@@ -150,7 +151,7 @@ export default function CloudBridgePage() {
       setInfo("规则已保存");
       await refresh();
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     } finally {
       setSavingRules(false);
     }
@@ -163,7 +164,7 @@ export default function CloudBridgePage() {
       const n = await invoke<number>("cloud_bridge_initial_sync");
       setInfo(`已上传 ${n} 条想法到云端`);
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     }
   };
 
@@ -174,7 +175,7 @@ export default function CloudBridgePage() {
       const n = await invoke<number>("cloud_bridge_sync_pull");
       setInfo(n > 0 ? `已从云端拉取 ${n} 条新想法` : "云端无新增");
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     }
   };
 
@@ -191,7 +192,7 @@ export default function CloudBridgePage() {
       setInfo("LLM 配置已推送到 VPS");
       await refresh();
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     } finally {
       setLlmPushing(false);
     }
@@ -206,7 +207,7 @@ export default function CloudBridgePage() {
       setInfo("LLM 配置已从 VPS 清除");
       await refresh();
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     }
   };
 
@@ -219,7 +220,7 @@ export default function CloudBridgePage() {
       setInfo("已终止订阅并清除云端数据");
       await refresh();
     } catch (e) {
-      setError(String(e));
+      setError(errorMsg(e));
     }
   };
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { errorMsg } from "../lib/errorMsg";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
@@ -118,7 +119,7 @@ export default function HomePage() {
       setSummaryText(result);
       notify("EchoMind", "AI 总结已完成").catch(() => {});
     } catch (e) {
-      setSummaryText(`总结失败：${String(e)}`);
+      setSummaryText(`总结失败：${errorMsg(e)}`);
     } finally {
       setSummarizing(false);
     }

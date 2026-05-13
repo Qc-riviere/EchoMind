@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
@@ -143,7 +144,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     try {
       await invoke("send_chat_message", { conversationId, content });
     } catch (e) {
-      set({ error: String(e), isStreaming: false });
+      set({ error: errorMsg(e), isStreaming: false });
       unlistenAgent?.();
     }
   },

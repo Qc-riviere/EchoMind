@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import type { Thought } from "../lib/types";
 import { useGraphStore } from "./graphStore";
@@ -74,7 +75,7 @@ export const useThoughtStore = create<ThoughtStore>((set, get) => ({
       const thoughts = await invoke<Thought[]>("list_thoughts");
       set({ thoughts, loading: false });
     } catch (e) {
-      set({ error: String(e), loading: false });
+      set({ error: errorMsg(e), loading: false });
     }
   },
 
@@ -121,7 +122,7 @@ export const useThoughtStore = create<ThoughtStore>((set, get) => ({
       updatedIds.delete(thoughtId);
       set({
         enrichingIds: updatedIds,
-        enrichErrors: { ...get().enrichErrors, [thoughtId]: String(e) },
+        enrichErrors: { ...get().enrichErrors, [thoughtId]: errorMsg(e) },
       });
       await invoke("embed_thought", { thoughtId });
       useGraphStore.getState().addNodeIncremental(thoughtId);

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import { useNavigate } from "react-router-dom";
 import { useSettingStore } from "../stores/settingStore";
@@ -82,7 +83,7 @@ export default function Onboarding({ onClose }: Props) {
       const response = await invoke<string>("test_llm_connection");
       setTestResult({ ok: true, message: response || "连接成功" });
     } catch (e) {
-      setTestResult({ ok: false, message: String(e) });
+      setTestResult({ ok: false, message: errorMsg(e) });
     } finally {
       setTesting(false);
     }
