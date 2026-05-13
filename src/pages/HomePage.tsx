@@ -187,11 +187,14 @@ export default function HomePage() {
             />
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-8">
+              <nav
+                className="flex items-center justify-center gap-2 mt-8"
+                aria-label="想法分页"
+              >
                 <button
                   onClick={() => setPage(Math.max(0, pageSafe - 1))}
                   disabled={pageSafe === 0}
-                  className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="min-w-[40px] h-10 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   aria-label="上一页"
                 >
                   <span className="material-symbols-outlined text-[20px]">chevron_left</span>
@@ -200,7 +203,9 @@ export default function HomePage() {
                   <button
                     key={i}
                     onClick={() => setPage(i)}
-                    className={`min-w-[32px] h-8 px-2 rounded-full text-xs font-mono transition-colors ${
+                    aria-label={`第 ${i + 1} 页，共 ${totalPages} 页`}
+                    aria-current={i === pageSafe ? "page" : undefined}
+                    className={`min-w-[40px] h-10 px-3 rounded-full text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors ${
                       i === pageSafe
                         ? "bg-primary text-on-primary"
                         : "text-on-surface-variant hover:bg-surface-container-high"
@@ -212,12 +217,12 @@ export default function HomePage() {
                 <button
                   onClick={() => setPage(Math.min(totalPages - 1, pageSafe + 1))}
                   disabled={pageSafe >= totalPages - 1}
-                  className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  className="min-w-[40px] h-10 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   aria-label="下一页"
                 >
                   <span className="material-symbols-outlined text-[20px]">chevron_right</span>
                 </button>
-              </div>
+              </nav>
             )}
           </section>
 
@@ -278,8 +283,8 @@ function HotChats({ thoughts }: { thoughts: Thought[] }) {
 
       {thoughts.length === 0 ? (
         <div className="text-center py-6">
-          <span className="material-symbols-outlined text-3xl text-on-surface-variant/30">chat_bubble</span>
-          <p className="text-[11px] text-on-surface-variant/50 mt-2 leading-relaxed">
+          <span className="material-symbols-outlined text-3xl text-on-surface-variant/40">chat_bubble</span>
+          <p className="text-xs text-on-surface-variant mt-2 leading-relaxed">
             还没有对话过的灵感
             <br />
             从主列表选一条点「对话」开始
@@ -291,23 +296,23 @@ function HotChats({ thoughts }: { thoughts: Thought[] }) {
             <li key={t.id}>
               <button
                 onClick={() => navigate(`/thought/${t.id}/chat`)}
-                className="w-full text-left rounded-xl px-3 py-2.5 bg-surface-container-low hover:bg-surface-container-highest transition-colors group"
+                className="w-full text-left rounded-xl px-3 py-2.5 bg-surface-container-low hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors group"
               >
                 <div className="flex items-start gap-2">
-                  <span className="text-[10px] font-mono text-on-surface-variant/40 mt-0.5 w-4 flex-shrink-0">
+                  <span className="text-xs font-mono text-on-surface-variant/70 mt-0.5 w-4 flex-shrink-0">
                     {i + 1}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-on-surface line-clamp-2 leading-relaxed group-hover:text-primary transition-colors">
+                    <p className="text-sm text-on-surface line-clamp-2 leading-relaxed group-hover:text-primary transition-colors">
                       {t.file_summary || t.content}
                     </p>
                     {t.domain && (
-                      <span className="inline-block mt-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-primary/8 text-primary/70 uppercase tracking-wider">
+                      <span className="inline-block mt-1.5 text-[11px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary uppercase tracking-wider">
                         {t.domain}
                       </span>
                     )}
                   </div>
-                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant/30 group-hover:text-primary transition-colors flex-shrink-0">
+                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant/50 group-hover:text-primary transition-colors flex-shrink-0">
                     chevron_right
                   </span>
                 </div>
@@ -390,7 +395,7 @@ function CognitiveDiscovery() {
       <div className="flex items-center gap-3 mb-4">
         <span className="material-symbols-outlined text-primary">insights</span>
         <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-on-surface">
-          Cognitive Discovery
+          主题聚类
         </h3>
       </div>
 
@@ -400,15 +405,15 @@ function CognitiveDiscovery() {
         </div>
       ) : clusters.length === 0 ? (
         <div className="text-center py-6">
-          <span className="material-symbols-outlined text-3xl text-on-surface-variant/30">explore</span>
-          <p className="text-[11px] text-on-surface-variant/50 mt-2">
-            Record more thoughts to unlock AI discovery
+          <span className="material-symbols-outlined text-3xl text-on-surface-variant/40">explore</span>
+          <p className="text-xs text-on-surface-variant mt-2">
+            记录更多想法以解锁主题发现
           </p>
         </div>
       ) : (
         <>
-          <p className="text-[11px] text-on-surface-variant leading-relaxed mb-5">
-            {totalThoughts} thoughts analyzed — {clusters.length} theme{clusters.length > 1 ? "s" : ""} emerging
+          <p className="text-xs text-on-surface-variant leading-relaxed mb-5">
+            已分析 {totalThoughts} 条想法 —— 浮现 {clusters.length} 个主题
           </p>
 
           <div className="space-y-3">
@@ -417,7 +422,7 @@ function CognitiveDiscovery() {
                 <div className="flex items-center gap-3 mb-1.5">
                   <span className="material-symbols-outlined text-[18px] text-primary/70">{cluster.icon}</span>
                   <span className="text-xs font-semibold text-on-surface flex-1">{cluster.name}</span>
-                  <span className="text-[10px] text-on-surface-variant/50 font-mono">{cluster.count}</span>
+                  <span className="text-xs text-on-surface-variant font-mono">{cluster.count}</span>
                 </div>
 
                 {/* Progress bar */}
@@ -432,7 +437,7 @@ function CognitiveDiscovery() {
                 {cluster.tags.length > 0 && (
                   <div className="ml-[30px] flex flex-wrap gap-1">
                     {cluster.tags.map((tag) => (
-                      <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/8 text-primary/70">
+                      <span key={tag} className="text-[11px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary">
                         {tag}
                       </span>
                     ))}
@@ -482,10 +487,10 @@ function RandomRevisit({ onSelect }: { onSelect: (t: Thought) => void }) {
       <div className="p-8 rounded-2xl bg-gradient-to-br from-primary-container/20 to-transparent ghost-border">
         <div className="flex items-center gap-3 mb-3">
           <span className="material-symbols-outlined text-primary">casino</span>
-          <h4 className="text-sm font-headline font-bold text-on-surface">Random Revisit</h4>
+          <h4 className="text-sm font-headline font-bold text-on-surface">随机回顾</h4>
         </div>
-        <p className="text-[11px] text-on-surface-variant leading-relaxed">
-          Record some thoughts first, and forgotten gems will resurface here.
+        <p className="text-xs text-on-surface-variant leading-relaxed">
+          先记一些想法，被遗忘的好东西会浮现在这里。
         </p>
       </div>
     );
@@ -501,32 +506,33 @@ function RandomRevisit({ onSelect }: { onSelect: (t: Thought) => void }) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-primary">casino</span>
-          <h4 className="text-sm font-headline font-bold text-on-surface">Random Revisit</h4>
+          <h4 className="text-sm font-headline font-bold text-on-surface">随机回顾</h4>
         </div>
         <button
           onClick={() => pickRandom(allThoughts)}
-          className="text-on-surface-variant/50 hover:text-primary transition-colors"
-          title="Shuffle"
+          className="min-w-[40px] h-10 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"
+          aria-label="换一条"
+          title="换一条"
         >
-          <span className="material-symbols-outlined text-[18px]">refresh</span>
+          <span className="material-symbols-outlined text-[20px]">refresh</span>
         </button>
       </div>
 
       {thought && (
         <button
           onClick={() => onSelect(thought)}
-          className="w-full text-left group"
+          className="w-full text-left group rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          <p className="text-xs text-on-surface leading-relaxed line-clamp-3 group-hover:text-primary transition-colors">
+          <p className="text-sm text-on-surface leading-relaxed line-clamp-3 group-hover:text-primary transition-colors">
             {thought.content}
           </p>
           <div className="flex items-center gap-2 mt-3">
             {thought.domain && (
-              <span className="text-[9px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+              <span className="text-[11px] px-2 py-0.5 rounded-full bg-primary/15 text-primary font-medium">
                 {thought.domain}
               </span>
             )}
-            <span className="text-[9px] text-on-surface-variant/40 font-mono">{timeAgo}</span>
+            <span className="text-[11px] text-on-surface-variant font-mono">{timeAgo}</span>
           </div>
         </button>
       )}
@@ -534,9 +540,9 @@ function RandomRevisit({ onSelect }: { onSelect: (t: Thought) => void }) {
       {thought && (
         <button
           onClick={() => navigate(`/thought/${thought.id}/chat`)}
-          className="mt-4 w-full py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface rounded-lg text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all ghost-border"
+          className="mt-4 w-full h-10 bg-surface-container-high hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary text-on-surface rounded-lg text-xs font-bold tracking-widest active:scale-95 transition-all ghost-border"
         >
-          Revisit & Reflect
+          重温思考
         </button>
       )}
     </div>
