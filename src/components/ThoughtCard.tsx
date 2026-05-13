@@ -10,13 +10,12 @@ interface Props {
   showRelated?: boolean;
   onClick?: () => void;
   isActive?: boolean;
-  selectMode?: boolean;
   selected?: boolean;
   onToggleSelect?: () => void;
   onChanged?: () => void;
 }
 
-export default function ThoughtCard({ thought, showRelated = false, onClick, isActive = false, selectMode = false, selected = false, onToggleSelect, onChanged }: Props) {
+export default function ThoughtCard({ thought, showRelated = false, onClick, isActive = false, selected = false, onToggleSelect, onChanged }: Props) {
   const archiveThought = useThoughtStore((s) => s.archiveThought);
   const enrichAndEmbed = useThoughtStore((s) => s.enrichAndEmbed);
   const enrichingIds = useThoughtStore((s) => s.enrichingIds);
@@ -36,13 +35,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
     }
   };
 
-  const handleClick = () => {
-    if (selectMode) {
-      onToggleSelect?.();
-    } else {
-      onClick?.();
-    }
-  };
+  const handleClick = () => onClick?.();
 
   return (
     <div
@@ -55,18 +48,9 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
           : "bg-surface-container-lowest hover:translate-y-[-4px]"
       }`}
     >
-      {selectMode && (
-        <div className="absolute top-4 left-4 z-10 pointer-events-none">
-          <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${
-            selected ? "bg-primary border-primary" : "bg-surface-container-low/80 border-on-surface-variant/40"
-          }`}>
-            {selected && <span className="material-symbols-outlined text-[16px] text-on-primary">check</span>}
-          </div>
-        </div>
-      )}
-      {thought.is_pinned && !selectMode && (
+      {thought.is_pinned && !selected && (
         <div className="absolute top-4 right-4 z-10 pointer-events-none">
-          <span className="material-symbols-outlined text-[18px] text-primary rotate-45">push_pin</span>
+          <span className="material-symbols-outlined text-[18px] text-primary rotate-45" aria-hidden="true">push_pin</span>
         </div>
       )}
       <div className={`flex flex-col ${hasImage ? "md:flex-row items-stretch" : ""} h-full`}>
@@ -94,14 +78,39 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
 
         {/* Content section */}
         <div className={`flex-1 p-8 ${hasImage ? "bg-surface-container-low" : ""}`}>
-          {/* Date & actions */}
+          {/* Date & select toggle (the three-dots morph into a checkbox on hover
+              — clicking it adds this card to the multi-select queue) */}
           <div className="flex justify-between items-start mb-4">
             <span className="text-[11px] text-on-surface-variant tracking-[0.2em] font-mono">{dateStr}</span>
             <button
-              onClick={(e) => { e.stopPropagation(); }}
-              className="text-on-surface-variant opacity-20 group-hover:opacity-100 hover:text-primary transition-all"
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggleSelect?.(); }}
+              aria-label={selected ? "取消选择" : "选择此条"}
+              aria-pressed={selected}
+              className={`group/sel relative w-7 h-7 rounded-full flex items-center justify-center transition-all ${
+                selected
+                  ? "bg-primary text-on-primary opacity-100"
+                  : "text-on-surface-variant opacity-20 group-hover:opacity-100 hover:bg-surface-container-high hover:text-primary"
+              }`}
             >
-              <span className="material-symbols-outlined">more_horiz</span>
+              {selected ? (
+                <span className="material-symbols-outlined text-[18px]" aria-hidden="true">check</span>
+              ) : (
+                <>
+                  <span
+                    className="material-symbols-outlined text-[20px] group-hover/sel:opacity-0 transition-opacity"
+                    aria-hidden="true"
+                  >
+                    more_horiz
+                  </span>
+                  <span
+                    className="material-symbols-outlined text-[18px] absolute opacity-0 group-hover/sel:opacity-100 transition-opacity"
+                    aria-hidden="true"
+                  >
+                    check_box_outline_blank
+                  </span>
+                </>
+              )}
             </button>
           </div>
 

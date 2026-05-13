@@ -10,10 +10,7 @@ interface Props {
   thoughts?: Thought[];
   /// Hide the empty-state card (caller will render its own placeholder).
   hideEmpty?: boolean;
-  /// Selection mode flag — when true, cards show a checkbox and clicking
-  /// toggles selection instead of opening the drawer.
-  selectMode?: boolean;
-  /// Set of currently selected thought ids (used when `selectMode` is true).
+  /// Set of currently selected thought ids — cards highlight + show ✓ when in.
   selectedIds?: Set<string>;
   /// Called with a thought id when the user toggles selection on a card.
   onToggleSelect?: (id: string) => void;
@@ -26,7 +23,6 @@ export default function ThoughtList({
   activeThoughtId,
   thoughts: thoughtsProp,
   hideEmpty,
-  selectMode,
   selectedIds,
   onToggleSelect,
   onChanged,
@@ -81,10 +77,9 @@ export default function ThoughtList({
         <ThoughtCard
           key={thought.id}
           thought={thought}
-          showRelated={useStore && i === 0 && !selectMode}
+          showRelated={useStore && i === 0}
           onClick={() => onThoughtClick?.(thought)}
           isActive={thought.id === activeThoughtId}
-          selectMode={selectMode}
           selected={selectedIds?.has(thought.id) ?? false}
           onToggleSelect={() => onToggleSelect?.(thought.id)}
           onChanged={onChanged}

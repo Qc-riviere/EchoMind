@@ -27,7 +27,6 @@ export default function HomePage() {
   const [allThoughts, setAllThoughts] = useState<Thought[]>([]);
   const [page, setPage] = useState(0);
 
-  const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summarizing, setSummarizing] = useState(false);
@@ -104,10 +103,7 @@ export default function HomePage() {
     });
   }, []);
 
-  const cancelSelect = () => {
-    setSelectMode(false);
-    setSelectedIds(new Set());
-  };
+  const cancelSelect = () => setSelectedIds(new Set());
 
   const handleSummarize = async () => {
     if (selectedIds.size < 2) return;
@@ -146,7 +142,6 @@ export default function HomePage() {
                   thoughts={[home.pinned]}
                   onThoughtClick={(thought) => setSelectedThought(thought)}
                   activeThoughtId={selectedThought?.id}
-                  selectMode={selectMode}
                   selectedIds={selectedIds}
                   onToggleSelect={toggleSelect}
                   onChanged={loadHome}
@@ -158,30 +153,16 @@ export default function HomePage() {
           <section ref={listSectionRef} className="scroll-mt-6">
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-xl font-headline font-bold text-on-surface">所有想法</h3>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setSelectMode((v) => !v)}
-                  className={`flex items-center gap-1.5 text-xs uppercase tracking-wider transition-colors ${
-                    selectMode ? "text-primary" : "text-on-surface-variant/60 hover:text-on-surface"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[16px]">
-                    {selectMode ? "check_box" : "check_box_outline_blank"}
-                  </span>
-                  {selectMode ? "退出多选" : "多选"}
-                </button>
-                <span className="text-xs text-on-surface-variant/50 font-mono">
-                  {mainList.length === 0
-                    ? "0 条"
-                    : `${pageSafe * PER_PAGE + 1}–${Math.min((pageSafe + 1) * PER_PAGE, mainList.length)} / ${mainList.length}`}
-                </span>
-              </div>
+              <span className="text-xs text-on-surface-variant/50 font-mono">
+                {mainList.length === 0
+                  ? "0 条"
+                  : `${pageSafe * PER_PAGE + 1}–${Math.min((pageSafe + 1) * PER_PAGE, mainList.length)} / ${mainList.length}`}
+              </span>
             </div>
             <ThoughtList
               thoughts={pagedThoughts}
               onThoughtClick={(thought) => setSelectedThought(thought)}
               activeThoughtId={selectedThought?.id}
-              selectMode={selectMode}
               selectedIds={selectedIds}
               onToggleSelect={toggleSelect}
               onChanged={loadHome}
@@ -246,7 +227,7 @@ export default function HomePage() {
         onClose={() => setSelectedThought(null)}
       />
 
-      {selectMode && selectedIds.size > 0 && (
+      {selectedIds.size > 0 && (
         <SelectionBar
           count={selectedIds.size}
           onSummarize={handleSummarize}
