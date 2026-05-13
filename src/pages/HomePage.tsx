@@ -18,9 +18,13 @@ interface HomeThoughts {
   pinned: Thought | null;
 }
 
+const PER_PAGE = 9;
+
 export default function HomePage() {
   const [selectedThought, setSelectedThought] = useState<Thought | null>(null);
   const [home, setHome] = useState<HomeThoughts>({ recent: [], hot: [], pinned: null });
+  const [allThoughts, setAllThoughts] = useState<Thought[]>([]);
+  const [page, setPage] = useState(0);
 
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -30,8 +34,12 @@ export default function HomePage() {
 
   const loadHome = useCallback(async () => {
     try {
-      const data = await invoke<HomeThoughts>("list_home_thoughts");
-      setHome(data);
+      const [home, all] = await Promise.all([
+        invoke<HomeThoughts>("list_home_thoughts"),
+        invoke<Thought[]>("list_thoughts"),
+      ]);
+      setHome(home);
+      setAllThoughts(all);
     } catch { /* ignore; bottom-level lists handle their own errors */ }
   }, []);
 
@@ -39,7 +47,10 @@ export default function HomePage() {
     loadHome();
     const t = setInterval(loadHome, 30000);
     let unlisten: UnlistenFn | null = null;
-    listen("thought:created", () => loadHome()).then((fn) => {
+    listen("thought:created", () => {
+      setPage(0);
+      loadHome();
+    }).then((fn) => {
       unlisten = fn;
     });
     return () => {
@@ -48,11 +59,24 @@ export default function HomePage() {
     };
   }, [loadHome]);
 
+  // Exclude pinned from the paginated list (it's already shown in its own
+  // section above) so the user doesn't see it twice.
+  const mainList = useMemo(
+    () => (home.pinned ? allThoughts.filter((t) => t.id !== home.pinned!.id) : allThoughts),
+    [allThoughts, home.pinned],
+  );
+  const totalPages = Math.max(1, Math.ceil(mainList.length / PER_PAGE));
+  const pageSafe = Math.min(page, totalPages - 1);
+  const pagedThoughts = useMemo(
+    () => mainList.slice(pageSafe * PER_PAGE, pageSafe * PER_PAGE + PER_PAGE),
+    [mainList, pageSafe],
+  );
+
   const allDisplayed = useMemo(() => {
     const map = new Map<string, Thought>();
-    [...(home.pinned ? [home.pinned] : []), ...home.recent, ...home.hot].forEach((t) => map.set(t.id, t));
+    [...(home.pinned ? [home.pinned] : []), ...allThoughts, ...home.hot].forEach((t) => map.set(t.id, t));
     return map;
-  }, [home]);
+  }, [home, allThoughts]);
 
   const selectedThoughts = useMemo(
     () => Array.from(selectedIds).map((id) => allDisplayed.get(id)).filter(Boolean) as Thought[],
@@ -120,7 +144,7 @@ export default function HomePage() {
 
           <section>
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-headline font-bold text-on-surface">最近</h3>
+              <h3 className="text-xl font-headline font-bold text-on-surface">所有想法</h3>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setSelectMode((v) => !v)}
@@ -133,11 +157,15 @@ export default function HomePage() {
                   </span>
                   {selectMode ? "退出多选" : "多选"}
                 </button>
-                <span className="text-xs text-on-surface-variant/50">最近 5 条</span>
+                <span className="text-xs text-on-surface-variant/50 font-mono">
+                  {mainList.length === 0
+                    ? "0 条"
+                    : `${pageSafe * PER_PAGE + 1}–${Math.min((pageSafe + 1) * PER_PAGE, mainList.length)} / ${mainList.length}`}
+                </span>
               </div>
             </div>
             <ThoughtList
-              thoughts={home.recent}
+              thoughts={pagedThoughts}
               onThoughtClick={(thought) => setSelectedThought(thought)}
               activeThoughtId={selectedThought?.id}
               selectMode={selectMode}
@@ -145,6 +173,40 @@ export default function HomePage() {
               onToggleSelect={toggleSelect}
               onChanged={loadHome}
             />
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-8">
+                <button
+                  onClick={() => setPage(Math.max(0, pageSafe - 1))}
+                  disabled={pageSafe === 0}
+                  className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="上一页"
+                >
+                  <span className="material-symbols-outlined text-[20px]">chevron_left</span>
+                </button>
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setPage(i)}
+                    className={`min-w-[32px] h-8 px-2 rounded-full text-xs font-mono transition-colors ${
+                      i === pageSafe
+                        ? "bg-primary text-on-primary"
+                        : "text-on-surface-variant hover:bg-surface-container-high"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setPage(Math.min(totalPages - 1, pageSafe + 1))}
+                  disabled={pageSafe >= totalPages - 1}
+                  className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  aria-label="下一页"
+                >
+                  <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+                </button>
+              </div>
+            )}
           </section>
 
         </div>
