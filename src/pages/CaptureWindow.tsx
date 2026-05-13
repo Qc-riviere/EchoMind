@@ -63,7 +63,7 @@ export default function CaptureWindow() {
   return (
     <div className="h-screen w-screen p-3 bg-transparent">
       <div
-        className="h-full w-full rounded-2xl bg-surface-container/95 backdrop-blur-xl shadow-2xl border border-outline-variant/20 flex flex-col overflow-hidden"
+        className="h-full w-full rounded-2xl bg-surface-container shadow-2xl border border-outline-variant/20 flex flex-col overflow-hidden"
         data-tauri-drag-region
       >
         <div className="flex items-center gap-2 px-4 py-2 border-b border-outline-variant/10" data-tauri-drag-region>
