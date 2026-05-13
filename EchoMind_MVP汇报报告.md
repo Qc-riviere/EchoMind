@@ -70,47 +70,96 @@
 
 ---
 
-## 二、AI Agent 协作开发栈与人力投入
+## 二、App 内置的 AI Agent 系统
 
-EchoMind 是单人项目（5-10 小时/周 × 3 个月），能在这个体量下产出"桌面 + Rust 后端 + Bridge Server + 微信 Bot + 5 份汇报文档"的关键，是把 AI agent 当成 *协作伙伴* 而不是"代码生成器"。
+EchoMind 不是"调一次 LLM、显示一段文字"那种壳子。在用户侧，**深度对话页**（任意灵感点开「对话」）跑的是一个**工具调用 Agent loop**——LLM 自主决定要不要先翻你的笔记、查相关旧条、新建一条、改写一条，再给最终回答。架构与 OpenAI/Anthropic 官方 tool-use 协议对齐，三家 provider 原生支持。
 
-### 我们用的 AI Agent / 工具栈
+### 2.1 Agent loop 架构
 
-| 角色 | 工具 | 用途 |
+```
+用户输入
+  ↓
+[system prompt + 历史 messages + tool specs] → LLM provider
+  ↓
+模型决定：(a) 直接回答  /  (b) 调用一个或多个工具
+  ↓ 若 (b)：
+执行工具（本地代码） → 把结果塞回 messages → 再喂 LLM
+  ↓
+循环直到模型不再调工具（或 8 轮上限）
+  ↓
+最终文字 + 全部中间事件（tool_call / tool_result）实时流给前端 UI
+```
+
+实现位于 `echomind-core/src/agent/mod.rs:71` 的 `run_agent`，约 150 行 Rust。生命周期内只持有 `&EchoMind` 引用，工具调用走异步 future，对前端通过 `mpsc::Sender<AgentEvent>` 流式回推。
+
+### 2.2 内置工具表（agent 在对话中可自主调用）
+
+| 工具名 | 作用 | 触发场景示例 |
 |---|---|---|
-| 主开发助手 | **Claude Code**（Anthropic 官方 CLI，Opus 4.x 系列） | 多文件 reasoning、长上下文编辑、终端集成；负责日常编码、重构、bug 定位 |
-| 全局 UX 审计 | 自定义 skill `ui-ux-pro-max` | 按 10 条优先级规则扫描全 app（字号下限 / a11y focus / 对比度 / 减少动效 / 死按钮等），一轮揪出 96 处 sub-12px 字号与一批假图标 |
-| 竞品调研 | 自定义 skill `competitive-research` | 6 家精选竞品 + 7 维深度调研（用户痛点 / 专利 / ROI / 行业趋势），产出 `竞品调研报告-EchoMind.md` 与 *验证日志* |
-| 可行性分析 | 自定义 skill `feasibility-report` | 9 假设结构化（数据获取、模型选型、效果验证），产出 `EchoMind_补充分析.md` + xlsx + docx + pptx + 风险矩阵图 |
-| 并行子代理 | Claude Code 的 **Explore / Plan / general-purpose** subagent | 多文件搜索 / 架构方案 / 开放问题调研，在不污染主上下文的前提下并行处理 |
-| 持续集成 | **GitHub Actions**（`tauri-action@v0`、`docker/build-push-action@v6`） | tag 触发 Win + macOS universal release 自动 build；master push 触发 bridge / wechat docker 镜像构建 |
-| 系统集成 | **Tauri 2** plugins | dialog / fs / notification / global-shortcut / tray-icon —— 桌面端原生能力的胶水层 |
+| `search_thoughts` | sqlite-vec 语义检索全部灵感（top 8） | 用户问"我之前是不是写过关于 X 的想法" |
+| `get_thought` | 按 ID 取单条完整元数据 | 用户引用某条 ID 让模型分析 |
+| `list_recent_thoughts` | 列最近 N 条灵感 | 用户问"我最近在想什么" / "帮我 recap" |
+| `create_thought` | 代用户记录一条新灵感 | 用户说"帮我记一下：…" |
+| `update_thought` | 改写已有灵感 | 用户说"把那条灵感改成…" |
 
-### 单人投入大致拆分
+工具规格（JSON Schema）+ 异步 handler 在 `agent/builtin_tools.rs:13` 的 `default_registry()` 注册。
 
-| 阶段 | 人时估算 | AI Agent 贡献占比 |
+### 2.3 用户可扩展：Skills System
+
+工具不是写死的。`echomind-core/src/skills/mod.rs` 让用户**自己写 Markdown 文件**注册新工具：
+
+```markdown
+---
+name: market-analysis
+description: Run a structured market analysis on a given topic
+trigger: both     # auto | manual | both
+parameters:
+  topic:
+    type: string
+    description: The topic to analyze
+---
+
+# 市场分析提示词
+针对「{{topic}}」从竞争格局、用户痛点、TAM/SAM/SOM 三个维度展开…
+```
+
+- **trigger=auto**：自动暴露给 agent，模型可在对话中主动调用
+- **trigger=manual**：用户在 UI 里手动触发
+- **trigger=both**：两种入口都有
+
+设置 → 技能 tab 自带 markdown 编辑器 + 「从其它 AI 工具导入」扫描器（`~/.claude` / `~/.cursor` / `~/.codex` 自动发现，一键导入）。
+
+### 2.4 LLM Provider 抽象
+
+所有 3 家 provider 都实现了同一个 `complete_with_tools` 接口（`llm/openai.rs` / `claude.rs` / `gemini.rs`），把各厂商不同的 tool-use 协议封装成统一的 `AgentTurn`：
+
+| Provider | tool-use 协议 | 实现行 |
 |---|---|---|
-| L1 Core（速记 / 列表 / AI enrich / 检索 / 对话 / 导出） | ~60h | 60% AI 辅助代码 / 40% 自己 review + 决策 |
-| L2 Bridge Phase 1-3（VPS 服务 / 配对 / LLM 转发） | ~80h | 50% / 50% |
-| UI / a11y / i18n 体系化整顿 | ~20h | 70% AI（ui-ux-pro-max skill 主导）/ 30% 自己定调 |
-| 文档体系（架构 / MVP / 竞品 / 可行性 / 补充分析） | ~25h | 80% AI 起草 / 20% 自己审核改写 |
-| 合计 | **≈ 185h ≈ 3 个月 × 每周 5-10 小时** | 平均 60% AI 辅助 |
+| OpenAI | `tools` + `tool_choice` + `tool_calls` 数组 | `llm/openai.rs:184` |
+| Claude | `tools` + `tool_use` content blocks | `llm/claude.rs:208` |
+| Gemini | `function_declarations` + `functionCall` parts | `llm/gemini.rs:217` |
 
-### AI Agent 的边界
+DeepSeek 走 OpenAI 兼容路径，自动支持。
 
-AI 不替代的关键决策：
-- **隐私边界**（明确代价 vs 假装零知识，见下一节）—— 由人完成
-- **订阅模式三层架构**（L1 免费 / L2 ¥20-30 / L3 未实现）—— 直接对标 Obsidian Sync，由人选定
-- **微信协议选型**（确认 ClawBot / iLink 是腾讯官方放开，非灰产）—— 由人查证
+### 2.5 调用路由（隐私相关）
 
-AI 高效完成的：
-- 代码实现细节（80% 以上）
-- 跨文件重构（typescript / rust 一致性）
-- 文档起草与表格生成
-- 竞品事实核查（Web 搜索 + 验证日志）
-- UX 审计与 a11y 漏洞扫描
+Agent loop 本身永远在桌面端 Rust 进程里跑。**只有 LLM 的 HTTPS 请求**在两条路径间选：
 
-> **取舍**：单人 + 重 AI 协作的模式使我们能在 3 个月内做到"通常 3-5 人团队 6 个月"的代码与文档体量，代价是**用户研究只来自作者一个样本**——这是 Closed Alpha 阶段必须用真实用户访谈补齐的最大缺口（详见 §五 H1）。
+- **本地直连**（默认）：桌面 → LLM 厂商 API
+- **云桥转发**（用户开启）：桌面 → 用户 VPS（带 Key）→ LLM 厂商 API
+
+工具执行 100% 在本地（搜你的笔记、改你的笔记），从不外发。Cloud Bridge 只搬"prompt + 工具规格"和 LLM 的回包。详见 §三。
+
+### 2.6 Agent 用在哪几个产品功能
+
+| 功能 | 是否走 agent loop | 说明 |
+|---|---|---|
+| **深度对话**（ChatPage） | ✅ 全功能 agent | 8 轮上限，自动用 search/list/get 等工具 |
+| **AI 自动 enrich** | ❌ 单次 LLM 调用 | 不需要工具，直接 prompt → JSON 输出 (domain/tags/context) |
+| **多选 AI 总结** | ❌ 单次 LLM 调用 | 已聚合好内容，再让模型 reason 一次即可 |
+| **微信 `/chat <ID>`** | ⚠️ 简化 agent | 复用 ChatPage 后端，但桌面离线时由 VPS daemon 跑 |
+
+> **设计取舍**：enrich / 总结这两个流不走 agent 是为了**省 token + 减延迟**——单次调用 1-3K tokens 就够，比 agent loop 平均省 60%+ 成本，对用户的 BYO Key 预算更友好。深度对话才需要工具调用的灵活性。
 
 ---
 
