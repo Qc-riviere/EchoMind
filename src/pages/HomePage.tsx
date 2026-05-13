@@ -147,28 +147,12 @@ export default function HomePage() {
             />
           </section>
 
-          {home.hot.length > 0 && (
-            <section>
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-headline font-bold text-on-surface">对话最多</h3>
-                <span className="text-xs text-on-surface-variant/50">高频回看</span>
-              </div>
-              <ThoughtList
-                thoughts={home.hot}
-                hideEmpty
-                onThoughtClick={(thought) => setSelectedThought(thought)}
-                activeThoughtId={selectedThought?.id}
-                selectMode={selectMode}
-                selectedIds={selectedIds}
-                onToggleSelect={toggleSelect}
-                onChanged={loadHome}
-              />
-            </section>
-          )}
         </div>
 
         {/* Right Discovery Panel */}
         <aside className="col-span-12 lg:col-span-4 flex flex-col gap-8">
+          <HotChats thoughts={home.hot} />
+
           {/* Cognitive Discovery */}
           <CognitiveDiscovery />
 
@@ -202,6 +186,62 @@ export default function HomePage() {
           loadHome();
         }}
       />
+    </div>
+  );
+}
+
+function HotChats({ thoughts }: { thoughts: Thought[] }) {
+  const navigate = useNavigate();
+
+  return (
+    <div className="p-6 bg-surface-container-high rounded-2xl ghost-border">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="material-symbols-outlined text-primary">forum</span>
+        <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-on-surface">
+          对话最多
+        </h3>
+      </div>
+
+      {thoughts.length === 0 ? (
+        <div className="text-center py-6">
+          <span className="material-symbols-outlined text-3xl text-on-surface-variant/30">chat_bubble</span>
+          <p className="text-[11px] text-on-surface-variant/50 mt-2 leading-relaxed">
+            还没有对话过的灵感
+            <br />
+            从主列表选一条点「对话」开始
+          </p>
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {thoughts.map((t, i) => (
+            <li key={t.id}>
+              <button
+                onClick={() => navigate(`/thought/${t.id}/chat`)}
+                className="w-full text-left rounded-xl px-3 py-2.5 bg-surface-container-low hover:bg-surface-container-highest transition-colors group"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-[10px] font-mono text-on-surface-variant/40 mt-0.5 w-4 flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-on-surface line-clamp-2 leading-relaxed group-hover:text-primary transition-colors">
+                      {t.file_summary || t.content}
+                    </p>
+                    {t.domain && (
+                      <span className="inline-block mt-1.5 text-[9px] px-1.5 py-0.5 rounded-full bg-primary/8 text-primary/70 uppercase tracking-wider">
+                        {t.domain}
+                      </span>
+                    )}
+                  </div>
+                  <span className="material-symbols-outlined text-[16px] text-on-surface-variant/30 group-hover:text-primary transition-colors flex-shrink-0">
+                    chevron_right
+                  </span>
+                </div>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
