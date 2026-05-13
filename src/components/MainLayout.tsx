@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, NavLink } from "react-router-dom";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import Sidebar from "./Sidebar";
 import TitleBar from "./TitleBar";
@@ -52,25 +52,14 @@ export default function MainLayout() {
                 </>
               )}
             </div>
-            <div className="flex items-center gap-6">
-              <div className="relative flex items-center bg-surface-container-low px-4 py-1.5 rounded-full ghost-border">
-                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">search</span>
-                <input
-                  className="bg-transparent border-none focus:ring-0 focus:outline-none text-[10px] text-on-surface w-48 placeholder:text-on-surface-variant/40 ml-2 uppercase tracking-widest"
-                  placeholder="CMD + K TO SEARCH"
-                  type="text"
-                  readOnly
-                />
-              </div>
-              <div className="flex items-center gap-4 text-on-surface-variant/60">
-                <button className="hover:text-on-surface transition-colors relative">
-                  <span className="material-symbols-outlined">notifications</span>
-                </button>
-                <button className="hover:text-on-surface transition-colors">
-                  <span className="material-symbols-outlined">account_circle</span>
-                </button>
-              </div>
-            </div>
+            <NavLink
+              to="/search"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface-container-low ghost-border text-on-surface-variant hover:text-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"
+              aria-label="跳转到搜索页"
+            >
+              <span className="material-symbols-outlined text-[18px]">search</span>
+              <span className="text-xs">搜索</span>
+            </NavLink>
           </header>
           {/* Main content */}
           <div className="flex-1 overflow-auto relative">

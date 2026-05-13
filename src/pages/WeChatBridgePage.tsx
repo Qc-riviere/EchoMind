@@ -196,7 +196,7 @@ export default function WeChatBridgePage() {
                 )}
                 <button
                   onClick={() => { if (pollRef.current) clearInterval(pollRef.current); pollRef.current = null; setStep("idle"); setQrUrl(null); }}
-                  className="text-[10px] text-on-surface-variant hover:text-on-surface uppercase tracking-wider transition-colors"
+                  className="text-[11px] text-on-surface-variant hover:text-on-surface uppercase tracking-wider transition-colors"
                 >
                   Cancel
                 </button>
@@ -217,18 +217,18 @@ export default function WeChatBridgePage() {
                 <p className="text-xs text-on-surface-variant">
                   在微信中发送文字即可记录想法，发送 /help 查看命令
                 </p>
-                <div className="flex items-center justify-center gap-3 text-[10px] text-on-surface-variant">
+                <div className="flex items-center justify-center gap-3 text-[11px] text-on-surface-variant">
                   <span>{serverStatus?.thoughts ?? 0} thoughts</span>
                   <span className="text-outline-variant">·</span>
                   <span>{serverStatus?.conversations ?? 0} conversations</span>
                 </div>
                 <div className="flex justify-center gap-3 pt-2">
                   <button onClick={startConnect} disabled={actionLoading}
-                    className="flex items-center gap-2 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg text-on-surface-variant hover:text-primary bg-surface-container-high transition-all">
+                    className="flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider rounded-lg text-on-surface-variant hover:text-primary bg-surface-container-high transition-all">
                     <span className="material-symbols-outlined text-[16px]">refresh</span> Rebind
                   </button>
                   <button onClick={handleDisconnect} disabled={actionLoading}
-                    className="flex items-center gap-2 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider rounded-lg text-error/60 hover:text-error bg-error-container/10 transition-all">
+                    className="flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider rounded-lg text-error/60 hover:text-error bg-error-container/10 transition-all">
                     {actionLoading ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[16px]">power_off</span>}
                     Disconnect
                   </button>
@@ -251,7 +251,7 @@ export default function WeChatBridgePage() {
                       {actionLoading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <span className="material-symbols-outlined">power</span>}
                       启动桥接
                     </button>
-                    <div className="text-[10px] text-on-surface-variant/50">
+                    <div className="text-[11px] text-on-surface-variant/50">
                       已绑定 {account.accountId?.slice(0, 12)}...
                       <button onClick={startConnect} className="text-primary hover:underline ml-2">重新绑定</button>
                     </div>
@@ -275,7 +275,7 @@ export default function WeChatBridgePage() {
               <h3 className="text-sm font-headline font-bold text-on-surface uppercase tracking-widest">
                 WeChat Command Protocol
               </h3>
-              <span className="text-[10px] text-on-surface-variant/40 font-mono">v1.2</span>
+              <span className="text-[11px] text-on-surface-variant/40 font-mono">v1.2</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <CmdCard icon="list" cmd="直接发文字" desc="快速记录想法" />
@@ -300,7 +300,7 @@ function StatusCard({ icon, label, value, active }: { icon: string; label: strin
   return (
     <div className={`p-4 rounded-xl transition-all ${active ? "bg-primary/10 ghost-border" : "bg-surface-container-low"}`}>
       <span className={`material-symbols-outlined text-[20px] mb-2 block ${active ? "text-primary" : "text-on-surface-variant/40"}`}>{icon}</span>
-      <p className="text-[10px] text-on-surface-variant uppercase tracking-wider">{label}</p>
+      <p className="text-[11px] text-on-surface-variant uppercase tracking-wider">{label}</p>
       <p className={`text-sm font-bold mt-1 ${active ? "text-primary" : "text-on-surface-variant/60"}`}>{value}</p>
     </div>
   );
@@ -311,7 +311,7 @@ function CmdCard({ icon, cmd, desc }: { icon: string; cmd: string; desc: string 
     <div className="p-4 bg-surface-container-lowest rounded-xl hover:bg-surface-container transition-colors group cursor-default">
       <span className="material-symbols-outlined text-[18px] text-on-surface-variant/40 group-hover:text-primary transition-colors mb-2 block">{icon}</span>
       <code className="text-[11px] text-primary font-mono block mb-1">{cmd}</code>
-      <p className="text-[10px] text-on-surface-variant">{desc}</p>
+      <p className="text-[11px] text-on-surface-variant">{desc}</p>
     </div>
   );
 }

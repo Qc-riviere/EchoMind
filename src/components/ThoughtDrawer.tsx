@@ -146,12 +146,12 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
             </div>
             <div className="flex items-center gap-2">
               {isSaving && (
-                <span className="flex items-center gap-1 text-[10px] text-on-surface-variant">
+                <span className="flex items-center gap-1 text-[11px] text-on-surface-variant">
                   <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> Saving
                 </span>
               )}
               {showSaved && !isSaving && (
-                <span className="flex items-center gap-1 text-[10px] text-primary">
+                <span className="flex items-center gap-1 text-[11px] text-primary">
                   <span className="material-symbols-outlined text-[14px]">check</span> Saved
                 </span>
               )}
@@ -211,12 +211,12 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
               {(displayThought.domain || displayThought.tags) && (
                 <div className="flex flex-wrap gap-2 pt-2">
                   {displayThought.domain && (
-                    <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] text-on-surface-variant tracking-wider font-semibold">
+                    <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[11px] text-on-surface-variant tracking-wider font-semibold">
                       {displayThought.domain}
                     </span>
                   )}
                   {displayThought.tags?.split(",").map((tag) => tag.trim()).filter(Boolean).map((tag) => (
-                    <span key={tag} className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] text-on-surface-variant tracking-wider font-semibold">
+                    <span key={tag} className="px-3 py-1 bg-surface-container-highest rounded-full text-[11px] text-on-surface-variant tracking-wider font-semibold">
                       {tag}
                     </span>
                   ))}
@@ -229,31 +229,31 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
           {displayThought && (
             <div className="px-5 py-4 border-t border-outline-variant/10">
               {isAnalyzing && (
-                <div className="flex items-center gap-2 mb-3 text-[10px] text-primary bg-primary/5 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 mb-3 text-[11px] text-primary bg-primary/5 rounded-lg px-3 py-2">
                   <span className="material-symbols-outlined text-[14px] animate-spin">progress_activity</span>
                   AI Re-analyzing...
                 </div>
               )}
               <div className="grid grid-cols-4 gap-1.5">
                   <button onClick={handleReanalyze} disabled={isAnalyzing}
-                    className="flex items-center justify-center gap-1 py-2 text-[9px] font-bold uppercase tracking-wider rounded-lg text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 transition-colors">
+                    className="flex items-center justify-center gap-1 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 transition-colors">
                     <span className="material-symbols-outlined text-[16px]">{isAnalyzing ? "progress_activity" : "auto_awesome"}</span>
                     Analyze
                   </button>
                   <button onClick={() => navigate(`/thought/${displayThought.id}/chat`)}
-                    className="flex items-center justify-center gap-1 py-2 text-[9px] font-bold uppercase tracking-wider rounded-lg text-on-surface-variant bg-surface-container-high hover:text-on-surface transition-colors">
+                    className="flex items-center justify-center gap-1 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg text-on-surface-variant bg-surface-container-high hover:text-on-surface transition-colors">
                     <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
                     Question
                   </button>
                   <button onClick={() => setShowArchiveConfirm(true)}
-                    className="flex items-center justify-center gap-1 py-2 text-[9px] font-bold uppercase tracking-wider rounded-lg text-error/60 hover:text-error hover:bg-error-container/20 transition-colors">
+                    className="flex items-center justify-center gap-1 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg text-error/60 hover:text-error hover:bg-error-container/20 transition-colors">
                     <span className="material-symbols-outlined text-[16px]">inventory_2</span>
                     Archive
                   </button>
                   <button
                     onClick={() => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); handleSave(content); }}
                     disabled={!hasUnsavedChanges || isSaving}
-                    className="flex items-center justify-center gap-1 py-2 text-[9px] font-bold uppercase tracking-wider rounded-lg luminous-pulse text-on-primary disabled:opacity-50 transition-all">
+                    className="flex items-center justify-center gap-1 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg luminous-pulse text-on-primary disabled:opacity-50 transition-all">
                     <span className="material-symbols-outlined text-[16px]">save</span>
                     Save
                   </button>

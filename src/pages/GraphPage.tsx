@@ -188,7 +188,7 @@ export default function GraphPage() {
         {hovered && (
           <div className="absolute bottom-4 left-4 max-w-sm p-3 rounded-lg bg-surface-container-high/95 backdrop-blur border border-outline-variant/20 pointer-events-none">
             <p className="text-xs text-on-surface line-clamp-3">{hovered.label}</p>
-            <div className="mt-1.5 flex gap-2 text-[10px] text-on-surface-variant/60">
+            <div className="mt-1.5 flex gap-2 text-[11px] text-on-surface-variant/60">
               {hovered.domain && <span className="font-semibold uppercase">{hovered.domain}</span>}
               <span className="font-mono">{new Date(hovered.created_at).toLocaleDateString()}</span>
             </div>

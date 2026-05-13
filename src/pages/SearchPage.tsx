@@ -71,14 +71,14 @@ export default function SearchPage() {
         {/* Mapping indicator */}
         <div className="flex items-center gap-2 mt-3 px-2">
           <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-          <span className="text-[10px] text-on-surface-variant/60 uppercase tracking-widest font-mono">
+          <span className="text-[11px] text-on-surface-variant/60 uppercase tracking-widest font-mono">
             Mapping Latent Space
           </span>
           <div className="flex-1 h-px bg-outline-variant/10"></div>
           <button
             onClick={handleReindex}
             disabled={reindexing}
-            className="text-[10px] text-on-surface-variant/60 hover:text-primary uppercase tracking-widest font-mono flex items-center gap-1 disabled:opacity-50"
+            className="text-[11px] text-on-surface-variant/60 hover:text-primary uppercase tracking-widest font-mono flex items-center gap-1 disabled:opacity-50"
             title="重新索引所有想法（在嵌入逻辑改变后使用）"
           >
             <span className={`material-symbols-outlined text-[14px] ${reindexing ? "animate-spin" : ""}`}>
@@ -88,7 +88,7 @@ export default function SearchPage() {
           </button>
         </div>
         {reindexMessage && (
-          <p className="text-[10px] text-primary/70 mt-2 px-2">{reindexMessage}</p>
+          <p className="text-[11px] text-primary/70 mt-2 px-2">{reindexMessage}</p>
         )}
       </div>
 
@@ -107,7 +107,7 @@ export default function SearchPage() {
               {results.map((thought, i) => (
                 <div key={thought.id}>
                   {i === 0 && (
-                    <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider rounded-full mb-4">
+                    <span className="inline-block px-3 py-1 bg-primary/10 text-primary text-[11px] font-bold uppercase tracking-wider rounded-full mb-4">
                       {Math.round(88 - i * 12)}% Vector Match
                     </span>
                   )}
@@ -121,7 +121,7 @@ export default function SearchPage() {
           <aside className="col-span-12 lg:col-span-4">
             <div className="p-6 bg-surface-container-high rounded-2xl ghost-border">
               <div className="flex items-center justify-between mb-4">
-                <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">
+                <span className="text-[11px] text-on-surface-variant uppercase tracking-widest font-bold">
                   Semantic Fragment
                 </span>
               </div>

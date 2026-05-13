@@ -174,7 +174,7 @@ export default function ChatPage() {
                       </button>
                     )}
                   </div>
-                  <span className="text-[10px] text-on-surface-variant mt-2 uppercase tracking-widest font-headline">User</span>
+                  <span className="text-[11px] text-on-surface-variant mt-2 uppercase tracking-widest font-headline">User</span>
                 </div>
               ) : (
                 <div className="max-w-4xl mr-auto bg-gradient-to-br from-primary/5 to-primary-container/5 p-8 rounded-[2rem] border border-outline-variant/5">
@@ -209,7 +209,7 @@ export default function ChatPage() {
                 <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" style={{ animationDelay: "0.2s" }} />
                 <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" style={{ animationDelay: "0.4s" }} />
               </div>
-              <span className="text-[10px] uppercase tracking-widest font-headline text-on-surface-variant">Synthesizing...</span>
+              <span className="text-[11px] uppercase tracking-widest font-headline text-on-surface-variant">Synthesizing...</span>
             </div>
           )}
 
@@ -239,7 +239,7 @@ export default function ChatPage() {
               <div className="flex items-center gap-2 shrink-0">
                 <button className="p-3 text-outline hover:text-primary transition-all group relative">
                   <span className="material-symbols-outlined text-[20px]">history</span>
-                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-surface-container-high text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest whitespace-nowrap">Recall</span>
+                  <span className="absolute -top-10 left-1/2 -translate-x-1/2 bg-surface-container-high text-[11px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity uppercase tracking-widest whitespace-nowrap">Recall</span>
                 </button>
                 <button
                   onClick={handleSend}
@@ -306,7 +306,7 @@ export default function ChatPage() {
             {/* Thought info */}
             {thought && (
               <div className="mb-8 p-4 rounded-xl bg-surface-container ghost-border">
-                <span className="text-[9px] text-primary/70 uppercase tracking-widest font-bold">
+                <span className="text-[11px] text-primary/70 uppercase tracking-widest font-bold">
                   {thought.domain || "Inspiration"}
                 </span>
                 <p className="text-xs text-on-surface font-medium mt-1 line-clamp-2">{thought.content}</p>
@@ -334,7 +334,7 @@ export default function ChatPage() {
                       {res.icon}
                     </span>
                     <div className="flex-1 min-w-0">
-                      <span className="text-[9px] text-primary/50 uppercase tracking-widest font-bold">
+                      <span className="text-[11px] text-primary/50 uppercase tracking-widest font-bold">
                         {TYPE_LABELS[res.type]}
                       </span>
                       <h4 className="text-xs font-headline font-bold text-on-surface group-hover:text-primary transition-colors mt-0.5">
@@ -363,7 +363,7 @@ export default function ChatPage() {
                     }
                   }}
                   disabled={isStreaming}
-                  className="mt-4 text-[10px] font-bold uppercase tracking-widest text-on-surface hover:text-primary transition-colors disabled:opacity-50"
+                  className="mt-4 text-[11px] font-bold uppercase tracking-widest text-on-surface hover:text-primary transition-colors disabled:opacity-50"
                 >
                   Ask for Resources →
                 </button>

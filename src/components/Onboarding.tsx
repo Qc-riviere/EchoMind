@@ -128,7 +128,7 @@ export default function Onboarding({ onClose }: Props) {
             />
           ))}
         </div>
-        <div className="px-10 pt-2 pb-1 text-[10px] tracking-[0.2em] uppercase text-on-surface-variant/60 font-mono">
+        <div className="px-10 pt-2 pb-1 text-[11px] tracking-[0.2em] uppercase text-on-surface-variant/60 font-mono">
           Step {step} / 4
         </div>
 

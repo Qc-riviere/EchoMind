@@ -257,7 +257,7 @@ export default function ChatHubPage() {
                 <div className="mr-auto bg-gradient-to-br from-primary/5 to-primary-container/5 p-8 rounded-[2rem] ghost-border">
                   <div className="flex items-center gap-3 mb-4">
                     <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
-                    <span className="text-[10px] uppercase tracking-[0.3em] font-headline text-primary font-bold">
+                    <span className="text-[11px] uppercase tracking-[0.3em] font-headline text-primary font-bold">
                       EchoMind Logic Engine
                     </span>
                   </div>
@@ -274,7 +274,7 @@ export default function ChatHubPage() {
             <div className="mr-auto bg-gradient-to-br from-primary/5 to-primary-container/5 p-8 rounded-[2rem] ghost-border">
               <div className="flex items-center gap-3 mb-4">
                 <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
-                <span className="text-[10px] uppercase tracking-[0.3em] font-headline text-primary font-bold">
+                <span className="text-[11px] uppercase tracking-[0.3em] font-headline text-primary font-bold">
                   EchoMind Logic Engine
                 </span>
               </div>
@@ -294,7 +294,7 @@ export default function ChatHubPage() {
                 <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" style={{ animationDelay: "0.2s" }} />
                 <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" style={{ animationDelay: "0.4s" }} />
               </div>
-              <span className="text-[10px] uppercase tracking-widest font-headline">Synthesizing...</span>
+              <span className="text-[11px] uppercase tracking-widest font-headline">Synthesizing...</span>
             </div>
           )}
 
@@ -310,7 +310,7 @@ export default function ChatHubPage() {
           {skillMenuOpen && skills.length > 0 && (
             <div className="mb-2 glass-panel rounded-2xl ghost-border p-2 max-h-[240px] overflow-y-auto no-scrollbar">
               <div className="px-3 py-1.5 mb-1">
-                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">Skills</span>
+                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant/40">Skills</span>
               </div>
               {skills
                 .filter((s) => s.trigger === "manual" || s.trigger === "both")
@@ -323,7 +323,7 @@ export default function ChatHubPage() {
                     <span className="material-symbols-outlined text-[16px] text-primary/50 group-hover:text-primary">bolt</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-on-surface">{skill.name}</p>
-                      <p className="text-[10px] text-on-surface-variant/50 truncate">{skill.description}</p>
+                      <p className="text-[11px] text-on-surface-variant/50 truncate">{skill.description}</p>
                     </div>
                   </button>
                 ))}
@@ -367,7 +367,7 @@ export default function ChatHubPage() {
                   key={chip.label}
                   onClick={() => { if (!isStreaming && conversation) sendMessage(conversation.id, chip.label); }}
                   disabled={isStreaming}
-                  className="whitespace-nowrap px-4 py-1.5 rounded-full ghost-border text-[10px] font-headline font-bold uppercase tracking-widest text-on-surface-variant/60 hover:text-primary hover:border-primary/30 transition-all flex items-center gap-2 disabled:opacity-50"
+                  className="whitespace-nowrap px-4 py-1.5 rounded-full ghost-border text-[11px] font-headline font-bold uppercase tracking-widest text-on-surface-variant/60 hover:text-primary hover:border-primary/30 transition-all flex items-center gap-2 disabled:opacity-50"
                 >
                   <span className="material-symbols-outlined text-[14px]">{chip.icon}</span>
                   {chip.label}
@@ -419,7 +419,7 @@ export default function ChatHubPage() {
                     <div className="h-2 bg-on-surface/5 rounded w-2/3" />
                   </div>
                 ))}
-                <p className="text-[10px] text-on-surface-variant/40 text-center mt-4">AI 正在分析并推荐资源...</p>
+                <p className="text-[11px] text-on-surface-variant/40 text-center mt-4">AI 正在分析并推荐资源...</p>
               </div>
             )}
 
@@ -430,7 +430,7 @@ export default function ChatHubPage() {
                 <p className="text-xs text-on-surface-variant/60 mb-3">资源加载失败</p>
                 <button
                   onClick={refreshResources}
-                  className="text-[10px] font-bold text-primary hover:underline"
+                  className="text-[11px] font-bold text-primary hover:underline"
                 >
                   重试
                 </button>
@@ -459,10 +459,10 @@ export default function ChatHubPage() {
                         <h4 className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors mt-0.5 leading-snug">
                           {res.title}
                         </h4>
-                        <p className="text-[10px] text-on-surface-variant/50 mt-1 leading-relaxed line-clamp-2">
+                        <p className="text-[11px] text-on-surface-variant/50 mt-1 leading-relaxed line-clamp-2">
                           {res.description}
                         </p>
-                        <p className="text-[9px] text-primary/40 mt-1 truncate group-hover:text-primary/60 transition-colors">
+                        <p className="text-[11px] text-primary/40 mt-1 truncate group-hover:text-primary/60 transition-colors">
                           {res.url}
                         </p>
                       </div>
@@ -592,11 +592,11 @@ function ChatPickerColumn({
               </p>
               <div className="flex items-center gap-2 mt-2">
                 {t.domain && (
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary/70 font-medium">
+                  <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary/70 font-medium">
                     {t.domain}
                   </span>
                 )}
-                <span className="text-[10px] text-on-surface-variant/50 font-mono">
+                <span className="text-[11px] text-on-surface-variant/50 font-mono">
                   {new Date(t.created_at).toLocaleDateString("zh-CN")}
                 </span>
               </div>

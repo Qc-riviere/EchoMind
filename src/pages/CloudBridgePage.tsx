@@ -342,7 +342,7 @@ export default function CloudBridgePage() {
                 placeholder="例如：work, research"
                 className="mt-1 w-full bg-surface-container rounded-lg px-3 py-2 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary/30"
               />
-              <p className="text-[10px] text-on-surface-variant/40 mt-1">留空 = 不按包含标签过滤</p>
+              <p className="text-[11px] text-on-surface-variant/40 mt-1">留空 = 不按包含标签过滤</p>
             </div>
 
             <div>
@@ -553,7 +553,7 @@ function PairForm(p: PairFormProps) {
             placeholder="8 位字符"
             className="mt-1 w-full bg-surface-container rounded-lg px-3 py-2 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary/30 font-mono tracking-widest uppercase"
           />
-          <p className="text-[10px] text-on-surface-variant/40 mt-1">
+          <p className="text-[11px] text-on-surface-variant/40 mt-1">
             在你的 VPS 上执行 <code className="font-mono">POST /admin/pair-codes</code> 获取。
           </p>
         </div>

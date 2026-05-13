@@ -139,7 +139,7 @@ export default function ThoughtInput({ onCaptured }: ThoughtInputProps = {}) {
           <h2 className="text-sm font-headline tracking-widest text-primary opacity-80 uppercase">
             Capture Inspiration
           </h2>
-          <span className="text-[10px] text-on-surface-variant/60 font-mono">CTRL + N</span>
+          <span className="text-[11px] text-on-surface-variant/60 font-mono">CTRL + N</span>
         </div>
 
         {/* Attachment preview */}
@@ -160,7 +160,7 @@ export default function ThoughtInput({ onCaptured }: ThoughtInputProps = {}) {
                 <span className="material-symbols-outlined text-primary/60">description</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-on-surface truncate">{attachment.name}</p>
-                  <p className="text-[10px] text-on-surface-variant">{formatSize(attachment.size)}</p>
+                  <p className="text-[11px] text-on-surface-variant">{formatSize(attachment.size)}</p>
                 </div>
                 <button onClick={() => setAttachment(null)} className="text-on-surface-variant hover:text-on-surface transition-colors">
                   <span className="material-symbols-outlined text-[18px]">close</span>

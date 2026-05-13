@@ -6,13 +6,13 @@ import { formatDistanceToNow } from "date-fns";
 import { EchoMindLogo } from "./EchoMindLogo";
 
 const navItems = [
-  { to: "/", icon: "home", label: "Home" },
-  { to: "/search", icon: "search", label: "Search" },
-  { to: "/graph", icon: "bubble_chart", label: "Graph" },
-  { to: "/archive", icon: "inventory_2", label: "Archive" },
-  { to: "/wechat", icon: "hub", label: "WeChat Bridge" },
-  { to: "/cloud", icon: "cloud_sync", label: "Cloud Bridge" },
-  { to: "/settings", icon: "settings", label: "Settings" },
+  { to: "/", icon: "home", label: "首页" },
+  { to: "/search", icon: "search", label: "搜索" },
+  { to: "/graph", icon: "bubble_chart", label: "图谱" },
+  { to: "/archive", icon: "inventory_2", label: "归档" },
+  { to: "/wechat", icon: "hub", label: "微信桥" },
+  { to: "/cloud", icon: "cloud_sync", label: "云桥" },
+  { to: "/settings", icon: "settings", label: "设置" },
 ];
 
 export default function Sidebar() {
@@ -68,7 +68,7 @@ export default function Sidebar() {
         <EchoMindLogo className="w-8 h-8 text-primary" style={{ color: "var(--t-primary)" }} />
         <div className="flex flex-col gap-0.5">
           <h1 className="text-xl font-bold tracking-widest text-primary font-headline">EchoMind</h1>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/60">
+          <span className="text-[11px] uppercase tracking-[0.2em] text-on-surface-variant/60">
             灵感备忘录
           </span>
         </div>
@@ -111,8 +111,9 @@ export default function Sidebar() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search..."
-                className="w-full bg-surface-container-low rounded-lg pl-7 pr-2 py-1.5 text-[11px] text-on-surface placeholder:text-on-surface-variant/30 focus:outline-none focus:ring-1 focus:ring-primary/20"
+                placeholder="搜索对话…"
+                aria-label="搜索对话"
+                className="w-full bg-surface-container-low rounded-lg pl-7 pr-2 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
 
@@ -124,8 +125,8 @@ export default function Sidebar() {
                 </div>
               )}
               {!loadingSessions && filteredSessions.length === 0 && (
-                <p className="text-[10px] text-on-surface-variant/40 py-2 px-2">
-                  {searchQuery ? "No matches" : "No conversations yet"}
+                <p className="text-xs text-on-surface-variant py-2 px-2">
+                  {searchQuery ? "没有匹配的对话" : "还没有任何对话"}
                 </p>
               )}
               {filteredSessions.map((s) => {
@@ -145,7 +146,7 @@ export default function Sidebar() {
                     title={s.thought_preview}
                   >
                     <div className="truncate">{preview}</div>
-                    <div className="text-[9px] text-on-surface-variant/40 font-mono mt-0.5">{timeAgo}</div>
+                    <div className="text-[11px] text-on-surface-variant/40 font-mono mt-0.5">{timeAgo}</div>
                   </button>
                 );
               })}
@@ -167,10 +168,11 @@ export default function Sidebar() {
             el?.focus();
           }, 100);
         }}
-        className="mt-4 flex items-center justify-center gap-3 luminous-pulse text-on-primary py-3 px-4 rounded-xl font-semibold shadow-xl active:scale-95 transition-all text-sm"
+        className="mt-4 flex items-center justify-center gap-3 luminous-pulse text-on-primary py-3 px-4 rounded-xl font-semibold shadow-xl active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all text-sm"
+        aria-label="新建灵感"
       >
         <span className="material-symbols-outlined text-[20px]">add</span>
-        <span>New Inspiration</span>
+        <span>新建灵感</span>
       </button>
     </aside>
   );

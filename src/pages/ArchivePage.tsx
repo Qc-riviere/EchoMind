@@ -78,13 +78,13 @@ export default function ArchivePage() {
 
       {/* Filter tabs */}
       <div className="flex items-center justify-between mb-8">
-        <span className="text-[10px] text-on-surface-variant uppercase tracking-widest font-mono">Filter by Recency</span>
+        <span className="text-[11px] text-on-surface-variant uppercase tracking-widest font-mono">Filter by Recency</span>
         <div className="flex gap-1">
           {(["all", "week", "month"] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-1.5 text-[10px] uppercase tracking-wider font-bold rounded-lg transition-all ${
+              className={`px-4 py-1.5 text-[11px] uppercase tracking-wider font-bold rounded-lg transition-all ${
                 filter === f ? "bg-primary text-on-primary" : "text-on-surface-variant hover:text-on-surface"
               }`}
             >
@@ -150,9 +150,9 @@ export default function ArchivePage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1">
                   {thought.domain && (
-                    <span className="text-[10px] text-primary uppercase tracking-wider font-bold">{thought.domain}</span>
+                    <span className="text-[11px] text-primary uppercase tracking-wider font-bold">{thought.domain}</span>
                   )}
-                  <span className="text-[10px] text-on-surface-variant/40 font-mono">ARCHIVED {dateStr}</span>
+                  <span className="text-[11px] text-on-surface-variant/40 font-mono">ARCHIVED {dateStr}</span>
                 </div>
                 <h4 className="text-base font-headline font-semibold text-on-surface truncate">{thought.content}</h4>
                 {thought.context && (
@@ -164,14 +164,14 @@ export default function ArchivePage() {
               <div className="flex flex-col gap-2 shrink-0">
                 <button
                   onClick={() => handleUnarchive(thought.id)}
-                  className="flex items-center gap-1.5 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">restore</span>
                   Restore
                 </button>
                 <button
                   onClick={() => handleDelete(thought.id)}
-                  className="flex items-center gap-1.5 px-4 py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg text-error/60 hover:text-error hover:bg-error-container/20 transition-colors"
+                  className="flex items-center gap-1.5 px-4 py-2 text-[11px] font-bold uppercase tracking-wider rounded-lg text-error/60 hover:text-error hover:bg-error-container/20 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">delete</span>
                   Delete

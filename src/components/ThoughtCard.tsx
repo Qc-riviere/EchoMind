@@ -96,7 +96,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
         <div className={`flex-1 p-8 ${hasImage ? "bg-surface-container-low" : ""}`}>
           {/* Date & actions */}
           <div className="flex justify-between items-start mb-4">
-            <span className="text-[10px] text-on-surface-variant tracking-[0.2em] font-mono">{dateStr}</span>
+            <span className="text-[11px] text-on-surface-variant tracking-[0.2em] font-mono">{dateStr}</span>
             <button
               onClick={(e) => { e.stopPropagation(); }}
               className="text-on-surface-variant opacity-20 group-hover:opacity-100 hover:text-primary transition-all"
@@ -112,7 +112,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
 
           {/* Enriching indicator */}
           {isEnriching && (
-            <div className="flex items-center gap-2 text-[10px] text-primary mb-4 tracking-wider uppercase">
+            <div className="flex items-center gap-2 text-[11px] text-primary mb-4 tracking-wider uppercase">
               <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
               AI Processing...
             </div>
@@ -142,14 +142,14 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
           {/* Tags */}
           <div className="flex flex-wrap gap-2">
             {thought.domain && (
-              <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] text-secondary-fixed-dim tracking-wider uppercase font-semibold">
+              <span className="px-3 py-1 bg-surface-container-highest rounded-full text-[11px] text-secondary-fixed-dim tracking-wider uppercase font-semibold">
                 {thought.domain}
               </span>
             )}
             {thought.tags?.split(",").map((tag) => (
               <span
                 key={tag}
-                className="px-3 py-1 bg-surface-container-highest rounded-full text-[10px] text-primary tracking-wider uppercase font-semibold"
+                className="px-3 py-1 bg-surface-container-highest rounded-full text-[11px] text-primary tracking-wider uppercase font-semibold"
               >
                 {tag.trim()}
               </span>
@@ -160,7 +160,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
           <div className="flex items-center gap-3 mt-4 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={(e) => { e.stopPropagation(); navigate(`/thought/${thought.id}/chat`); }}
-              className="flex items-center gap-1.5 text-[10px] text-on-surface-variant hover:text-primary uppercase tracking-wider transition-colors"
+              className="flex items-center gap-1.5 text-[11px] text-on-surface-variant hover:text-primary uppercase tracking-wider transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
               对话
@@ -173,7 +173,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
                   onChanged?.();
                 } catch { /* ignore */ }
               }}
-              className={`flex items-center gap-1.5 text-[10px] uppercase tracking-wider transition-colors ${
+              className={`flex items-center gap-1.5 text-[11px] uppercase tracking-wider transition-colors ${
                 thought.is_pinned
                   ? "text-primary"
                   : "text-on-surface-variant hover:text-primary"
@@ -184,7 +184,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); archiveThought(thought.id); onChanged?.(); }}
-              className="flex items-center gap-1.5 text-[10px] text-on-surface-variant hover:text-error uppercase tracking-wider transition-colors"
+              className="flex items-center gap-1.5 text-[11px] text-on-surface-variant hover:text-error uppercase tracking-wider transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">inventory_2</span>
               归档

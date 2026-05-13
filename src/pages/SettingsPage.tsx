@@ -14,13 +14,13 @@ const LLM_PROVIDERS = [
 type SettingsTab = "llm" | "embedding" | "ai" | "skills" | "appearance" | "data" | "about";
 
 const NAV_ITEMS: { key: SettingsTab; icon: string; label: string }[] = [
-  { key: "llm", icon: "auto_awesome", label: "LLM Config" },
-  { key: "embedding", icon: "hub", label: "Embedding" },
-  { key: "ai", icon: "psychology", label: "AI Behavior" },
-  { key: "skills", icon: "bolt", label: "Skills" },
-  { key: "appearance", icon: "palette", label: "Appearance" },
-  { key: "data", icon: "database", label: "Data" },
-  { key: "about", icon: "info", label: "About" },
+  { key: "llm", icon: "auto_awesome", label: "LLM 配置" },
+  { key: "embedding", icon: "hub", label: "向量嵌入" },
+  { key: "ai", icon: "psychology", label: "AI 行为" },
+  { key: "skills", icon: "bolt", label: "技能" },
+  { key: "appearance", icon: "palette", label: "外观" },
+  { key: "data", icon: "database", label: "数据" },
+  { key: "about", icon: "info", label: "关于" },
 ];
 
 export default function SettingsPage() {
@@ -209,7 +209,7 @@ export default function SettingsPage() {
   };
 
   const inputClass = "w-full bg-surface-container-highest border-none rounded-xl px-4 py-3 text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-1 focus:ring-primary text-sm";
-  const labelClass = "text-[10px] font-bold text-on-surface-variant uppercase tracking-widest";
+  const labelClass = "text-[11px] font-bold text-on-surface-variant uppercase tracking-widest";
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 sm:py-12 w-full overflow-hidden">
@@ -340,7 +340,7 @@ export default function SettingsPage() {
                     <div className="mt-4 space-y-2">
                       <label className={labelClass}>Base URL (Optional)</label>
                       <input type="text" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className={inputClass} />
-                      <p className="text-[10px] text-on-surface-variant/50">DeepSeek 已自动填充。其他 provider 一般留空。</p>
+                      <p className="text-[11px] text-on-surface-variant/50">DeepSeek 已自动填充。其他 provider 一般留空。</p>
                     </div>
                   </details>
                 </div>
@@ -518,7 +518,7 @@ export default function SettingsPage() {
                   <div className="mt-4 space-y-3">
                     <label className={labelClass}>Model Creativity (Temperature)</label>
                     <input type="range" min="0" max="100" defaultValue="70" className="w-full accent-primary" />
-                    <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
+                    <div className="flex justify-between text-[11px] text-on-surface-variant font-mono">
                       <span>Analytical</span>
                       <span>Balanced</span>
                       <span>Creative</span>
@@ -818,7 +818,7 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3">
                     <h4 className="font-bold text-on-surface text-sm">{skill.name}</h4>
-                    <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                    <span className={`text-[11px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
                       skill.trigger === "auto"
                         ? "bg-primary/10 text-primary"
                         : skill.trigger === "both"
@@ -834,7 +834,7 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
                       {Object.entries(skill.parameters).map(([key, param]) => (
                         <span
                           key={key}
-                          className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-surface-container-highest text-on-surface-variant/60"
+                          className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-surface-container-highest text-on-surface-variant/60"
                           title={param.description}
                         >
                           {`{{${key}}}`}{param.default ? ` = ${param.default}` : ""}
@@ -965,14 +965,14 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-on-surface">{d.name}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant/60">
+                        <span className="text-[11px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant/60">
                           {d.source}
                         </span>
                       </div>
                       {d.description && (
                         <p className="text-xs text-on-surface-variant/50 mt-1 line-clamp-2">{d.description}</p>
                       )}
-                      <p className="text-[9px] text-on-surface-variant/30 mt-1 font-mono truncate">{d.path}</p>
+                      <p className="text-[11px] text-on-surface-variant/30 mt-1 font-mono truncate">{d.path}</p>
                     </div>
                   </button>
                 );
@@ -1107,7 +1107,7 @@ function AppearanceTab({ labelClass }: { labelClass: string }) {
         <div className="space-y-2">
           <label className={labelClass}>Font Size</label>
           <input type="range" min="12" max="20" defaultValue="14" className="w-full accent-primary" />
-          <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
+          <div className="flex justify-between text-[11px] text-on-surface-variant font-mono">
             <span>12px</span>
             <span>16px</span>
             <span>20px</span>
