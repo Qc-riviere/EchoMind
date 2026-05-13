@@ -152,7 +152,9 @@ pub fn run() {
 
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+                // 5s = "feels instant" for WeChat→desktop sync. Single GET /bridge/thoughts?since=
+                // is cheap; even 30 concurrent users only pump ~6 req/s through bridge.
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
                 interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
                 loop {
                     interval.tick().await;
