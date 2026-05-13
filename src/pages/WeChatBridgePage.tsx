@@ -26,12 +26,20 @@ interface QrPollResult {
   account_id: string | null;
 }
 
+interface CloudBridgeStatus {
+  paired: boolean;
+  enabled: boolean;
+  server_url: string | null;
+  device_id: string | null;
+}
+
 type BridgeStep = "idle" | "starting-server" | "scanning" | "scanned" | "connecting" | "ready" | "error";
 
 export default function WeChatBridgePage() {
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null);
   const [account, setAccount] = useState<WeChatAccount | null>(null);
   const [daemonRunning, setDaemonRunning] = useState(false);
+  const [cloudBridge, setCloudBridge] = useState<CloudBridgeStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<BridgeStep>("idle");
   const [qrUrl, setQrUrl] = useState<string | null>(null);
@@ -41,14 +49,16 @@ export default function WeChatBridgePage() {
 
   const refresh = useCallback(async () => {
     try {
-      const [status, acct, daemon] = await Promise.all([
+      const [status, acct, daemon, cloud] = await Promise.all([
         invoke<ServerStatus>("bridge_server_status"),
         invoke<WeChatAccount>("bridge_wechat_account"),
         invoke<boolean>("bridge_daemon_status"),
+        invoke<CloudBridgeStatus>("cloud_bridge_status").catch(() => null),
       ]);
       setServerStatus(status);
       setAccount(acct);
       setDaemonRunning(daemon);
+      setCloudBridge(cloud);
       if (daemon && status.online && acct.configured) {
         setStep((prev) => (prev === "scanning" || prev === "scanned" ? prev : "ready"));
       }
@@ -56,6 +66,7 @@ export default function WeChatBridgePage() {
       setServerStatus({ online: false });
       setAccount({ configured: false });
       setDaemonRunning(false);
+      setCloudBridge(null);
     } finally { setLoading(false); }
   }, []);
 
@@ -147,23 +158,47 @@ export default function WeChatBridgePage() {
   }
 
   const isReady = serverStatus?.online && account?.configured && daemonRunning;
+  const cloudActive = !!(cloudBridge?.paired && cloudBridge?.enabled);
+  const bridgeHost = (() => {
+    if (!cloudBridge?.server_url) return null;
+    try { return new URL(cloudBridge.server_url).host; } catch { return cloudBridge.server_url; }
+  })();
 
   return (
     <div className="max-w-5xl mx-auto px-8 py-12">
       {/* Header */}
       <div className="mb-10">
-        <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">WeChat Bridge</h1>
+        <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">微信桥</h1>
         <p className="text-sm text-on-surface-variant mt-3 leading-relaxed max-w-2xl">
-          Deploy your cognitive sanctuary into your pocket. Connect mobile WeChat as an edge-node for instant inspiration capture and retrieval.
+          把第二大脑接到手机微信上：发条消息即落库，桌面 ~5 秒内同步并通知。
         </p>
       </div>
 
+      {/* Cloud-bridge mode banner — bot lives on the VPS, not on the desktop */}
+      {cloudActive && !daemonRunning && (
+        <div className="mb-6 px-5 py-4 rounded-2xl bg-primary/10 border border-primary/30 flex items-start gap-3">
+          <span className="material-symbols-outlined text-primary mt-0.5" aria-hidden="true">cloud_done</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-on-surface">微信桥已通过云桥连接</div>
+            <div className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+              Bot 运行在 VPS{bridgeHost ? ` (${bridgeHost})` : ""}，桌面端不需要本地 daemon。
+              下方的「未启动」状态指本地 daemon 未跑——这是正常的；微信能正常发消息就行。
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Status indicators */}
       <div className="grid grid-cols-4 gap-4 mb-8">
-        <StatusCard icon="cloud" label="Server" value={serverStatus?.online ? "Online" : "Offline"} active={!!serverStatus?.online} />
-        <StatusCard icon="person" label="Account" value={account?.accountId ? `@${account.accountId.slice(0, 8)}` : "None"} active={!!account?.configured} />
-        <StatusCard icon="hub" label="Bridge" value={daemonRunning ? "Connected" : "Idle"} active={daemonRunning} />
-        <StatusCard icon="lock" label="Encryption" value="256-bit AES" active={!!isReady} />
+        <StatusCard icon="cloud" label="本地服务" value={serverStatus?.online ? "在线" : "离线"} active={!!serverStatus?.online} />
+        <StatusCard icon="person" label="账号" value={account?.accountId ? `@${account.accountId.slice(0, 8)}` : "未绑定"} active={!!account?.configured} />
+        <StatusCard
+          icon="hub"
+          label="桥接"
+          value={daemonRunning ? "本地运行中" : cloudActive ? "云桥连接中" : "未启动"}
+          active={daemonRunning || cloudActive}
+        />
+        <StatusCard icon="lock" label="加密" value="256-bit AES" active={!!isReady || cloudActive} />
       </div>
 
       <div className="grid grid-cols-12 gap-8">
