@@ -412,6 +412,7 @@ node dist/main.js daemon
 - **2026-05-12** | P0 全部清完 / Alpha-ready | (1) `v0.1.0-rc1` tag 触发 desktop-release，macOS + Windows 双 job 14m+ 通过；(2) 复盘 P0 #3 `/bridge/thoughts/capture` 路由实际已实现（routes.rs:28 + bridge-client.ts:68），enrich/embed gap 降为 P1 #11b；(3) 复盘 P1 #9 测试 LLM 按钮已在 SettingsPage 存在；(4) 新增 `src/components/Onboarding.tsx` 4 步首次启动引导（欢迎 → LLM 配置+测试 → 第一条灵感 → 微信桥 teaser），`App.tsx` 加 OnboardingGate 自动触发；(5) §13 加 Alpha 就绪度评估表，结论：Alpha 招募已可启动 |
 - **2026-05-13** | UI/UX 体系性整顿 + P1 路线锁定 | 通过 ui-ux-pro-max skill 全 app review，按优先级 1→10 整改：(1) 全局字号下限 11px（96 处 9-10px 批改）；(2) Sidebar/MainLayout/SettingsPage 全中文化，删 MainLayout 假搜索/假图标；(3) prefers-reduced-motion 媒体查询；(4) HomePage 主列表改全量分页 9/页 + HotChats 移右栏直跳对话 + 滚动复位。同时锁定 Alpha 前 P1 执行顺序 A→E（先错误翻译层，再 a11y，再 bridge enrich，最后 e2e + 文档） |
 - **2026-05-13b** | P1 #7 / #11b / a11y 三连清 + UX 修复一组 | (A) `src/lib/errorMsg.ts` 集中错误翻译层，11 文件 27 处替换；(B) 全局 `:focus-visible` outline CSS + TitleBar/SummaryModal/ThoughtDrawer/ThoughtInput/ChatPage 关键图标 aria-label，ChatPage 删 2 个死按钮 + Drawer 4 操作按钮中文化；(C) `bridge_sync_pull` 检测新 inserted 且 domain/tags 空时自动 enrich+embed，CaptureWindow / SummaryModal「保存」也补齐 enrich；(D) WeChatBridgePage 云桥模式横幅，不再误报「未启动」；(E) 多选交互重做——卡片右上 ⋯ hover 自动变 ☐ 复选框，删丑大圆圈和「多选模式」开关，SelectionBar 自动按 selectedIds.size 显示；(F) ThoughtDrawer.handleReanalyze 成功后清 enrichErrors，红框不再赖在分析过的卡片上 |
+- **2026-05-13c** | 搜索可用性 + 视觉品牌 + 国际化收口 | (A) 搜索在 Claude/DeepSeek 等无 OpenAI 兼容 embedding 端点的 provider 下整体不可用——`load_embedding_config_from_conn` 兜底分支把 LLM key 直接发到 OpenAI 端点必 401；改为仅 `openai` / `gemini` 走对应远端，其它 provider 自动 fallback 到本地 bge-small-zh-v1.5 (512 维)；(B) `reembed_all_thoughts` 在 re-embed 前比对 `thought_embeddings` 虚表当前维度与目标维度，若不一致 DROP + 重建（修 1536 → 512 切换时的 `Dimension mismatch`）；(C) 图标品牌色与 App 主色统一——`public/logo.svg` 紫 `#8b5cf6` → 蓝 `#adc7ff`（`--t-primary`），`pnpm tauri icon` 重生所有 .ico/.icns/.png（Win + iOS + Android 全套）；(D) GraphPage 节点 label 硬编码 `rgba(0,0,0,0.75)` 在暗色下不可见 → 根据 theme store 选浅/深色；同步加色彩图例 overlay（绿 = 近 24h，其余按 domain），头部 + tooltip + 空态全中文化；(E) SettingsPage 残留英文清零——LLM / Embedding / AI / Skills / Appearance / Data / About 7 个 tab 的 section 标题、字段标签、按钮、对话框、placeholder 全部汉化，仅保留品牌名与 `API Key` / `Temperature` / `Base URL` 通用术语 |
 
 ---
 
@@ -480,14 +481,20 @@ Beta 公开前：
 
 UI/UX 体系性改进（2026-05-13 通过 ui-ux-pro-max skill 完成）：
   ├── ✅ 全局字号下限 11px（96 处 sub-12px 修正）
-  ├── ✅ Sidebar / MainLayout / SettingsPage 中文化
+  ├── ✅ Sidebar / MainLayout / SettingsPage 中文化（5-13c 收尾 7 个 tab 全清）
   ├── ✅ MainLayout 假搜索框 + 假图标按钮删除
   ├── ✅ prefers-reduced-motion 媒体查询
   ├── ✅ 全局 :focus-visible outline + TitleBar/Modal/Drawer 关键 aria-label
   ├── ✅ ChatPage 删 2 个死按钮 + send aria-label + placeholder 中文
   ├── ✅ Drawer 操作按钮中文化（重新分析 / 对话 / 归档 / 保存）
   ├── ✅ 多选交互重做：删丑大圆圈 + 卡片右上 ⋯ hover 即变 ☐，无需进入「多选模式」
-  └── ✅ WeChatBridgePage 云桥模式下显示「已通过云桥连接」横幅而非误报「未启动」
+  ├── ✅ WeChatBridgePage 云桥模式下显示「已通过云桥连接」横幅而非误报「未启动」
+  ├── ✅ GraphPage 暗色下节点 label 可见 + 颜色图例 overlay + 头部 / tooltip / 空态中文化
+  └── ✅ 图标品牌色对齐 App 主色（紫 → 蓝 `#adc7ff`，重生 ico/icns/全平台 png）
+
+可用性回归（2026-05-13c，潜伏 showstopper 修复）：
+  ├── ✅ 搜索在 Claude/DeepSeek 等 provider 下整体不可用 → fallback 到本地 bge-small-zh-v1.5
+  └── ✅ Reindex 1536 ↔ 512 维切换 `Dimension mismatch` → 检测维度不一致即 DROP + 重建 vec 表
 ```
 
 详细的灰度发布操作步骤（VPS 部署、招募文案、反馈通道）见根目录 `EchoMind_MVP汇报报告.md` §7。
@@ -501,7 +508,7 @@ UI/UX 体系性改进（2026-05-13 通过 ui-ux-pro-max skill 完成）：
 | Staging 实际运行 | ✅ | VPS 49.128.204.149 (1c1g) 已部署，Cloud Bridge + WeChat 双向互通验证通过（2026-05-12） |
 | 首次能用 | ✅ | Onboarding 4 步引导覆盖 0 → 第一条灵感 |
 | 核心功能完整 | ✅ | 速记 / 浏览 / AI 总结 / 对话 / 微信桥 / Cloud Bridge 全跑通 |
-| 体验打磨 | ⚠️ | 错误信息已中文翻译 ✓ / 全局 a11y focus + aria-label ✓ / 多选交互重做 ✓ ；剩 macOS 签名（用户需"右键打开"） |
+| 体验打磨 | ⚠️ | 错误信息已中文翻译 ✓ / 全局 a11y focus + aria-label ✓ / 多选交互重做 ✓ / 设置 7 tab 全汉化 ✓ / Graph 暗色 + 图例 ✓ / 图标品牌色对齐 ✓ / **Claude/DeepSeek 搜索可用性已恢复**（本地 embedding fallback）✓ ；剩 macOS 签名（用户需"右键打开"） |
 | 商业化基础 | ❌ | 无 ToS / Landing / 支付（Beta 阶段再上） |
 
 **结论**：Alpha 招募（≤30 种子用户 + BYO Key + 用户自备 VPS）**已可启动**。Beta 公开发布建议补完 P1 #5-#7 + 落地页。
