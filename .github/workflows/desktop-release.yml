@@ -67,3 +67,66 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+  # Mirror the built binaries to the public EchoMind-releases repo so that
+  # external testers can download without needing access to the private source.
+  # Runs after both matrix builds finish.
+  mirror:
+    name: Mirror to public releases repo
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ -n "${{ inputs.tag }}" ]; then
+            echo "value=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download private release binaries
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.tag.outputs.value }}"
+          mkdir -p ./assets
+          # tauri-action creates a draft release with .exe/.msi/.dmg attached.
+          # gh CLI can read drafts in the same repo with GITHUB_TOKEN.
+          gh release download "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --dir ./assets \
+            --pattern '*.exe' --pattern '*.msi' --pattern '*.dmg'
+          echo "--- downloaded ---"
+          ls -lh ./assets
+
+      - name: Mirror to EchoMind-releases
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_PAT }}
+        run: |
+          TAG="${{ steps.tag.outputs.value }}"
+          PUBLIC_REPO="Qc-riviere/EchoMind-releases"
+          NOTES=$(cat <<EOF
+          自动镜像自私有 build。
+
+          详见 [README](https://github.com/Qc-riviere/EchoMind-releases#readme) 与 [上手文档](https://github.com/Qc-riviere/EchoMind-releases/blob/main/docs/getting-started.md)。
+
+          - **Windows**: 下载 \`.exe\` → 双击 → SmartScreen 拦截点「更多信息」→「仍要运行」
+          - **macOS**: 下载 \`.dmg\` → 拖入 Applications → 首次启动**右键 →「打开」→「打开」**（暂未做 Apple 签名）
+
+          反馈：[Issues](https://github.com/Qc-riviere/EchoMind-releases/issues/new)
+          EOF
+          )
+          if gh release view "$TAG" --repo "$PUBLIC_REPO" >/dev/null 2>&1; then
+            echo "Release $TAG already exists in $PUBLIC_REPO — uploading binaries with --clobber"
+            gh release upload "$TAG" --repo "$PUBLIC_REPO" --clobber ./assets/*
+          else
+            echo "Creating new release $TAG in $PUBLIC_REPO"
+            gh release create "$TAG" \
+              --repo "$PUBLIC_REPO" \
+              --title "EchoMind $TAG" \
+              --notes "$NOTES" \
+              ./assets/*
+          fi
