@@ -68,15 +68,29 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
+      # Also upload bundles as workflow artifacts so the mirror job can pick
+      # them up without depending on the draft release's API visibility (which
+      # was the source of "release not found" failures).
+      - name: Upload bundles as workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.platform }}
+          path: |
+            src-tauri/target/release/bundle/**/*.exe
+            src-tauri/target/release/bundle/**/*.msi
+            src-tauri/target/release/bundle/**/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/**/*.dmg
+          if-no-files-found: warn
+          retention-days: 7
+
   # Mirror the built binaries to the public EchoMind-releases repo so that
   # external testers can download without needing access to the private source.
-  # Runs after both matrix builds finish.
+  # Runs after both matrix builds finish. Pulls binaries from workflow
+  # artifacts (not from the draft release) for reliability.
   mirror:
     name: Mirror to public releases repo
     needs: release
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: Resolve tag
         id: tag
@@ -87,20 +101,21 @@ jobs:
             echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Download private release binaries
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download all bundle artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+          pattern: bundle-*
+          merge-multiple: true
+
+      - name: Collect installers to flat ./assets
         run: |
-          TAG="${{ steps.tag.outputs.value }}"
           mkdir -p ./assets
-          # tauri-action creates a draft release with .exe/.msi/.dmg attached.
-          # gh CLI can read drafts in the same repo with GITHUB_TOKEN.
-          gh release download "$TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --dir ./assets \
-            --pattern '*.exe' --pattern '*.msi' --pattern '*.dmg'
-          echo "--- downloaded ---"
-          ls -lh ./assets
+          find ./artifacts -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \) \
+            -exec cp -v {} ./assets/ \;
+          echo "--- ./assets ---"
+          ls -lh ./assets || true
+          test -n "$(ls -A ./assets 2>/dev/null)" || { echo "::error::No installers found in artifacts"; exit 1; }
 
       - name: Mirror to EchoMind-releases
         env:
