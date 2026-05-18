@@ -45,10 +45,20 @@ const DOMAIN_LABELS_CN: Record<string, string> = {
 const DEFAULT_COLOR = "#9ca3af";
 const RECENT_COLOR = "#4ade80";
 
+// Stable color from an arbitrary domain string — same input always maps to
+// the same hue, so user-introduced domains (e.g. "工作", "AI") still color
+// consistently across renders without needing a fixed lookup table.
+function hashColor(s: string): string {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return `hsl(${Math.abs(h) % 360}, 60%, 70%)`;
+}
+
 function colorForNode(n: FGNode): string {
   if (n.isRecent) return RECENT_COLOR;
   const d = n.domain?.trim().toLowerCase();
-  return (d && DOMAIN_COLORS[d]) || DEFAULT_COLOR;
+  if (!d) return DEFAULT_COLOR;
+  return DOMAIN_COLORS[d] ?? hashColor(d);
 }
 
 export default function GraphPage() {
@@ -240,6 +250,9 @@ export default function GraphPage() {
                 <span className="w-2 h-2 rounded-full shrink-0" style={{ background: DEFAULT_COLOR }} />
                 <span>未分类</span>
               </div>
+            </div>
+            <div className="mt-2 pt-2 border-t border-outline-variant/15 text-on-surface-variant/60">
+              其他主题：按名称自动配色
             </div>
           </div>
         )}

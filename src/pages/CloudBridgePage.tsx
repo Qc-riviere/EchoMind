@@ -311,13 +311,17 @@ export default function CloudBridgePage() {
             </div>
           </section>
 
-          <section className="rounded-xl bg-surface-container-low border border-outline-variant/20 p-5 space-y-4">
-            <div>
-              <h2 className="font-semibold text-on-surface">上云子集规则</h2>
-              <p className="text-xs text-on-surface-variant/60 mt-1">
-                只有匹配规则的想法会推送到云端。规则变更后，不再匹配的想法会自动从云端删除。
-              </p>
-            </div>
+          <details className="rounded-xl bg-surface-container-low border border-outline-variant/20 [&[open]]:p-5 group">
+            <summary className="cursor-pointer p-5 [&::-webkit-details-marker]:hidden flex items-center justify-between group-[[open]]:pb-3">
+              <div>
+                <h2 className="font-semibold text-on-surface">上云子集规则</h2>
+                <p className="text-xs text-on-surface-variant/60 mt-1">
+                  默认推送全部未归档想法。点开按时间窗 / 标签过滤。
+                </p>
+              </div>
+              <span className="material-symbols-outlined text-on-surface-variant/40 transition-transform group-[[open]]:rotate-180">expand_more</span>
+            </summary>
+            <div className="space-y-4">
 
             <div>
               <label className="text-xs text-on-surface-variant/70">时间窗（天）</label>
@@ -389,15 +393,20 @@ export default function CloudBridgePage() {
                 拉取云端新增
               </button>
             </div>
-          </section>
-
-          <section className="rounded-xl bg-surface-container-low border border-outline-variant/20 p-5 space-y-4">
-            <div>
-              <h2 className="font-semibold text-on-surface">LLM 远程执行（可选）</h2>
-              <p className="text-xs text-on-surface-variant/60 mt-1">
-                把本地 LLM 密钥推送到 VPS，让微信 <code className="font-mono">/chat</code> 在手机端直接调用 AI，无需桌面在线。
-              </p>
             </div>
+          </details>
+
+          <details className="rounded-xl bg-surface-container-low border border-outline-variant/20 [&[open]]:p-5 group">
+            <summary className="cursor-pointer p-5 [&::-webkit-details-marker]:hidden flex items-center justify-between group-[[open]]:pb-3">
+              <div>
+                <h2 className="font-semibold text-on-surface">LLM 远程执行（可选）</h2>
+                <p className="text-xs text-on-surface-variant/60 mt-1">
+                  把本地 LLM 密钥推送到 VPS，让微信 <code className="font-mono">/chat</code> 在手机端直接调用 AI，无需桌面在线。
+                </p>
+              </div>
+              <span className="material-symbols-outlined text-on-surface-variant/40 transition-transform group-[[open]]:rotate-180">expand_more</span>
+            </summary>
+            <div className="space-y-4">
 
             {llmStatus && (
               <div className="grid grid-cols-3 gap-3 text-xs">
@@ -471,20 +480,31 @@ export default function CloudBridgePage() {
                 </button>
               )}
             </div>
-          </section>
+            </div>
+          </details>
 
-          <section className="rounded-xl bg-red-500/5 border border-red-500/20 p-5">
-            <h2 className="font-semibold text-on-surface">危险区</h2>
-            <p className="text-xs text-on-surface-variant/60 mt-1">
-              终止订阅会立即销毁云端的所有想法副本、微信 bot 配置和可选的 LLM 密钥。
-            </p>
-            <button
-              onClick={handleTerminate}
-              className="mt-3 px-4 py-2 bg-red-500/80 hover:bg-red-500 text-white rounded-lg text-sm font-medium"
-            >
-              终止订阅并销毁云端数据
-            </button>
-          </section>
+          <details className="rounded-xl bg-red-500/5 border border-red-500/20 [&[open]]:p-5 group">
+            <summary className="cursor-pointer p-5 [&::-webkit-details-marker]:hidden flex items-center justify-between group-[[open]]:pb-3">
+              <div>
+                <h2 className="font-semibold text-on-surface">危险区</h2>
+                <p className="text-xs text-on-surface-variant/60 mt-1">
+                  终止订阅 / 销毁云端数据
+                </p>
+              </div>
+              <span className="material-symbols-outlined text-on-surface-variant/40 transition-transform group-[[open]]:rotate-180">expand_more</span>
+            </summary>
+            <div>
+              <p className="text-xs text-on-surface-variant/60 mb-3">
+                终止订阅会立即销毁云端的所有想法副本、微信 bot 配置和可选的 LLM 密钥。
+              </p>
+              <button
+                onClick={handleTerminate}
+                className="px-4 py-2 bg-red-500/80 hover:bg-red-500 text-white rounded-lg text-sm font-medium"
+              >
+                终止订阅并销毁云端数据
+              </button>
+            </div>
+          </details>
         </div>
       )}
     </div>
@@ -515,14 +535,20 @@ function PairForm(p: PairFormProps) {
       <section className="rounded-xl bg-amber-500/5 border border-amber-500/30 p-5">
         <h2 className="font-semibold text-on-surface flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px] text-amber-400">warning</span>
-          知情同意
+          隐私代价
         </h2>
-        <ul className="mt-3 text-xs text-on-surface-variant/80 space-y-1.5 list-disc list-inside">
-          <li>启用云端桥接意味着你匹配规则的想法会以明文存储在你的 VPS 上。</li>
-          <li>服务端持有完整子集数据，可用于微信 bot 离线访问，不是端到端加密。</li>
-          <li>微信 bot_token 和可选的 LLM 密钥加密存储，但 VPS 管理员仍有物理访问能力。</li>
-          <li>随时可终止订阅，云端数据立即销毁。</li>
-        </ul>
+        <p className="mt-2 text-xs text-on-surface-variant/80">
+          匹配规则的想法将以明文存储在你的 VPS；密钥加密存储但管理员仍可访问；可随时终止销毁。
+        </p>
+        <details className="mt-2">
+          <summary className="text-xs text-on-surface-variant/60 cursor-pointer hover:text-on-surface">详细说明</summary>
+          <ul className="mt-2 text-xs text-on-surface-variant/70 space-y-1.5 list-disc list-inside">
+            <li>启用云端桥接意味着你匹配规则的想法会以明文存储在你的 VPS 上。</li>
+            <li>服务端持有完整子集数据，可用于微信 bot 离线访问，不是端到端加密。</li>
+            <li>微信 bot_token 和可选的 LLM 密钥加密存储，但 VPS 管理员仍有物理访问能力。</li>
+            <li>随时可终止订阅，云端数据立即销毁。</li>
+          </ul>
+        </details>
         <label className="mt-3 flex items-center gap-2 text-sm text-on-surface">
           <input
             type="checkbox"
