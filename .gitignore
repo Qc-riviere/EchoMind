@@ -23,3 +23,9 @@ Thumbs.db
 # Personal / ad-hoc — Suzhou competition application + helper script
 output_docs/
 scripts/
+
+# Tooling workspaces (Claude Code, agents, skill caches)
+.agents/
+.claude/
+skills-lock.json
+workspace/

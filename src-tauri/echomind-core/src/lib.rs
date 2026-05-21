@@ -1217,11 +1217,17 @@ impl EchoMind {
     // ── Model listing (pass-through to API) ───────────────────
 
     pub async fn test_llm_connection(&self) -> Result<String, String> {
+        // The Settings → LLM 配置 "测试" button is meant to validate the
+        // *local* LLM config. Don't go through complete_via_route — that
+        // would silently route via cloud bridge when the toggle is on,
+        // testing the VPS-stored config (which may be stale) instead.
         let messages = vec![ChatMessage {
             role: "user".to_string(),
             content: "Say 'Hello from EchoMind!' in one short sentence.".to_string(),
         }];
-        self.complete_via_route(messages).await
+        let (provider_type, config) = self.load_llm_config()?;
+        let provider = llm::get_provider(provider_type);
+        provider.complete(messages, &config).await
     }
 
     /// Summarize a batch of thoughts into a markdown digest using the
@@ -1342,6 +1348,10 @@ impl EchoMind {
             }
             ProviderType::OpenAI => {
                 let base_url = config.base_url.as_deref().unwrap_or("https://api.openai.com/v1");
+                // OpenAI-compatible endpoints (DeepSeek, Moonshot, Groq, ...) share
+                // /v1/models but ship model id schemes other than gpt-*/o1*. Only
+                // apply the openai-family filter when actually hitting openai.com.
+                let is_official_openai = base_url.contains("api.openai.com");
                 let resp = client
                     .get(format!("{}/models", base_url))
                     .header("Authorization", format!("Bearer {}", config.api_key))
@@ -1356,7 +1366,14 @@ impl EchoMind {
                         arr.iter()
                             .filter_map(|m| m["id"].as_str())
                             .map(|s| s.to_string())
-                            .filter(|name| name.contains("gpt") || name.contains("o1") || name.contains("o3") || name.contains("o4"))
+                            .filter(|name| {
+                                if is_official_openai {
+                                    name.contains("gpt") || name.contains("o1")
+                                        || name.contains("o3") || name.contains("o4")
+                                } else {
+                                    true
+                                }
+                            })
                             .collect()
                     })
                     .unwrap_or_default();

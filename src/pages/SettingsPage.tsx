@@ -53,6 +53,17 @@ export default function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
+  // Banner shown after saving when local LLM config changed and the
+  // 「通过云桥调用 LLM」toggle is on — the VPS still holds the old key/model.
+  type BridgeStaleState = "stale" | "pushing" | "pushed" | "error" | null;
+  const [bridgeStale, setBridgeStale] = useState<BridgeStaleState>(null);
+  const [bridgeStaleError, setBridgeStaleError] = useState<string | null>(null);
+  // Snapshot of the last *persisted* LLM config; compared against the
+  // current form on save to decide whether to warn about VPS staleness.
+  const savedLlmRef = useRef<{ provider: string; apiKey: string; model: string; baseUrl: string }>({
+    provider: "", apiKey: "", model: "", baseUrl: "",
+  });
+
   useEffect(() => { fetchSettings(); }, [fetchSettings]);
 
   // Drafts kept in memory per provider so switching tabs doesn't lose unsaved
@@ -90,6 +101,12 @@ export default function SettingsPage() {
     setApiKey(activeDraft.apiKey);
     setModel(activeDraft.model);
     setBaseUrl(activeDraft.baseUrl);
+    savedLlmRef.current = {
+      provider: preset,
+      apiKey: activeDraft.apiKey,
+      model: activeDraft.model,
+      baseUrl: activeDraft.baseUrl,
+    };
 
     setEmbBaseUrl(settings["embedding_base_url"] || "");
     setEmbApiKey(settings["embedding_api_key"] || "");
@@ -151,6 +168,17 @@ export default function SettingsPage() {
       const backend = def?.backend ?? provider;
       const finalModel = model || def?.defaultModel || "";
       const finalBaseUrl = baseUrl || def?.defaultBaseUrl || "";
+
+      // Detect whether the LLM config actually changed against the last
+      // persisted snapshot, so we can warn the user about cloud-bridge
+      // staleness only when relevant.
+      const prevLlm = savedLlmRef.current;
+      const llmChanged =
+        provider !== prevLlm.provider ||
+        apiKey !== prevLlm.apiKey ||
+        finalModel !== prevLlm.model ||
+        finalBaseUrl !== prevLlm.baseUrl;
+
       // Active keys (read by backend).
       await setSetting("llm_provider", backend);
       await setSetting("llm_provider_preset", provider);
@@ -168,9 +196,45 @@ export default function SettingsPage() {
       if (embApiKey) await setSetting("embedding_api_key", embApiKey); else await deleteSetting("embedding_api_key");
       if (embModel) await setSetting("embedding_model", embModel); else await deleteSetting("embedding_model");
       await setSetting("embedding_dimensions", embDimensions || "1536");
+
+      // Update snapshot now that the save succeeded.
+      savedLlmRef.current = { provider, apiKey, model: finalModel, baseUrl: finalBaseUrl };
+
+      // If the LLM config actually changed and the user has cloud-bridge LLM
+      // routing turned on, the VPS is still serving the previous key/model.
+      // Surface a one-click "push to cloud bridge" hint.
+      if (llmChanged) {
+        try {
+          const status = await invoke<{ paired: boolean; llm_via_bridge: boolean }>(
+            "cloud_bridge_status"
+          );
+          if (status.paired && status.llm_via_bridge) {
+            setBridgeStale("stale");
+            setBridgeStaleError(null);
+          }
+        } catch {
+          // Bridge not paired / command unavailable — silently skip the hint.
+        }
+      }
+
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally { setSaving(false); }
+  };
+
+  const handlePushToBridge = async () => {
+    setBridgeStale("pushing");
+    setBridgeStaleError(null);
+    try {
+      // Pass null to preserve the existing budget cap on the VPS — we are
+      // only refreshing the key/model, not asking the user to re-set quota.
+      await invoke("cloud_bridge_push_llm_config", { budgetCents: null });
+      setBridgeStale("pushed");
+      setTimeout(() => setBridgeStale(null), 4000);
+    } catch (e) {
+      setBridgeStale("error");
+      setBridgeStaleError(errorMsg(e));
+    }
   };
 
   const handleTest = async () => {
@@ -380,6 +444,51 @@ export default function SettingsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Cloud-bridge LLM staleness hint — appears after save when
+                    local config differs from what the VPS is using for /chat. */}
+                {bridgeStale === "stale" && (
+                  <div className="mt-4 p-4 rounded-xl bg-amber-500/5 border border-amber-500/30 flex items-start gap-3">
+                    <span className="material-symbols-outlined text-amber-400 mt-0.5">cloud_sync</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-on-surface">云桥仍在用旧 LLM 配置</div>
+                      <div className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                        本地 LLM 配置已更新，但「通过云桥调用 LLM」是开启的——微信 <code className="font-mono">/chat</code> 和其它走云桥的调用仍使用 VPS 上之前推送的 Key / 模型。
+                      </div>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={handlePushToBridge}
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-on-primary hover:bg-primary/90 transition-colors"
+                        >
+                          推送到云桥
+                        </button>
+                        <button
+                          onClick={() => setBridgeStale(null)}
+                          className="px-3 py-1.5 text-xs rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                        >
+                          稍后
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {bridgeStale === "pushing" && (
+                  <div className="mt-4 p-3 rounded-xl bg-amber-500/5 border border-amber-500/30 flex items-center gap-2 text-xs text-on-surface-variant">
+                    <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                    正在推送到云桥…
+                  </div>
+                )}
+                {bridgeStale === "pushed" && (
+                  <div className="mt-4 p-3 rounded-xl bg-primary/10 border border-primary/30 flex items-center gap-2 text-xs text-primary">
+                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                    已推送到云桥，新配置生效
+                  </div>
+                )}
+                {bridgeStale === "error" && (
+                  <div className="mt-4 p-3 rounded-xl bg-error-container/20 border border-error/30 text-xs text-error">
+                    推送失败：{bridgeStaleError ?? "未知错误"}
+                  </div>
+                )}
               </section>
             </>
           )}

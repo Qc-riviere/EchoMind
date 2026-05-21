@@ -26,7 +26,7 @@ export function errorMsg(e: unknown): string {
   if (status === 429 || /rate[_\s]?limit|too many requests/i.test(raw)) {
     return "调用过于频繁，请稍等再试。";
   }
-  if (/insufficient[_\s]?quota|exceeded your.*quota|billing|payment|credit|out of credit/i.test(raw)) {
+  if (/insufficient[_\s]?(quota|balance)|exceeded your.*quota|billing|payment|credit|out of credit|余额不足/i.test(raw)) {
     return "API 额度已用完——请到 LLM 提供商账户充值后再试。";
   }
 
