@@ -49,7 +49,26 @@ jobs:
         with:
           workspaces: src-tauri
 
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - run: pnpm install --frozen-lockfile
+
+      # Build sidecars (echomind-server + bun-compiled bot) for every triple in
+      # the bundle. macOS universal needs both Apple targets; Windows needs the
+      # MSVC triple. The build script honours TARGET_TRIPLE.
+      - name: Build sidecars (Windows)
+        if: matrix.platform == 'windows-latest'
+        env:
+          TARGET_TRIPLE: x86_64-pc-windows-msvc
+        run: node scripts/build-sidecars.mjs
+
+      - name: Build sidecars (macOS — both archs)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          TARGET_TRIPLE=x86_64-apple-darwin node scripts/build-sidecars.mjs
+          TARGET_TRIPLE=aarch64-apple-darwin node scripts/build-sidecars.mjs
 
       - uses: tauri-apps/tauri-action@v0
         env:

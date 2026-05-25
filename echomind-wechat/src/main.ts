@@ -41,7 +41,7 @@ async function runSetup(): Promise<void> {
 // ── Daemon: message bridge ───────────────────────���───────
 
 async function runDaemon(): Promise<void> {
-  const account = loadLatestAccount();
+  const account = await loadLatestAccount();
   if (!account) {
     console.error("No account found. Run 'npm run setup' first.");
     process.exit(1);
@@ -159,7 +159,7 @@ function timestamp(): string {
 // ── Status check ───��─────────────────────────────────────
 
 async function runStatus(): Promise<void> {
-  const account = loadLatestAccount();
+  const account = await loadLatestAccount();
   if (!account) {
     console.log("No account configured. Run 'npm run setup'.");
     return;

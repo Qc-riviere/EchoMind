@@ -9,6 +9,8 @@ use axum::{
 };
 use serde::Deserialize;
 
+use crate::crypto;
+
 type AppState = Arc<echomind_core::EchoMind>;
 
 // ── Request types ────────────────────────────────────────
@@ -76,6 +78,37 @@ pub fn api_routes() -> Router<AppState> {
         // Settings (read-only for bridge)
         .route("/settings", get(get_all_settings))
         .route("/settings/{key}", get(get_setting))
+        // Token crypto (used by the WeChat bot to encrypt account JSON at rest)
+        .route("/token/encrypt", post(token_encrypt))
+        .route("/token/decrypt", post(token_decrypt))
+}
+
+#[derive(Deserialize)]
+pub struct EncryptReq {
+    pub plaintext: String,
+}
+
+#[derive(Deserialize)]
+pub struct DecryptReq {
+    pub envelope: String,
+}
+
+async fn token_encrypt(Json(req): Json<EncryptReq>) -> impl IntoResponse {
+    match crypto::encrypt(req.plaintext.as_bytes()) {
+        Ok(envelope) => Json(serde_json::json!({ "envelope": envelope })).into_response(),
+        Err(e) => err(e).into_response(),
+    }
+}
+
+async fn token_decrypt(Json(req): Json<DecryptReq>) -> impl IntoResponse {
+    match crypto::decrypt(&req.envelope) {
+        Ok(plaintext) => {
+            let s = String::from_utf8(plaintext)
+                .unwrap_or_else(|e| format!("__non_utf8__:{}", e));
+            Json(serde_json::json!({ "plaintext": s })).into_response()
+        }
+        Err(e) => err(e).into_response(),
+    }
 }
 
 // ── Thought handlers ─────────────────────────────────────

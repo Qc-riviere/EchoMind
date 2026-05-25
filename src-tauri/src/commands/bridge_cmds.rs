@@ -241,6 +241,7 @@ pub fn bridge_wechat_account() -> Result<serde_json::Value, String> {
 
 #[tauri::command]
 pub fn bridge_start_daemon(
+    app: tauri::AppHandle,
     state: State<BridgeState>,
 ) -> Result<String, String> {
     let mut proc = state.daemon_process.lock().map_err(|e| e.to_string())?;
@@ -252,25 +253,34 @@ pub fn bridge_start_daemon(
         }
     }
 
-    let project_dir = find_wechat_project()?;
-    let node_entry = project_dir.join("dist").join("main.js");
+    // Prefer the packaged sidecar binary (single-file bot compiled by bun).
+    // Fall back to `node dist/main.js` when the sidecar is absent (dev only).
+    let mut cmd = match find_bot_binary(&app) {
+        Ok(bot_exe) => {
+            let mut c = std::process::Command::new(&bot_exe);
+            c.arg("daemon");
+            c
+        }
+        Err(_) => {
+            let project_dir = find_wechat_project()?;
+            let node_entry = project_dir.join("dist").join("main.js");
+            if !node_entry.exists() {
+                return Err(format!(
+                    "Bot 未构建。dev 请先 `cd echomind-wechat && pnpm install && pnpm run build`；packaged 安装包请确认 externalBin 是否生效。找不到 {}",
+                    node_entry.display()
+                ));
+            }
+            let mut c = std::process::Command::new("node");
+            c.arg(&node_entry).arg("daemon").current_dir(&project_dir);
+            c
+        }
+    };
 
-    if !node_entry.exists() {
-        return Err(format!(
-            "echomind-wechat 未构建，找不到 {}。请先运行: cd echomind-wechat && npm install && npm run build",
-            node_entry.display()
-        ));
-    }
-
-    // Use piped stderr so we can read errors if daemon exits quickly
-    let mut child = std::process::Command::new("node")
-        .arg(&node_entry)
-        .arg("daemon")
-        .current_dir(&project_dir)
+    let mut child = cmd
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::piped())
         .spawn()
-        .map_err(|e| format!("启动 daemon 失败: {}。请确认已安装 Node.js", e))?;
+        .map_err(|e| format!("启动 daemon 失败: {}", e))?;
 
     // Give it a moment to see if it crashes immediately
     std::thread::sleep(std::time::Duration::from_millis(500));
@@ -366,29 +376,28 @@ fn strip_unc_prefix(path: PathBuf) -> PathBuf {
     }
 }
 
-fn find_server_binary(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+fn find_sidecar(app: &tauri::AppHandle, name: &str) -> Result<PathBuf, String> {
+    let exe_name = if cfg!(windows) { format!("{}.exe", name) } else { name.to_string() };
     let mut candidates: Vec<PathBuf> = Vec::new();
 
-    if let Ok(cwd) = std::env::current_dir() {
-        // CWD might be project root or src-tauri/
-        for base in [cwd.clone(), cwd.join("src-tauri"), cwd.join("..")] {
-            candidates.push(base.join("target/debug/echomind-server.exe"));
-            candidates.push(base.join("target/debug/echomind-server"));
-            candidates.push(base.join("target/release/echomind-server.exe"));
-            candidates.push(base.join("target/release/echomind-server"));
-        }
-    }
-
+    // Packaged install: sidecar lands next to the main exe.
     if let Ok(exe) = std::env::current_exe() {
         if let Some(dir) = exe.parent() {
-            candidates.push(dir.join("echomind-server.exe"));
-            candidates.push(dir.join("echomind-server"));
+            candidates.push(dir.join(&exe_name));
         }
     }
 
+    // Tauri also exposes resource_dir; some bundles drop binaries there.
     if let Ok(res) = app.path().resource_dir() {
-        candidates.push(res.join("echomind-server.exe"));
-        candidates.push(res.join("echomind-server"));
+        candidates.push(res.join(&exe_name));
+    }
+
+    // Dev fallback: cargo build outputs.
+    if let Ok(cwd) = std::env::current_dir() {
+        for base in [cwd.clone(), cwd.join("src-tauri"), cwd.join("..")] {
+            candidates.push(base.join("target/debug").join(&exe_name));
+            candidates.push(base.join("target/release").join(&exe_name));
+        }
     }
 
     for candidate in candidates {
@@ -397,5 +406,16 @@ fn find_server_binary(app: &tauri::AppHandle) -> Result<PathBuf, String> {
         }
     }
 
-    Err("echomind-server 未找到。请先构建: cargo build -p echomind-server".to_string())
+    Err(format!(
+        "{} 未找到。dev 模式请先构建对应 sidecar；packaged 安装包请确认 externalBin 是否生效",
+        name
+    ))
+}
+
+fn find_server_binary(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    find_sidecar(app, "echomind-server")
+}
+
+fn find_bot_binary(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    find_sidecar(app, "echomind-wechat-bot")
 }

@@ -22,7 +22,12 @@ Thumbs.db
 
 # Personal / ad-hoc — Suzhou competition application + helper script
 output_docs/
-scripts/
+scripts/*
+# but the sidecar build script is part of the build pipeline
+!scripts/build-sidecars.mjs
+
+# Tauri sidecar artifacts — rebuilt on every CI run
+src-tauri/binaries/
 
 # Tooling workspaces (Claude Code, agents, skill caches)
 .agents/

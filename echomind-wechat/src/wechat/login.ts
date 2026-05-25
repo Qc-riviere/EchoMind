@@ -3,6 +3,7 @@ import path from "node:path";
 import os from "node:os";
 import { startQrLogin, pollQrStatus } from "./api.js";
 import { AccountData } from "./types.js";
+import { encryptString, decryptString } from "./token-crypto.js";
 
 const DATA_DIR = path.join(os.homedir(), ".echomind-wechat");
 const ACCOUNTS_DIR = path.join(DATA_DIR, "accounts");
@@ -78,11 +79,10 @@ export async function loginFlow(): Promise<AccountData> {
 
         const filePath = path.join(
           ACCOUNTS_DIR,
-          `${sanitizeId(account.accountId)}.json`,
+          `${sanitizeId(account.accountId)}.enc`,
         );
-        fs.writeFileSync(filePath, JSON.stringify(account, null, 2), {
-          mode: 0o600,
-        });
+        const envelope = await encryptString(JSON.stringify(account));
+        fs.writeFileSync(filePath, envelope, { mode: 0o600 });
 
         console.log(`\nLogin successful! Account saved: ${account.accountId}`);
         return account;
@@ -95,13 +95,17 @@ export async function loginFlow(): Promise<AccountData> {
 
 /**
  * Load the most recently modified account.
+ *
+ * Reads `.enc` (encrypted via /api/token/decrypt) or legacy `.json` (plaintext)
+ * — for plaintext, transparently re-encrypts on read so the next login already
+ * lives in the new format.
  */
-export function loadLatestAccount(): AccountData | null {
+export async function loadLatestAccount(): Promise<AccountData | null> {
   ensureDirs();
 
   const files = fs
     .readdirSync(ACCOUNTS_DIR)
-    .filter((f) => f.endsWith(".json"))
+    .filter((f) => f.endsWith(".enc") || f.endsWith(".json"))
     .map((f) => ({
       name: f,
       mtime: fs.statSync(path.join(ACCOUNTS_DIR, f)).mtimeMs,
@@ -110,11 +114,26 @@ export function loadLatestAccount(): AccountData | null {
 
   if (files.length === 0) return null;
 
-  const data = fs.readFileSync(
-    path.join(ACCOUNTS_DIR, files[0].name),
-    "utf-8",
-  );
-  return JSON.parse(data) as AccountData;
+  const filePath = path.join(ACCOUNTS_DIR, files[0].name);
+  const raw = fs.readFileSync(filePath, "utf-8");
+
+  if (files[0].name.endsWith(".enc")) {
+    const plaintext = await decryptString(raw.trim());
+    return JSON.parse(plaintext) as AccountData;
+  }
+
+  // Legacy plaintext JSON — migrate to .enc and unlink the old file.
+  const account = JSON.parse(raw) as AccountData;
+  try {
+    const envelope = await encryptString(JSON.stringify(account));
+    const encPath = filePath.replace(/\.json$/, ".enc");
+    fs.writeFileSync(encPath, envelope, { mode: 0o600 });
+    fs.unlinkSync(filePath);
+    console.log(`Migrated ${files[0].name} → ${path.basename(encPath)}`);
+  } catch (e) {
+    console.warn(`Could not migrate plaintext account ${files[0].name}: ${e}`);
+  }
+  return account;
 }
 
 function sleep(ms: number): Promise<void> {
