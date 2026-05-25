@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App";
 import CaptureWindow from "./pages/CaptureWindow";
 import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";
+import { checkForUpdatesOnStartup } from "./lib/updater";
 
 const isCapture = new URLSearchParams(window.location.search).get("capture") === "1";
 
@@ -12,6 +13,12 @@ if (!isCapture) {
   isPermissionGranted()
     .then((granted) => (granted ? Promise.resolve("granted") : requestPermission()))
     .catch(() => {});
+
+  // Delay the update check so it doesn't compete with first-paint or splash.
+  // Failures are silent — we don't want a network blip to nag every launch.
+  window.setTimeout(() => {
+    checkForUpdatesOnStartup().catch(() => {});
+  }, 8000);
 }
 
 function dismissSplash() {

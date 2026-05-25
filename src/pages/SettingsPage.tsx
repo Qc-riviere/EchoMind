@@ -4,6 +4,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { useSettingStore } from "../stores/settingStore";
 import { useThemeStore } from "../stores/themeStore";
 import type { Skill, DiscoveredSkill } from "../lib/types";
+import { checkForUpdatesManual } from "../lib/updater";
+
+const APP_VERSION = "0.3.3";
 
 const LLM_PROVIDERS = [
   { value: "openai", label: "OpenAI", backend: "openai", defaultModel: "gpt-4o-mini", defaultBaseUrl: "" },
@@ -717,13 +720,27 @@ export default function SettingsPage() {
                   <img src="/logo.svg" alt="EchoMind" className="w-12 h-12" />
                   <div>
                     <h4 className="text-lg font-headline font-bold text-on-surface">EchoMind</h4>
-                    <p className="text-xs text-on-surface-variant">灵感备忘录 · v0.1.0</p>
+                    <p className="text-xs text-on-surface-variant">灵感备忘录 · v{APP_VERSION}</p>
                   </div>
                 </div>
                 <div className="h-px w-full bg-outline-variant/10" />
                 <p className="text-sm text-on-surface-variant leading-relaxed">
                   本地优先的 AI 灵感伙伴，帮你记录、补完并深挖每一条想法。基于 Tauri、React 与 Rust 构建。
                 </p>
+                <div className="h-px w-full bg-outline-variant/10" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-on-surface">检查更新</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">启动时会自动检查；点这里可以立即检查一次。</p>
+                  </div>
+                  <button
+                    onClick={() => { void checkForUpdatesManual(); }}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container text-on-surface text-sm font-medium hover:bg-surface-container-high active:scale-[0.98] transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">refresh</span>
+                    检查更新
+                  </button>
+                </div>
               </div>
             </section>
           )}

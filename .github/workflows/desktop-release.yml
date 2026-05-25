@@ -73,6 +73,12 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Updater signing — must be present for Tauri to produce .sig files
+          # next to bundles. Without these envs `createUpdaterArtifacts: true`
+          # would still build installers but skip signature generation, and
+          # mirror's latest.json step would have nothing to sign with.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ inputs.tag || github.ref_name }}
           releaseName: 'EchoMind ${{ inputs.tag || github.ref_name }}'
@@ -89,7 +95,9 @@ jobs:
 
       # Also upload bundles as workflow artifacts so the mirror job can pick
       # them up without depending on the draft release's API visibility (which
-      # was the source of "release not found" failures).
+      # was the source of "release not found" failures). Includes .sig + the
+      # macOS .app.tar.gz updater payload so the mirror job can assemble
+      # latest.json without going back to the bundler.
       - name: Upload bundles as workflow artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -98,7 +106,12 @@ jobs:
             src-tauri/target/release/bundle/**/*.exe
             src-tauri/target/release/bundle/**/*.msi
             src-tauri/target/release/bundle/**/*.dmg
+            src-tauri/target/release/bundle/**/*.exe.sig
+            src-tauri/target/release/bundle/**/*.app.tar.gz
+            src-tauri/target/release/bundle/**/*.app.tar.gz.sig
             src-tauri/target/universal-apple-darwin/release/bundle/**/*.dmg
+            src-tauri/target/universal-apple-darwin/release/bundle/**/*.app.tar.gz
+            src-tauri/target/universal-apple-darwin/release/bundle/**/*.app.tar.gz.sig
           if-no-files-found: warn
           retention-days: 7
 
@@ -127,14 +140,68 @@ jobs:
           pattern: bundle-*
           merge-multiple: true
 
-      - name: Collect installers to flat ./assets
+      - name: Collect installers + updater payloads to flat ./assets
         run: |
           mkdir -p ./assets
+          # User-facing installers
           find ./artifacts -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' \) \
+            -exec cp -v {} ./assets/ \;
+          # Updater payloads + signatures (Windows uses the NSIS .exe directly,
+          # macOS needs the .app.tar.gz because the updater swaps the .app bundle)
+          find ./artifacts -type f \( -name '*.exe.sig' -o -name '*.app.tar.gz' -o -name '*.app.tar.gz.sig' \) \
             -exec cp -v {} ./assets/ \;
           echo "--- ./assets ---"
           ls -lh ./assets || true
           test -n "$(ls -A ./assets 2>/dev/null)" || { echo "::error::No installers found in artifacts"; exit 1; }
+
+      # Build latest.json that the Tauri updater plugin polls. Constructed
+      # here (not pulled from the private draft release) so the URLs point
+      # directly at the public release assets that users actually download.
+      - name: Generate latest.json for Tauri updater
+        run: |
+          TAG="${{ steps.tag.outputs.value }}"
+          VERSION="${TAG#v}"
+          PUB_REL_BASE="https://github.com/Qc-riviere/EchoMind-releases/releases/download/$TAG"
+
+          WIN_INSTALLER=$(ls ./assets/*x64-setup.exe 2>/dev/null | head -1 || true)
+          WIN_SIG_FILE=$(ls ./assets/*x64-setup.exe.sig 2>/dev/null | head -1 || true)
+          MAC_TAR=$(ls ./assets/*.app.tar.gz 2>/dev/null | head -1 || true)
+          MAC_SIG_FILE=$(ls ./assets/*.app.tar.gz.sig 2>/dev/null | head -1 || true)
+
+          if [ -z "$WIN_SIG_FILE" ] || [ -z "$MAC_SIG_FILE" ] || [ -z "$WIN_INSTALLER" ] || [ -z "$MAC_TAR" ]; then
+            echo "::warning::Missing updater artifacts — skipping latest.json so users keep current version"
+            echo "  WIN_INSTALLER=$WIN_INSTALLER"
+            echo "  WIN_SIG_FILE=$WIN_SIG_FILE"
+            echo "  MAC_TAR=$MAC_TAR"
+            echo "  MAC_SIG_FILE=$MAC_SIG_FILE"
+            exit 0
+          fi
+
+          WIN_SIG=$(cat "$WIN_SIG_FILE")
+          MAC_SIG=$(cat "$MAC_SIG_FILE")
+          WIN_NAME=$(basename "$WIN_INSTALLER")
+          MAC_NAME=$(basename "$MAC_TAR")
+
+          jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg notes "见 release 说明" \
+            --arg win_sig "$WIN_SIG" \
+            --arg win_url "$PUB_REL_BASE/$WIN_NAME" \
+            --arg mac_sig "$MAC_SIG" \
+            --arg mac_url "$PUB_REL_BASE/$MAC_NAME" \
+            '{
+              version: $version,
+              pub_date: $pub_date,
+              notes: $notes,
+              platforms: {
+                "windows-x86_64": { signature: $win_sig, url: $win_url },
+                "darwin-x86_64":  { signature: $mac_sig, url: $mac_url },
+                "darwin-aarch64": { signature: $mac_sig, url: $mac_url }
+              }
+            }' > ./assets/latest.json
+          echo "--- latest.json ---"
+          cat ./assets/latest.json
 
       - name: Mirror to EchoMind-releases
         env:
