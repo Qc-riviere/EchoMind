@@ -33,8 +33,9 @@
 | 桌面壳 | Tauri 2.0 (Rust) |
 | 本地数据库 | SQLite + sqlite-vec（向量搜索） |
 | LLM | OpenAI / Google Gemini / Anthropic Claude |
-| 微信 Bot | Node.js daemon（基于腾讯官方 `@tencent-weixin/openclaw-weixin`，iLink 协议） |
+| 微信 Bot | TypeScript / Node API → `bun build --compile` 单 .exe，作为 Tauri sidecar 随安装包发布（基于腾讯官方 `@tencent-weixin/openclaw-weixin`，iLink 协议） |
 | 云端桥服务 | Rust + axum + rusqlite（echomind-bridge-server） |
+| Token 加密 | AES-256-GCM + OS keychain（Windows Credential Manager / macOS Keychain），账号 token 落盘前先加密 |
 
 ## 项目结构
 
@@ -86,6 +87,7 @@ echomind-wechat/                  # 微信 Bot daemon（Node.js）
 - Node.js 18+
 - Rust 1.70+
 - pnpm
+- [bun](https://bun.sh)（用于编译微信 bot sidecar；首次 `pnpm tauri build` 前装一次即可）
 
 ### 本地开发
 
@@ -99,6 +101,13 @@ pnpm tauri dev
 ```bash
 pnpm tauri build
 ```
+
+`pnpm tauri build` 的 `beforeBuildCommand` 会自动调用 `scripts/build-sidecars.mjs`：
+1. `cargo build -p echomind-server --release [--target <triple>]` → `binaries/echomind-server-<triple>[.exe]`
+2. 若 `echomind-wechat/node_modules` 缺失，自动 `npm ci` 装依赖
+3. `bun build --compile --target=<bun-target> src/main.ts` → `binaries/echomind-wechat-bot-<triple>[.exe]`
+
+两个 sidecar 通过 `tauri.conf.json` 的 `bundle.externalBin` 进入安装包，安装后与主 exe 同目录，由 Tauri 自动去 triple 后缀。脚本是 idempotent 的——已有最新产物会跳过，dev 模式不会反复编译。
 
 首次启动会自动弹出 4 步引导（欢迎 → 选 Provider 填 Key 测连接 → 录第一条灵感 → 微信桥可选），全程约 30 秒。也可在设置页随时改。支持 OpenAI / Claude / Gemini / DeepSeek（默认推荐 DeepSeek，国内充值方便）。
 
@@ -114,10 +123,13 @@ pnpm tauri build
 
 ### 本地模式（桌面需在线）
 
-1. 在 WeChat Bridge 页面点击"启动微信桥"
-2. 桌面 daemon 自动调起腾讯官方 CLI（`@tencent-weixin/openclaw-weixin-cli`）弹出二维码
-3. 用自己的微信扫码授权，CLI 自动拿到 bot_token 并保存
-4. 手机微信发消息给 bot 即可操作第二大脑
+1. 在 WeChat Bridge 页面点击"扫码连接"
+2. 桌面自动 spawn 两个 sidecar：`echomind-server`（本地 HTTP API）+ `echomind-wechat-bot`（bun-compile 单 exe）
+3. 二维码直接在页面里渲染——用自己的微信扫码授权
+4. bot_token 用 AES-256-GCM 加密后写入 `~/.echomind-wechat/accounts/*.enc`（密钥存 OS keychain）
+5. 手机微信发消息给 bot 即可操作第二大脑
+
+v0.3.2 起 sidecar 完全打包到安装包内，新用户**无需单独装 Node.js / 跑 npm install**，开箱可用。
 
 Bot 命令：`/list`、`/search <词>`、`/view <ID>`、`/chat <ID>`、`/archive <ID>`、`/status`、`/help`
 

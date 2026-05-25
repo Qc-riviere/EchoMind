@@ -64,11 +64,11 @@ jobs:
           TARGET_TRIPLE: x86_64-pc-windows-msvc
         run: node scripts/build-sidecars.mjs
 
-      - name: Build sidecars (macOS — both archs)
+      - name: Build sidecars (macOS — universal via lipo)
         if: matrix.platform == 'macos-latest'
-        run: |
-          TARGET_TRIPLE=x86_64-apple-darwin node scripts/build-sidecars.mjs
-          TARGET_TRIPLE=aarch64-apple-darwin node scripts/build-sidecars.mjs
+        env:
+          TARGET_TRIPLE: universal-apple-darwin
+        run: node scripts/build-sidecars.mjs
 
       - uses: tauri-apps/tauri-action@v0
         env:

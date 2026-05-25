@@ -34,6 +34,12 @@ function hostTriple() {
   return m[1];
 }
 
+// Tauri's --target universal-apple-darwin looks for a single fat binary at
+// binaries/<name>-universal-apple-darwin. Neither cargo nor bun --compile
+// produces one — we build each arch and lipo them together.
+const UNIVERSAL_MAC = "universal-apple-darwin";
+const UNIVERSAL_SUB_TRIPLES = ["x86_64-apple-darwin", "aarch64-apple-darwin"];
+
 function bunTargetFor(triple) {
   const map = {
     "x86_64-pc-windows-msvc": "bun-windows-x64",
@@ -127,8 +133,40 @@ function buildBot(triple) {
   console.log(`✓ ${outName}`);
 }
 
+function lipoMerge(name) {
+  const outPath = join(BIN_DIR, `${name}-${UNIVERSAL_MAC}`);
+  const inputs = UNIVERSAL_SUB_TRIPLES.map((t) => join(BIN_DIR, `${name}-${t}`));
+  for (const p of inputs) {
+    if (!existsSync(p)) throw new Error(`lipo input missing: ${p}`);
+  }
+  console.log(`▶ lipo -create → ${name}-${UNIVERSAL_MAC}`);
+  execSync(`lipo -create -output "${outPath}" "${inputs.join('" "')}"`, {
+    stdio: "inherit",
+  });
+  console.log(`✓ ${name}-${UNIVERSAL_MAC}`);
+}
+
+function buildOne(triple) {
+  console.log(`Target triple: ${triple}`);
+  buildServer(triple);
+  buildBot(triple);
+}
+
 const triple = hostTriple();
-console.log(`Target triple: ${triple}`);
-buildServer(triple);
-buildBot(triple);
+
+if (triple === UNIVERSAL_MAC) {
+  if (platform() !== "darwin") {
+    throw new Error("universal-apple-darwin builds require running on macOS (needs lipo + rustc apple targets)");
+  }
+  for (const sub of UNIVERSAL_SUB_TRIPLES) {
+    process.env.TARGET_TRIPLE = sub;
+    buildOne(sub);
+  }
+  process.env.TARGET_TRIPLE = UNIVERSAL_MAC;
+  lipoMerge("echomind-server");
+  lipoMerge("echomind-wechat-bot");
+} else {
+  buildOne(triple);
+}
+
 console.log("All sidecars built into", BIN_DIR);
