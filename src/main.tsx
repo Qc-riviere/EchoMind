@@ -14,8 +14,36 @@ if (!isCapture) {
     .catch(() => {});
 }
 
+function dismissSplash() {
+  const splash = document.getElementById("splash");
+  if (!splash) return;
+  if (isCapture) {
+    splash.remove();
+    return;
+  }
+  // Push the CSS-animated bar to 100% so the transition reads as "done loading",
+  // then fade out and remove. Two RAFs ensure the React tree has actually painted
+  // before we start the exit transition.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const fill = splash.querySelector<HTMLDivElement>(".fill");
+      if (fill) {
+        fill.style.animation = "none";
+        fill.style.transition = "width 220ms ease-out";
+        fill.style.width = "100%";
+      }
+      window.setTimeout(() => {
+        splash.classList.add("done");
+        window.setTimeout(() => splash.remove(), 280);
+      }, 180);
+    });
+  });
+}
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     {isCapture ? <CaptureWindow /> : <App />}
   </React.StrictMode>,
 );
+
+dismissSplash();

@@ -282,8 +282,12 @@ export default function WeChatBridgePage() {
                 )}
                 {account?.configured && !daemonRunning ? (
                   <div className="space-y-3">
-                    <button onClick={handleStartDaemon} disabled={actionLoading}
-                      className="inline-flex items-center gap-2 px-8 py-3 text-sm font-bold rounded-xl luminous-pulse text-on-primary disabled:opacity-50 active:scale-95 transition-all">
+                    <button
+                      onClick={handleStartDaemon}
+                      disabled={actionLoading}
+                      title="启动本地 bot，登录之前扫码绑定的微信账号"
+                      className="inline-flex items-center gap-2 px-8 py-3 text-sm font-bold rounded-xl luminous-pulse text-on-primary disabled:opacity-50 active:scale-95 transition-all"
+                    >
                       {actionLoading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <span className="material-symbols-outlined">power</span>}
                       启动桥接
                     </button>
@@ -293,11 +297,20 @@ export default function WeChatBridgePage() {
                     </div>
                   </div>
                 ) : (
-                  <button onClick={startConnect} disabled={actionLoading}
-                    className="inline-flex items-center gap-2 px-8 py-3 text-sm font-bold rounded-xl luminous-pulse text-on-primary disabled:opacity-50 active:scale-95 transition-all">
-                    {actionLoading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <span className="material-symbols-outlined">qr_code_scanner</span>}
-                    扫码连接
-                  </button>
+                  <>
+                    <button
+                      onClick={startConnect}
+                      disabled={actionLoading}
+                      title="启动本地 server + bot，调起腾讯官方 ilink 接口，本页内显示扫码二维码"
+                      className="inline-flex items-center gap-2 px-8 py-3 text-sm font-bold rounded-xl luminous-pulse text-on-primary disabled:opacity-50 active:scale-95 transition-all"
+                    >
+                      {actionLoading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <span className="material-symbols-outlined">qr_code_scanner</span>}
+                      扫码连接
+                    </button>
+                    <p className="text-[11px] text-on-surface-variant/50 max-w-xs mx-auto leading-relaxed">
+                      点击后会启动本地 bot，并在页面里弹出二维码 — 用手机微信扫码即可绑定。绑定成功的账号会加密保存在本机。
+                    </p>
+                  </>
                 )}
               </div>
             )}

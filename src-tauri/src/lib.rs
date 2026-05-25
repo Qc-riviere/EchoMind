@@ -1,4 +1,5 @@
 use tauri::{Manager, WindowEvent};
+use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{TrayIconBuilder, TrayIconEvent, MouseButton, MouseButtonState};
 
 mod commands;
@@ -84,6 +85,31 @@ pub fn run() {
                 } else if let WindowEvent::Focused(false) = event {
                     let _ = window.hide();
                 }
+            } else if window.label() == "main" {
+                if let WindowEvent::CloseRequested { api, .. } = event {
+                    // Tray-resident app: X minimises to tray instead of quitting.
+                    // Without this the tray icon vanishes alongside the window.
+                    let _ = window.hide();
+                    api.prevent_close();
+
+                    let app = window.app_handle();
+                    let state: tauri::State<'_, AppCore> = app.state();
+                    let already_hinted = state
+                        .0
+                        .get_setting("tray_close_hint_shown")
+                        .unwrap_or(None)
+                        .is_some();
+                    if !already_hinted {
+                        use tauri_plugin_notification::NotificationExt;
+                        let _ = app
+                            .notification()
+                            .builder()
+                            .title("EchoMind 仍在后台运行")
+                            .body("点关闭只是最小化到任务栏托盘。要彻底退出请右键托盘图标 →「退出 EchoMind」。")
+                            .show();
+                        let _ = state.0.set_setting("tray_close_hint_shown", "1");
+                    }
+                }
             }
         })
         .setup(|app| {
@@ -116,13 +142,38 @@ pub fn run() {
                 }
             }
 
-            // Build the system tray. Clicking the icon shows/focuses the main
-            // window. Tooltip shows today's thought count and is refreshed
-            // periodically (and on demand via emit-based hooks below).
+            // System tray: left click → show main window; right click → menu
+            // with explicit Show / Capture / Quit. Without the menu the only
+            // way to quit a tray-resident build was to kill the process.
+            let show_item = MenuItem::with_id(app, "tray_show", "显示主窗口", true, None::<&str>)?;
+            let capture_item = MenuItem::with_id(
+                app,
+                "tray_capture",
+                "速记浮窗 (Ctrl+Shift+I)",
+                true,
+                None::<&str>,
+            )?;
+            let separator = PredefinedMenuItem::separator(app)?;
+            let quit_item =
+                MenuItem::with_id(app, "tray_quit", "退出 EchoMind", true, None::<&str>)?;
+            let tray_menu = Menu::with_items(
+                app,
+                &[&show_item, &capture_item, &separator, &quit_item],
+            )?;
+
             let tray_handle = app.handle().clone();
+            let menu_handle = app.handle().clone();
             TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().expect("missing icon").clone())
                 .tooltip("EchoMind")
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(move |_app, event| match event.id().as_ref() {
+                    "tray_show" => show_main_window(&menu_handle),
+                    "tray_capture" => show_capture_window(&menu_handle),
+                    "tray_quit" => menu_handle.exit(0),
+                    _ => {}
+                })
                 .on_tray_icon_event(move |_tray, event| {
                     if let TrayIconEvent::Click {
                         button: MouseButton::Left,

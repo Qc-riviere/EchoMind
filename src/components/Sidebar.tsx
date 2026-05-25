@@ -5,13 +5,23 @@ import type { ConversationWithPreview } from "../lib/types";
 import { formatDistanceToNow } from "date-fns";
 import { EchoMindLogo } from "./EchoMindLogo";
 
-const navItems = [
+const navItems: { to: string; icon: string; label: string; hint?: string }[] = [
   { to: "/", icon: "home", label: "首页" },
   { to: "/search", icon: "search", label: "搜索" },
   { to: "/graph", icon: "bubble_chart", label: "图谱" },
   { to: "/archive", icon: "inventory_2", label: "归档" },
-  { to: "/wechat", icon: "hub", label: "微信桥" },
-  { to: "/cloud", icon: "cloud_sync", label: "云桥" },
+  {
+    to: "/wechat",
+    icon: "hub",
+    label: "微信桥",
+    hint: "本地 Bot + 腾讯官方 ClawBot，把手机微信接进 EchoMind",
+  },
+  {
+    to: "/cloud",
+    icon: "cloud_sync",
+    label: "云桥",
+    hint: "通过 VPS 做多设备同步 + 可选共享 LLM 调用",
+  },
   { to: "/settings", icon: "settings", label: "设置" },
 ];
 
@@ -178,11 +188,12 @@ export default function Sidebar() {
   );
 }
 
-function NavItem({ to, icon, label }: { to: string; icon: string; label: string }) {
+function NavItem({ to, icon, label, hint }: { to: string; icon: string; label: string; hint?: string }) {
   return (
     <NavLink
       to={to}
       end={to === "/"}
+      title={hint}
       className={({ isActive }) =>
         `flex items-center gap-4 py-3 px-4 rounded-lg transition-all ${
           isActive
