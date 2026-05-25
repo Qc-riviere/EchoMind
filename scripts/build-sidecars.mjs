@@ -92,6 +92,18 @@ function buildServer(triple) {
   console.log(`✓ ${outName}`);
 }
 
+function ensureBotDeps() {
+  // bun --compile needs qrcode resolvable on disk; CI only runs `pnpm install`
+  // at the workspace root, which doesn't install this sub-project's deps.
+  const qrcodeDir = join(BOT_DIR, "node_modules", "qrcode");
+  if (existsSync(qrcodeDir)) return;
+  const npmCmd = platform() === "win32" ? "npm.cmd" : "npm";
+  const hasLock = existsSync(join(BOT_DIR, "package-lock.json"));
+  const cmd = hasLock ? `${npmCmd} ci` : `${npmCmd} install`;
+  console.log(`▶ ${cmd} (in echomind-wechat — first run only)`);
+  execSync(cmd, { cwd: BOT_DIR, stdio: "inherit" });
+}
+
 function buildBot(triple) {
   const ext = exeSuffix(triple);
   const outName = `echomind-wechat-bot-${triple}${ext}`;
@@ -102,6 +114,8 @@ function buildBot(triple) {
     console.log(`✓ ${outName} up to date — skip`);
     return;
   }
+
+  ensureBotDeps();
 
   const bunTarget = bunTargetFor(triple);
   console.log(`▶ bun build --compile --target=${bunTarget} src/main.ts → ${outName}`);
