@@ -17,6 +17,11 @@ pub struct Message {
     pub role: String,
     pub content: String,
     pub created_at: String,
+    /// Only populated for assistant messages from reasoning-mode providers
+    /// (DeepSeek-R1, Qwen-Thinking, etc) that require the field be echoed
+    /// back on subsequent requests.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_content: Option<String>,
 }
 
 pub fn create_conversation(conn: &Connection, thought_id: &str) -> Result<Conversation> {
@@ -53,12 +58,22 @@ pub fn add_message(
     role: &str,
     content: &str,
 ) -> Result<Message> {
+    add_message_with_reasoning(conn, conversation_id, role, content, None)
+}
+
+pub fn add_message_with_reasoning(
+    conn: &Connection,
+    conversation_id: &str,
+    role: &str,
+    content: &str,
+    reasoning_content: Option<&str>,
+) -> Result<Message> {
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
 
     conn.execute(
-        "INSERT INTO messages (id, conversation_id, role, content, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![id, conversation_id, role, content, now],
+        "INSERT INTO messages (id, conversation_id, role, content, created_at, reasoning_content) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, conversation_id, role, content, now, reasoning_content],
     )?;
 
     // Update conversation timestamp
@@ -73,12 +88,13 @@ pub fn add_message(
         role: role.to_string(),
         content: content.to_string(),
         created_at: now,
+        reasoning_content: reasoning_content.map(|s| s.to_string()),
     })
 }
 
 pub fn get_messages(conn: &Connection, conversation_id: &str) -> Result<Vec<Message>> {
     let mut stmt = conn.prepare(
-        "SELECT id, conversation_id, role, content, created_at
+        "SELECT id, conversation_id, role, content, created_at, reasoning_content
          FROM messages WHERE conversation_id = ?1
          ORDER BY created_at ASC",
     )?;
@@ -90,6 +106,7 @@ pub fn get_messages(conn: &Connection, conversation_id: &str) -> Result<Vec<Mess
             role: row.get(2)?,
             content: row.get(3)?,
             created_at: row.get(4)?,
+            reasoning_content: row.get(5)?,
         })
     })?;
 

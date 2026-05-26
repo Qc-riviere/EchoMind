@@ -228,7 +228,7 @@ impl LLMProvider for ClaudeProvider {
                 AgentMessage::User { content } => {
                     msgs.push(json!({"role": "user", "content": content}));
                 }
-                AgentMessage::Assistant { content, tool_calls } => {
+                AgentMessage::Assistant { content, tool_calls, reasoning_content: _ } => {
                     let mut blocks: Vec<Value> = Vec::new();
                     if !content.is_empty() {
                         blocks.push(json!({"type": "text", "text": content}));
@@ -319,6 +319,6 @@ impl LLMProvider for ClaudeProvider {
                 }
             }
         }
-        Ok(AgentTurn { text: text_out, tool_calls })
+        Ok(AgentTurn { text: text_out, tool_calls, reasoning_content: None })
     }
 }

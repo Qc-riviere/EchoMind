@@ -1051,9 +1051,9 @@ impl EchoMind {
 
             let msgs = conversations::get_messages(&conn, conversation_id)
                 .map_err(|e| e.to_string())?;
-            let history: Vec<(String, String)> = msgs
+            let history: Vec<(String, String, Option<String>)> = msgs
                 .iter()
-                .map(|m| (m.role.clone(), m.content.clone()))
+                .map(|m| (m.role.clone(), m.content.clone(), m.reasoning_content.clone()))
                 .collect();
 
             let (pt, cfg) = Self::load_llm_config_from_conn(&conn)?;
@@ -1063,12 +1063,13 @@ impl EchoMind {
         let system = self.build_chat_system_prompt(&thought, &related_context);
         let mut messages: Vec<AgentMessage> =
             vec![AgentMessage::System { content: system }];
-        for (role, content) in history {
+        for (role, content, reasoning_content) in history {
             match role.as_str() {
                 "user" => messages.push(AgentMessage::User { content }),
                 "assistant" => messages.push(AgentMessage::Assistant {
                     content,
                     tool_calls: vec![],
+                    reasoning_content,
                 }),
                 _ => {}
             }
@@ -1077,7 +1078,7 @@ impl EchoMind {
         let mut registry = builtin_tools::default_registry();
         let skill_list = skills::load_skills_from_dir(&self.skills_dir);
         skills::register_skills(&mut registry, &skill_list);
-        let final_text = agent::run_agent(
+        let (final_text, final_reasoning) = agent::run_agent(
             self,
             provider_type,
             &config,
@@ -1092,8 +1093,14 @@ impl EchoMind {
 
         if !final_text.is_empty() {
             let conn = self.conn()?;
-            conversations::add_message(&conn, conversation_id, "assistant", &final_text)
-                .map_err(|e| e.to_string())?;
+            conversations::add_message_with_reasoning(
+                &conn,
+                conversation_id,
+                "assistant",
+                &final_text,
+                final_reasoning.as_deref(),
+            )
+            .map_err(|e| e.to_string())?;
         }
 
         Ok(final_text)

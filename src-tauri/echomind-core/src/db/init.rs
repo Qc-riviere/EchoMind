@@ -95,6 +95,16 @@ pub fn initialize_database(db_path: &Path) -> Result<Connection> {
         conn.execute_batch("ALTER TABLE thoughts ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0;")?;
     }
 
+    // Migration: add reasoning_content column on messages — DeepSeek-Reasoner /
+    // Qwen-Thinking style providers require the prior assistant turn's
+    // reasoning_content be echoed back in subsequent rounds.
+    let has_reasoning: bool = conn
+        .prepare("SELECT reasoning_content FROM messages LIMIT 0")
+        .is_ok();
+    if !has_reasoning {
+        conn.execute_batch("ALTER TABLE messages ADD COLUMN reasoning_content TEXT;")?;
+    }
+
     // Resolve desired embedding dimension from settings, defaulting to the
     // local-model default (512) for fresh installs and falling back to 1536
     // when any cloud embedding has already been configured.

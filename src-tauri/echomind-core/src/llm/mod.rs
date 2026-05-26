@@ -61,6 +61,13 @@ pub enum AgentMessage {
         content: String,
         #[serde(default)]
         tool_calls: Vec<ToolCall>,
+        /// Some reasoning-mode providers (DeepSeek R1, certain Qwen/Volcengine
+        /// variants) return a separate `reasoning_content` field alongside
+        /// `content` and require it be echoed back in subsequent turns, or
+        /// they 400 with "reasoning_content in the thinking mode must be
+        /// passed back". Plain providers leave this None.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        reasoning_content: Option<String>,
     },
     #[serde(rename = "tool_result")]
     ToolResult {
@@ -75,6 +82,9 @@ pub enum AgentMessage {
 pub struct AgentTurn {
     pub text: String,
     pub tool_calls: Vec<ToolCall>,
+    /// See `AgentMessage::Assistant::reasoning_content`.
+    #[serde(default)]
+    pub reasoning_content: Option<String>,
 }
 
 #[async_trait]

@@ -240,7 +240,7 @@ impl LLMProvider for GeminiProvider {
                         "parts": [{"text": content}]
                     }));
                 }
-                AgentMessage::Assistant { content, tool_calls } => {
+                AgentMessage::Assistant { content, tool_calls, reasoning_content: _ } => {
                     let mut parts: Vec<Value> = Vec::new();
                     if !content.is_empty() {
                         parts.push(json!({"text": content}));
@@ -331,7 +331,7 @@ impl LLMProvider for GeminiProvider {
                 }
             }
         }
-        Ok(AgentTurn { text: text_out, tool_calls })
+        Ok(AgentTurn { text: text_out, tool_calls, reasoning_content: None })
     }
 }
 

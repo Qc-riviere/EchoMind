@@ -76,7 +76,7 @@ pub async fn run_agent<F>(
     initial_messages: Vec<AgentMessage>,
     max_iter: usize,
     mut on_event: F,
-) -> Result<String, String>
+) -> Result<(String, Option<String>), String>
 where
     F: FnMut(AgentEvent),
 {
@@ -97,13 +97,16 @@ where
         // No tool calls → final answer.
         if turn.tool_calls.is_empty() {
             on_event(AgentEvent::Final(turn.text.clone()));
-            return Ok(turn.text);
+            return Ok((turn.text, turn.reasoning_content));
         }
 
-        // Record assistant turn (with tool calls) into history.
+        // Record assistant turn (with tool calls) into history. Carrying
+        // `reasoning_content` is required by DeepSeek-Reasoner / Qwen-Thinking
+        // and any provider that 400s on "reasoning_content must be passed back".
         messages.push(AgentMessage::Assistant {
             content: turn.text.clone(),
             tool_calls: turn.tool_calls.clone(),
+            reasoning_content: turn.reasoning_content.clone(),
         });
 
         // Execute each tool, feed results back.

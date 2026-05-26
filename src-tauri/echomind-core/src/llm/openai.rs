@@ -195,7 +195,7 @@ impl LLMProvider for OpenAIProvider {
             .map(|m| match m {
                 AgentMessage::System { content } => json!({"role": "system", "content": content}),
                 AgentMessage::User { content } => json!({"role": "user", "content": content}),
-                AgentMessage::Assistant { content, tool_calls } => {
+                AgentMessage::Assistant { content, tool_calls, reasoning_content } => {
                     let mut obj = json!({"role": "assistant", "content": content});
                     if !tool_calls.is_empty() {
                         let calls: Vec<Value> = tool_calls
@@ -212,6 +212,11 @@ impl LLMProvider for OpenAIProvider {
                             })
                             .collect();
                         obj["tool_calls"] = json!(calls);
+                    }
+                    // Echo reasoning_content back when the provider produced it
+                    // — required by DeepSeek-Reasoner / Qwen-Thinking and similar.
+                    if let Some(rc) = reasoning_content {
+                        obj["reasoning_content"] = json!(rc);
                     }
                     obj
                 }
@@ -268,6 +273,10 @@ impl LLMProvider for OpenAIProvider {
         let json: Value = serde_json::from_str(&text).map_err(|e| e.to_string())?;
         let msg = &json["choices"][0]["message"];
         let text_out = msg["content"].as_str().unwrap_or("").to_string();
+        let reasoning_content = msg["reasoning_content"]
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
         let mut tool_calls: Vec<ToolCall> = Vec::new();
         if let Some(arr) = msg["tool_calls"].as_array() {
             for tc in arr {
@@ -278,6 +287,6 @@ impl LLMProvider for OpenAIProvider {
                 tool_calls.push(ToolCall { id, name, arguments });
             }
         }
-        Ok(AgentTurn { text: text_out, tool_calls })
+        Ok(AgentTurn { text: text_out, tool_calls, reasoning_content })
     }
 }

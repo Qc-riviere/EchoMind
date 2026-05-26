@@ -36,7 +36,21 @@ pub fn default_registry() -> ToolRegistry {
                 .get("query")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| "missing 'query' argument".to_string())?;
-            let results = core.semantic_search(query).await?;
+            // Embedding can fail (network down, missing/wrong API key, provider
+            // without an embeddings endpoint). Surface a model-readable message
+            // so the agent reports the limitation in plain language instead of
+            // crashing the chat with a raw HTTP error.
+            let results = match core.semantic_search(query).await {
+                Ok(r) => r,
+                Err(e) => {
+                    return Ok(json!({
+                        "results": [],
+                        "error": "向量检索暂不可用（embedding 服务连接失败或未配置）。请在设置 → 向量嵌入中检查配置，或继续基于已知信息回答。",
+                        "detail": e,
+                    })
+                    .to_string());
+                }
+            };
             let trimmed: Vec<Value> = results
                 .into_iter()
                 .take(8)
