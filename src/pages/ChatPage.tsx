@@ -7,6 +7,7 @@ import { useChatStore } from "../stores/chatStore";
 import { buildChatMarkdown, buildChatDocxBlob } from "../lib/chatExporters";
 import { errorMsg } from "../lib/errorMsg";
 import { notify } from "../lib/notify";
+import ChatPlanModal from "../components/ChatPlanModal";
 import type { Thought } from "../lib/types";
 
 const QUICK_CHIPS = [
@@ -92,6 +93,9 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [panelOpen, setPanelOpen] = useState(true);
   const [exportOpen, setExportOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [planLoading, setPlanLoading] = useState(false);
+  const [plan, setPlan] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const hasSentInitialRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -184,20 +188,51 @@ export default function ChatPage() {
     window.print();
   };
 
+  const handleSynthesizePlan = async () => {
+    if (!conversation || planLoading) return;
+    setPlan("");
+    setPlanOpen(true);
+    setPlanLoading(true);
+    try {
+      const markdown = await invoke<string>("synthesize_chat_plan", {
+        conversationId: conversation.id,
+      });
+      setPlan(markdown);
+    } catch (e) {
+      setPlan("");
+      setPlanOpen(false);
+      await notify("EchoMind", `生成方案失败：${errorMsg(e)}`);
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
   const resources = thought ? generateResources(thought) : [];
 
   return (
     <div className="absolute inset-0 flex overflow-hidden print:static print:overflow-visible print:block">
       {/* Main chat column */}
       <div className="flex-1 flex flex-col relative min-w-0 print:flex-none">
-        {/* Top-right action stack: export + (optional) panel toggle */}
+        {/* Top-right action stack: synthesize plan + export + (optional) panel toggle */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-2 print:hidden">
+          <button
+            onClick={handleSynthesizePlan}
+            disabled={!canExport || planLoading}
+            aria-label="整理为方案文档"
+            title="让 AI 把本次对话整理为可交付的方案文档"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-[12px] text-primary transition-all ghost-border disabled:opacity-40"
+          >
+            <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
+              {planLoading ? "progress_activity" : "description"}
+            </span>
+            整理为方案
+          </button>
           <div className="relative">
             <button
               onClick={() => setExportOpen((v) => !v)}
               disabled={!canExport}
               aria-label="导出对话"
-              title="导出对话"
+              title="导出整段对话原文"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-[12px] text-on-surface-variant hover:text-primary transition-all ghost-border disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-[16px]" aria-hidden="true">download</span>
@@ -351,6 +386,14 @@ export default function ChatPage() {
         </div>
 
       </div>
+
+      <ChatPlanModal
+        isOpen={planOpen}
+        onClose={() => setPlanOpen(false)}
+        thought={thought}
+        plan={plan}
+        loading={planLoading}
+      />
 
       {/* Right panel - Contextual Resources */}
       {panelOpen && (

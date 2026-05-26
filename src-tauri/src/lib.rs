@@ -275,6 +275,7 @@ pub fn run() {
             commands::chat_cmds::get_chat_messages,
             commands::chat_cmds::send_chat_message,
             commands::chat_cmds::withdraw_message,
+            commands::chat_cmds::synthesize_chat_plan,
             commands::bridge_cmds::bridge_server_status,
             commands::bridge_cmds::bridge_start_server,
             commands::bridge_cmds::bridge_stop_server,

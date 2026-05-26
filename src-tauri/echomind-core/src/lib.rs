@@ -1106,6 +1106,77 @@ impl EchoMind {
         Ok(final_text)
     }
 
+    /// Take an existing conversation's transcript and synthesize a clean,
+    /// exportable "plan" markdown document. Single LLM call, does NOT persist
+    /// back to the messages table.
+    ///
+    /// Returns the markdown body the UI can show + export. The thought's
+    /// content is supplied as upstream context so the plan stays anchored to
+    /// the original idea.
+    pub async fn synthesize_chat_plan(&self, conversation_id: &str) -> Result<String, String> {
+        let (thought, transcript) = {
+            let conn = self.conn()?;
+            let conv = conversations::get_conversation(&conn, conversation_id)
+                .map_err(|e| e.to_string())?;
+            let thought = thoughts::get_thought(&conn, &conv.thought_id)
+                .map_err(|e| e.to_string())?;
+            let msgs = conversations::get_messages(&conn, conversation_id)
+                .map_err(|e| e.to_string())?;
+            let mut buf = String::new();
+            for m in msgs.iter() {
+                if m.role == "system" {
+                    continue;
+                }
+                let speaker = if m.role == "user" { "用户" } else { "AI" };
+                buf.push_str(&format!("【{}】\n{}\n\n", speaker, m.content));
+            }
+            (thought, buf)
+        };
+
+        if transcript.trim().is_empty() {
+            return Err("对话还没有内容，无法生成方案".to_string());
+        }
+
+        let system = r#"你是一位资深的方案整理助手。用户会给你一段他和 AI 的拷问/讨论对话，请把对话里达成的结论整理为一份简洁、可交付的方案文档。
+
+输出严格使用 markdown，包含以下章节（如果对话里没覆盖某个，直接省略整段，不要硬凑）：
+
+## 核心结论
+（一两句话最终定论。务必从对话里 distill，不要造词）
+
+## 想法/项目概要
+（对话锚定的原始灵感 + 当前 MVP 范围）
+
+## 关键决策
+（用 - 列表写出讨论中确定的判断、取舍、否定的方向）
+
+## 风险与未决
+（- 列表，包括已识别但还没决定怎么办的事）
+
+## 下一步行动
+（- 列表，3-5 个具体可执行动作。优先写「下周内能动手」的）
+
+直接输出 markdown 正文，不要包含```markdown 代码块包装，不要前言后语。"#;
+
+        let user_content = format!(
+            "原始灵感：{}\n\n以下是讨论这条灵感的完整对话：\n\n{}",
+            thought.content, transcript
+        );
+
+        let messages = vec![
+            ChatMessage {
+                role: "system".to_string(),
+                content: system.to_string(),
+            },
+            ChatMessage {
+                role: "user".to_string(),
+                content: user_content,
+            },
+        ];
+
+        self.complete_via_route(messages).await
+    }
+
     // ── Skills ──────────────────────────────────────────────────────────
 
     /// List all available skills.

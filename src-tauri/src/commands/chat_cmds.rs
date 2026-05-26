@@ -152,3 +152,13 @@ pub async fn withdraw_message(
 ) -> Result<Vec<String>, String> {
     state.0.withdraw_message(&message_id)
 }
+
+/// Synthesize the conversation into a clean exportable plan markdown.
+/// One extra LLM call; nothing persisted back to the messages table.
+#[tauri::command]
+pub async fn synthesize_chat_plan(
+    state: State<'_, AppCore>,
+    conversation_id: String,
+) -> Result<String, String> {
+    state.0.synthesize_chat_plan(&conversation_id).await
+}
