@@ -6,7 +6,7 @@ import { useThemeStore } from "../stores/themeStore";
 import type { Skill, DiscoveredSkill } from "../lib/types";
 import { checkForUpdatesManual } from "../lib/updater";
 
-const APP_VERSION = "0.3.4";
+const APP_VERSION = "0.3.5";
 
 const LLM_PROVIDERS = [
   { value: "openai", label: "OpenAI", backend: "openai", defaultModel: "gpt-4o-mini", defaultBaseUrl: "" },
@@ -772,7 +772,7 @@ export default function SettingsPage() {
                   <img src="/logo.svg" alt="EchoMind" className="w-12 h-12" />
                   <div>
                     <h4 className="text-lg font-headline font-bold text-on-surface">EchoMind</h4>
-                    <p className="text-xs text-on-surface-variant">灵感备忘录 · v{APP_VERSION}</p>
+                    <p className="text-xs text-on-surface-variant">灵感笔记 · v{APP_VERSION}</p>
                   </div>
                 </div>
                 <div className="h-px w-full bg-outline-variant/10" />

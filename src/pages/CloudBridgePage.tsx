@@ -224,6 +224,24 @@ export default function CloudBridgePage() {
     }
   };
 
+  const handleResetLocal = async () => {
+    if (
+      !confirm(
+        "仅重置本地凭证：清除本地 token / device id / 同步游标，但**保留** VPS 上的所有云端数据。\n\n下一步：从 VPS 取一个新配对码，重新配对一次。\n\n确认继续？"
+      )
+    )
+      return;
+    setError(null);
+    setInfo(null);
+    try {
+      await invoke("cloud_bridge_reset_local");
+      setInfo("已清除本地凭证，请用新配对码重新绑定");
+      await refresh();
+    } catch (e) {
+      setError(errorMsg(e));
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 text-on-surface-variant/60">Loading...</div>
@@ -273,6 +291,19 @@ export default function CloudBridgePage() {
                 <p className="text-xs text-on-surface-variant/60 font-mono">
                   device: {status.device_id}
                 </p>
+                {status.sync_key_fp && (
+                  <p
+                    className="text-xs text-on-surface-variant/60 font-mono cursor-pointer hover:text-primary"
+                    title="点击复制 — bot 配对时也用这个值，否则会落到不同的设备库无法互通"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(status.sync_key_fp!);
+                      setInfo("sync_key_fp 已复制到剪贴板");
+                      setTimeout(() => setInfo(null), 2000);
+                    }}
+                  >
+                    sync_key_fp: {status.sync_key_fp}
+                  </p>
+                )}
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <span className="text-sm text-on-surface-variant/70">
@@ -288,7 +319,21 @@ export default function CloudBridgePage() {
                 />
               </label>
             </div>
-            <div className="flex items-center justify-between gap-4 pt-3 border-t border-outline-variant/20">
+            <div className="flex items-center justify-between gap-4 pt-3 mt-3 border-t border-outline-variant/20">
+              <div>
+                <p className="text-sm text-on-surface">重新配对（保留云端数据）</p>
+                <p className="text-xs text-on-surface-variant/60 mt-1">
+                  本地 token 过期 / 想换设备时用。清掉本地凭证后用新配对码重新绑定，VPS 上的想法 / bot 配置 / LLM 密钥不变。
+                </p>
+              </div>
+              <button
+                onClick={handleResetLocal}
+                className="shrink-0 px-3 py-1.5 rounded-lg text-sm bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-primary transition-colors"
+              >
+                重置本地凭证
+              </button>
+            </div>
+            <div className="flex items-center justify-between gap-4 pt-3 mt-3 border-t border-outline-variant/20">
               <div>
                 <p className="text-sm text-on-surface">通过云桥调用 LLM</p>
                 <p className="text-xs text-on-surface-variant/60 mt-1">

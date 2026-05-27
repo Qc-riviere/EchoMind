@@ -327,6 +327,7 @@ pub fn run() {
             commands::cloud_bridge_cmds::cloud_bridge_initial_sync,
             commands::cloud_bridge_cmds::cloud_bridge_sync_pull,
             commands::cloud_bridge_cmds::cloud_bridge_terminate,
+            commands::cloud_bridge_cmds::cloud_bridge_reset_local,
             commands::cloud_bridge_cmds::cloud_bridge_push_llm_config,
             commands::cloud_bridge_cmds::cloud_bridge_clear_llm_config,
             commands::cloud_bridge_cmds::cloud_bridge_remote_llm_status,

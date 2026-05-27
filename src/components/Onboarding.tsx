@@ -140,7 +140,7 @@ export default function Onboarding({ onClose }: Props) {
                 欢迎使用 EchoMind
               </h1>
               <p className="text-sm text-on-surface-variant/80 mb-6 leading-relaxed">
-                一款本地优先 + 微信原生的灵感备忘录。三句话讲清能做什么：
+                一款本地优先 + 微信原生的灵感笔记。三句话讲清能做什么：
               </p>
               <ul className="space-y-3 mb-8 text-sm text-on-surface leading-relaxed">
                 <li className="flex gap-3">

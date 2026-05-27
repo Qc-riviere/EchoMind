@@ -190,13 +190,36 @@ MVP 阶段不引入 Redis。
 4. 用户点击"部署到云端"，本地推送到 VPS：
    { bot_token, baseurl, device_id, sync_key, subset_rules,
      llm_config?（可选，用于 /chat）}
-5. VPS 签发 JWT（绑定 device_id + bot_token），返回给本地
+5. VPS 签发 JWT（v0.3.5+ TTL=1年；v0.3.5 前 30 天），返回给本地
 6. 本地存储 JWT，后续 WSS 连接自动认证
 7. 本地按 subset_rules 做初次全量上传（子集范围内想法 + 向量）
 
+后续使用（v0.3.5+ Sliding TTL）：
+8. 每次成功 authed 请求，服务端在响应头塞 X-Refresh-Token = 新 1 年期 token
+9. 桌面 BridgeClient 自动捕获 → 持久化到本地 settings → 下次请求用新 token
+10. 一年内开过一次 App，token 自动滚动续期，永不过期
+
 无需账号系统。bot_token 可随时重推（覆盖即迁移）。
-取消订阅 → 本地调用 /bridge/terminate → VPS 销毁所有数据。
+退出方式两种（v0.3.5+）：
+- **重置本地凭证**（保留云端数据）：仅清本地 token / device_id / 同步游标，VPS 数据不动。
+  适合 token 出问题想换码重新绑定、或换设备但想继承原 device 数据。
+- **终止订阅**（销毁云端数据）：调 /bridge/terminate，VPS 销毁该 device 的所有数据。
 ```
+
+**Sliding TTL（v0.3.5 引入）**：v0.3.5 前 TTL 仅 30 天，强制用户每月 SSH 到 VPS 拿新码 +
+重新配对，操作极其复杂。v0.3.5 改为初始 TTL 1 年 + 服务端每次成功认证 reissue 新 1 年期
+token 塞响应头 `X-Refresh-Token`，桌面 Rust 客户端（`echomind-core/src/bridge/client.rs`）
+自动读响应头写回 settings 表。**用户不再需要手动更新 JWT**——只要 1 年内打开过一次 App，
+token 永远滚动续期。TS bot 客户端（`echomind-wechat`）暂未实现 refresh，理论上一年后需要
+手动给 bot 重新发 token（步骤见 §11 末尾），后续计划在 TS 端也加 refresh-token 捕获以彻底
+消除这道手动工。
+
+**多设备共享同一份云端数据**：VPS 用 `data/devices/<device_id>.db` 一设备一库，device_id
+由配对时的 `sync_key_fp` 决定（`pairing.rs` 中同 fp 复用同 device，不同 fp 建新 device）。
+桌面 + VPS 上的 bot **必须用相同 sync_key_fp 配对**才能落到同一 device、共享同一份云端数据。
+否则桌面 / bot 各自落到独立 DB，互不可见——表现为 bot 收到的消息桌面拉不到。桌面 UI 在
+「设置 → 云桥 → 订阅状态」展示 `sync_key_fp` 可点击复制；bot 配对时用相同值即可加入
+同一 device 命名空间。
 
 ### 5.5 "上云子集"规则（用户自选）
 
@@ -357,12 +380,16 @@ iLink 是官方 bot 协议，无封号风控问题，但有以下约束：
 
 所有受保护路由需 `Authorization: Bearer <JWT>` 头。管理路由需 `x-admin-token: <ADMIN_TOKEN>` 头。
 
+**所有受保护路由的响应头都会带 `X-Refresh-Token: <新1年期JWT>`**（v0.3.5+ Sliding TTL），
+桌面 Rust 客户端会自动读取并持久化到 settings 表。其他客户端可选实现 refresh 捕获以避免
+长期手动更新 token。
+
 ### 公开路由
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/health` | 健康检查 |
-| POST | `/bridge/pair` | 消费配对码，返回 JWT |
+| POST | `/bridge/pair` | 消费配对码，返回 JWT（TTL=1年） |
 
 ### 受保护路由（JWT）
 
@@ -400,6 +427,27 @@ node dist/main.js daemon
 支持的 Bot 命令（bridge 模式）：`/list`、`/search`、`/view`、`/chat`、`/exit`、`/status`、`/help`
 不支持：直接发文字录入想法（需桌面在线，或等 Phase 4 的 `/bridge/thoughts/capture`）。
 
+**独立 bot 模式 token 更新**（v0.3.5+ 一年一次；将来 TS 客户端实现 refresh 后取消）：
+
+```bash
+# 1. 在 VPS 上申请新 pair-code
+ADMIN_TOKEN=$(grep -oP '^ADMIN_TOKEN=\K.*' .env)
+CODE=$(curl -s -X POST https://bridge.example.com/admin/pair-codes \
+  -H "x-admin-token: $ADMIN_TOKEN" -H "Content-Type: application/json" \
+  -d '{"ttl_secs": 600}' | grep -oP '"code":"\K[^"]+')
+
+# 2. pair —— sync_key_fp 必须与桌面端相同（否则 bot 落到独立 device，互不可见）
+#    桌面 fp 在「设置 → 云桥 → 订阅状态」可见
+curl -X POST https://bridge.example.com/bridge/pair \
+  -H "Content-Type: application/json" \
+  -d "{\"device_code\":\"$CODE\",\"sync_key_fp\":\"<桌面相同的 fp>\"}"
+# → {"token":"eyJ...","device_id":"dev_..."}  # device_id 应等于桌面 device_id
+
+# 3. 写入 .env 并重启 bot
+sed -i 's|^ECHOMIND_BRIDGE_TOKEN=.*|ECHOMIND_BRIDGE_TOKEN=<新token>|' .env
+docker compose up -d bot
+```
+
 ## 12. 决策日志（迭代记录）
 
 格式：`YYYY-MM-DD | 变更 | 原因`
@@ -415,6 +463,7 @@ node dist/main.js daemon
 - **2026-05-13c** | 搜索可用性 + 视觉品牌 + 国际化收口 | (A) 搜索在 Claude/DeepSeek 等无 OpenAI 兼容 embedding 端点的 provider 下整体不可用——`load_embedding_config_from_conn` 兜底分支把 LLM key 直接发到 OpenAI 端点必 401；改为仅 `openai` / `gemini` 走对应远端，其它 provider 自动 fallback 到本地 bge-small-zh-v1.5 (512 维)；(B) `reembed_all_thoughts` 在 re-embed 前比对 `thought_embeddings` 虚表当前维度与目标维度，若不一致 DROP + 重建（修 1536 → 512 切换时的 `Dimension mismatch`）；(C) 图标品牌色与 App 主色统一——`public/logo.svg` 紫 `#8b5cf6` → 蓝 `#adc7ff`（`--t-primary`），`pnpm tauri icon` 重生所有 .ico/.icns/.png（Win + iOS + Android 全套）；(D) GraphPage 节点 label 硬编码 `rgba(0,0,0,0.75)` 在暗色下不可见 → 根据 theme store 选浅/深色；同步加色彩图例 overlay（绿 = 近 24h，其余按 domain），头部 + tooltip + 空态全中文化；(E) SettingsPage 残留英文清零——LLM / Embedding / AI / Skills / Appearance / Data / About 7 个 tab 的 section 标题、字段标签、按钮、对话框、placeholder 全部汉化，仅保留品牌名与 `API Key` / `Temperature` / `Base URL` 通用术语 |
 - **2026-05-18** | 图谱配色修复 + 云桥配置降噪 | (A) 图谱所有节点显灰色——根因：`enrich_thought` system_prompt 让 AI 返回 `"domain": "一个领域词"` 完全开放词表，中文 prompt 下 AI 返回 `工作` `学习` `AI` 等任意串，而前端 `DOMAIN_COLORS` 只有 10 个英文 key（technology / science / …）→ 不匹配全部 fallback 灰。修法两路并行：① GraphPage 加 `hashColor()` HSL fallback——未在 lookup 表里的 domain 按字符串 hash 出稳定柔和色（同 domain 永远同色），存量数据立即上色；② echomind-core lib.rs system_prompt 把 domain 字段限定为 11 个英文 enum（10 类 + other），未来新数据走预设色保持图例准确性；图例底部加"其他主题：按名称自动配色"说明。(B) CloudBridgePage 信息密度过高（第一屏 5 大块挤一起：知情同意 4 条警示 + 配对 + 订阅状态 + 子集规则 + LLM 远程 + 危险区）→ 3 个次要 section 全部包 `<details>` 默认折叠（上云子集规则 / LLM 远程执行 / 危险区），第一屏只剩订阅状态主卡 + 主开关；PairForm 4 条详细警告折进"详细说明"，主面板留一句话隐私代价摘要 + 同意框。无功能变更，纯视觉降噪。 |
 - **2026-05-13d** | ChatPage 导出 + MVP 报告补两章 | (A) ChatPage 顶右浮动「导出 ▾」下拉对齐 SummaryModal 模式，支持 Markdown / DOCX（`docx` npm）/ PDF（`window.print()`）三种格式；新 helper `src/lib/chatExporters.ts` 复用 SummaryModal 的 buildMarkdown / buildDocxBlob 形态、改写为对话消息形状（过滤 withdrawn + system，附关联灵感 header）；输入条 / 资源面板 / 撤回按钮加 `print:hidden`，打印输出干净；(B) `EchoMind_MVP汇报报告.md` 新增 §二「App 内置的 AI Agent 系统」（披露 `agent/mod.rs:71` 的 `run_agent` 工具调用 loop + 5 个内置工具 + Skills System 用户扩展 + 三家 provider 的 `complete_with_tools` 抽象 + 隐私相关路由 + 哪些产品功能走 agent / 哪些不走）+ §三「数据流通与隐私边界」（数据流向矩阵 + 5 个用户开关 + 5 件 NOT 做的事 + 与 Obsidian Sync 隐私模型对比），后续章节统一重编号；(C) 报告版本 v0.1 → v0.2、日期 2026-05-12 → 2026-05-13 |
+- **2026-05-27 (v0.3.5)** | JWT Sliding TTL + 互通根因修复 + 文档反映现实 | **痛点**：v0.3.5 前桌面 + bot JWT 都是 30 天 TTL，过期后客户端每 5 秒刷一次 `[bridge-sync] 401 ExpiredSignature`，用户被迫每月 SSH 上 VPS 申请新 pair-code、重新配对——操作链长得离谱。修法：(A) 服务端 `routes.rs::pair` TTL 30d → 365d；(B) `auth.rs::require_auth` 改为 axum 中间件 before+after 模式——每次成功认证后 reissue 新 1 年期 token，塞响应头 `x-refresh-token`；(C) 桌面 Rust `BridgeClient` 加 `refreshed_token: Mutex<Option<String>>` slot + 新 helper `send_authed()` 自动捕获响应头；EchoMindCore 加 `persist_bridge_refresh(&client)` 把 slot 内容写回 `bridge_token` setting，所有 9 处 `bridge_client()` 调用方都在用完后 drain。**用户 1 年内开过一次 App，token 就永远滚动续期**。(D) 桌面后台 sync_pull 循环加错误去重 + 5min 退避——401 不再以 12 err/min 刷屏，3 行同款 error 只打一次。(E) CloudBridgePage 新增「重置本地凭证（保留云端数据）」按钮 + 暴露 `sync_key_fp` 可点击复制——之前 terminate 是唯一退出路径会顺手销毁 VPS 数据，对"只想换 token 重新绑定"场景过于暴力。**根因发现**：v0.3.5 上线后用户反馈 bot 收到的消息桌面拉不到——挖到 VPS 用 `data/devices/<device_id>.db` 一设备一库（`db.rs:41`），device_id 由 `sync_key_fp` 决定（`pairing.rs:138`，同 fp 复用同 device），之前文档没提这条关键约束、UI 也没暴露 sync_key_fp 字段，导致我让用户给 bot 用随机 sync_key_fp 重 pair 时落到独立 device 互不可见。修：UI 显示 + 复制按钮 + §5.4 文档明确"桌面与 bot 必须用相同 sync_key_fp"。**Embedding & 整理为方案副产**：(F) `load_embedding_config_from_conn` 兜底分支看 `llm_provider_preset` 优先于 `llm_provider`——之前 DeepSeek backend 名是 `openai`，兜底会拿 DeepSeek key 撞 OpenAI URL 401；现在 DeepSeek/Claude 等无自家 embedding 端点的 provider 自动 fallback 到本地 bge。(G) SettingsPage embedding 加 local/cloud 显式 selector，选 local 时清掉所有云端字段防残留。(H) `synthesize_chat_plan` 用户体验三连：errorMsg.ts JWT/bridge 分支前置（之前被通用 401 误诊为 "API Key 无效"）+ `complete_via_route_opts` 接受 max_tokens override（synthesize 用 8192 防中途截断）+ system prompt 重写允许 [常识]/[估算] 标签补行业知识 + 注入 6 维度推导框架（需求/技术/数据/AI模型/竞争/交付）让 LLM 输出对标 Claude feasibility-report skill 详细度。(I) ChatPage 孤儿文件删除（489 行）——`/chat` 和 `/thought/:id/chat` 路由都指 ChatHubPage，整理为方案按钮 a1e4fd0 误加到 ChatPage 永远不渲染；搬到 ChatHubPage chat header 右上。 |
 - **2026-05-25 (v0.3.2)** | Plan A 完整落地：sidecar 打包 + Token 加密 + Tray/UX 三连 | **根因发现**：扫码连接在 packaged 安装包从未跑通——`echomind-server.exe` + Node runtime + `echomind-wechat/dist` 三个依赖一个都没进 bundle，dev 模式因为 `cargo build` + 本地 `node_modules` 都齐才"看起来正常"。修法：(A) **Sidecar 打包**——Bot 用 `bun build --compile` 编成单 .exe（95MB，零原生依赖，仅依赖 `qrcode` 纯 JS + `node:*` stdlib），与 `echomind-server.exe`（32MB）一并通过 `tauri.conf.json` 的 `bundle.externalBin` 进入安装包，Tauri 自动按 triple 命名 / 安装时去后缀。新增 `scripts/build-sidecars.mjs` 跨平台幂等脚本（cargo build server + bun --compile bot + 自动 `npm ci` 兜底 bot 子项目 deps）；CI 矩阵跑 Win 单 triple + macOS 双 arch。**Bot 子项目 npm ci 兜底是 CI 第一次跑挂的根因**——根 `pnpm install` 不下钻到 `echomind-wechat/`，于是 bun --compile 找不到 `qrcode`；fix 后 v0.3.2 tag 重打。(B) **Token 加密**——`echomind-server` 新增 `crypto.rs`（AES-256-GCM）+ `/api/token/{encrypt,decrypt}` 端点，密钥首次随机生成存 OS keychain（`keyring` crate，Win Credential Manager / macOS Keychain）；bot 的 `wechat/login.ts` 把 `accounts/*.json` 写入路径改成 `*.enc` envelope，`loadLatestAccount` 读 `.enc` 自动 decrypt、读到旧 `.json` 自动迁移并删除明文。(C) **Tray + 主窗 UX**——`TrayIconBuilder` 加右键菜单（显示主窗口 / 速记浮窗 / 退出 EchoMind），左键继续 fire click 显示主窗；主窗 `CloseRequested` 改 `hide()` + `prevent_close()`（之前 X 关 = App 退出，托盘也跟着没），首次关闭弹 Windows 通知告知"仍在后台"，用 setting `tray_close_hint_shown` 防重复。(D) **Splash 进度条**——`index.html` 内联深色 splash（logo + 进度条 + 文案），CSS keyframe 3s 平滑爬到 92%，`main.tsx` 在 React mount 后接力推到 100% 并 fade out；覆盖了从 Webview2 启动到 React 首屏的全部黑屏窗口。(E) **必要 hint**——TitleBar 三个窗口控制按钮加 `title` 解释实际行为（X 现在是"最小化到托盘"而非"关闭"），Sidebar 微信桥/云桥 hover title 区分本地 vs VPS 路径，WeChatBridgePage「扫码连接」按钮加副文案告知点击后会发生什么。 |
 
 ---

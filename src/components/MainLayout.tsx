@@ -7,7 +7,7 @@ import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import "../stores/themeStore"; // Initialize theme on load
 
 const BREADCRUMB_MAP: Record<string, string> = {
-  "/": "灵感备忘录",
+  "/": "灵感笔记",
   "/search": "搜索",
   "/archive": "归档",
   "/chat": "对话",

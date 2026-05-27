@@ -79,7 +79,7 @@ export default function Sidebar() {
         <div className="flex flex-col gap-0.5">
           <h1 className="text-xl font-bold tracking-widest text-primary font-headline">EchoMind</h1>
           <span className="text-[11px] uppercase tracking-[0.2em] text-on-surface-variant/60">
-            灵感备忘录
+            灵感笔记
           </span>
         </div>
       </div>

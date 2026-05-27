@@ -84,6 +84,11 @@ pub async fn cloud_bridge_terminate(state: State<'_, AppCore>) -> Result<(), Str
 }
 
 #[tauri::command]
+pub fn cloud_bridge_reset_local(state: State<'_, AppCore>) -> Result<(), String> {
+    state.0.bridge_reset_local_credentials()
+}
+
+#[tauri::command]
 pub async fn cloud_bridge_push_llm_config(
     state: State<'_, AppCore>,
     budget_cents: Option<i64>,
