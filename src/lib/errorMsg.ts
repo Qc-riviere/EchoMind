@@ -14,6 +14,17 @@ export function errorMsg(e: unknown): string {
   const statusMatch = raw.match(/\((\d{3})\)/);
   const status = statusMatch ? parseInt(statusMatch[1], 10) : null;
 
+  // ── Bridge / JWT（必须在通用 401 之前判断，否则会被误译成 "API Key 无效"）─
+  if (
+    /expiredsignature|invalid token|jwt|token.*invalid/i.test(lower) &&
+    /bridge|pair|device|sync/i.test(lower)
+  ) {
+    return "Cloud Bridge 凭证失效，请到「云桥」页面重新配对。";
+  }
+  if (/pair[_\s]?code.*(invalid|expired|not found)/i.test(raw)) {
+    return "配对码无效或已过期，请重新申请。";
+  }
+
   // ── 鉴权 ────────────────────────────────────────────────────
   if (status === 401 || /invalid[_\s]api[_\s]?key|unauthorized|invalid authentication|incorrect api key/i.test(raw)) {
     return "API Key 无效或未授权——请到「设置 → LLM 配置」检查 Key 是否正确。";
@@ -44,14 +55,6 @@ export function errorMsg(e: unknown): string {
     /(request failed|fetch failed|networkerror|error sending request)/i.test(raw)
   ) {
     return "网络连接失败——请检查网络或代理设置。";
-  }
-
-  // ── Bridge / JWT ────────────────────────────────────────────
-  if (/jwt|token.*invalid|expired/i.test(lower) && /bridge|pair|device/i.test(lower)) {
-    return "Cloud Bridge 凭证失效，请到「云桥」页面重新配对。";
-  }
-  if (/pair[_\s]?code.*(invalid|expired|not found)/i.test(raw)) {
-    return "配对码无效或已过期，请重新申请。";
   }
 
   // ── 服务端 ──────────────────────────────────────────────────

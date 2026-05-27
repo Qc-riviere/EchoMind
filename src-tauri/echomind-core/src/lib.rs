@@ -1148,26 +1148,102 @@ impl EchoMind {
             return Err("对话还没有内容，无法生成方案".to_string());
         }
 
-        let system = r#"你是一位资深的方案整理助手。用户会给你一段他和 AI 的拷问/讨论对话，请把对话里达成的结论整理为一份简洁、可交付的方案文档。
+        let system = r#"你是资深的产品策略 + 可行性分析师。用户会给你一段他和 AI 的拷问/讨论对话，请把它蒸馏为一份**结构完整、可交付给协作者或决策者**的可行性分析报告。
 
-输出严格使用 markdown，包含以下章节（如果对话里没覆盖某个，直接省略整段，不要硬凑）：
+【内容来源规则】
+- 对话里**明确说过**的事实：照实写，不要改述失真。
+- **行业常识 / 通用数据 / 方法论建议**：可以补，但必须在该条末尾打 **[常识]** 或 **[估算]** 标签，让读者一眼分辨哪些是新增的、哪些来自对话。
+  - 例："中国糖尿病患者约 1.4 亿 [常识]"
+  - 例："小红书相关话题热度可观 [估算]"
+- **禁止编造**：URL、论文标题、客户/公司名称（除非对话明确提到）、专利号、具体百分比/金额（除非常识级别）、引用人名。**不确定就不写**。
+- 任何一节如果完全没东西可写（既无对话内容也无常识增补），**整段省略**，不要写"待补充"占位。
 
-## 核心结论
-（一两句话最终定论。务必从对话里 distill，不要造词）
+【假设推导框架】（**关键，决定输出详细度**）
+从以下 6 个维度逐一审视对话，**每个维度至少抽出 1 条假设**（若该维度对话毫无涉及才省略）：
 
-## 想法/项目概要
-（对话锚定的原始灵感 + 当前 MVP 范围）
+1. **需求侧**：目标用户真有此痛点吗？频率/强度够支持下载安装一个 App 吗？
+2. **技术侧**：核心技术路线是否可行？延迟、稳定性、平台能力是否支持？
+3. **数据侧**：数据从哪来？覆盖度/质量够吗？冷启动阶段拿得到吗？
+4. **AI 模型侧**：用 API 直调 / RAG / Fine-tuning？所需数据量是否现实？效果如何验证？
+5. **竞争侧**：现有方案是什么（包括"用户什么都不做"）？差异化窗口够大吗？
+6. **交付侧**：团队/资源能在合理时间内完成 MVP 吗？冷启动获客如何？
+
+【输出结构】
+
+## 一句话定位
+30 字以内最终结论。
+
+## 想法/项目背景
+- **痛点**：要解决的真问题
+- **目标用户**：精确到职业/场景的画像
+- **MVP 范围**：做什么 / 明确**不**做什么
+
+## 核心假设与验证框架
+
+> 按 H1, H2... 编号列出，目标 4-6 条。每条用下面的表格格式完整填写所有字段。
+
+### H1：（假设标题，10-20字）{状态emoji}
+
+| 字段 | 内容 |
+|------|------|
+| **假设内容** | 一句话清晰陈述 |
+| **为什么重要** | 若不成立对项目的具体影响 |
+| **已有证据** | 对话提到的支撑 + 行业常识（带标签） |
+| **验证动作** | 具体步骤（找谁聊 / 跑什么实验 / 查什么数据 / 搜什么关键词） |
+| **判定标准** | 可量化的通过/不通过条件（百分比、数量、时长等） |
+| **若不成立** | 项目方向的具体调整路径 |
+| **当前判断** | ⭐~⭐⭐⭐⭐⭐ + 一句话依据 |
+| **验证时机** | POC 第 0/1-2/2-3 周 / 立即 / 持续跟踪 |
+
+**若假设涉及数据**，在表格末尾追加：
+
+| **数据获取渠道** | 来源 + 获取难度（含合规/商业机密考量） |
+| **数据质量风险** | 格式/标注/清洗成本/代表性 |
+| **备选方案** | 主渠道受阻时的替代路径 |
+
+**若假设涉及 AI 模型**，追加：
+
+| **模型使用方式** | API 直调 / RAG / Few-shot / Fine-tuning / Post-training（说明选择原因） |
+| **所需数据量** | 最低可用量估算 vs 当前可获取量 |
+| **效果验证标准** | 精度阈值 / 人工评估通过率 / 漏判率上限 |
+
+状态 emoji：✅已验证 / ⚠️有风险 / ❓未验证 / 🔄持续跟踪
+
+H2、H3... 同样格式重复。**每条都用完整表格**，不要因为字段重复就跳过。
 
 ## 关键决策
-（用 - 列表写出讨论中确定的判断、取舍、否定的方向）
+- 决策内容 → 选了什么 / 否定了什么 + 一句话理由
 
 ## 风险与未决
-（- 列表，包括已识别但还没决定怎么办的事）
+- 风险描述 → 当前应对（含"还没决定"是合理结论）
+
+## 竞品 / 替代方案
+> 包括"用户当前如何凑合"。可以补充行业常见替代方案 [常识]。
+
+| 方案 | 强在哪 | 弱在哪 | 对我们的启发 |
+|------|--------|--------|--------------|
 
 ## 下一步行动
-（- 列表，3-5 个具体可执行动作。优先写「下周内能动手」的）
+3-5 个**下周内能动手**的具体任务。每条：动作 + 期望产出 + 完成判定。优先列验证 H1/H2 这种最高风险假设的动作。
 
-直接输出 markdown 正文，不要包含```markdown 代码块包装，不要前言后语。"#;
+## 术语表
+> 列出非通用术语（行业黑话、缩写、专有名词）。
+
+| 术语 | 含义 |
+|------|------|
+
+## 参考资料
+> 仅列对话中明确出现过的链接 / 文档 / 标准编号 / 论文标题。**编造任何 URL 视为严重错误**。如果没有，整节省略。
+
+---
+
+【输出格式硬性要求】
+- 严格 markdown，不要 ```markdown 代码块包装
+- 不要前言"好的，下面是…"或后语"以上就是…"
+- 表格用标准 markdown 管道语法
+- 每条假设表格必须用 `| 字段 | 内容 |` 表头开头
+
+记住目标：一份**让没看过对话的协作者也能基于这份报告判断是否值得投入**的文档。详细度上对标"投资决策包"，不是"会议纪要"。"#;
 
         let user_content = format!(
             "原始灵感：{}\n\n以下是讨论这条灵感的完整对话：\n\n{}",
@@ -1185,7 +1261,9 @@ impl EchoMind {
             },
         ];
 
-        self.complete_via_route(messages).await
+        // 8192 fits a multi-assumption report w/ tables; default 2048 cuts
+        // a typical feasibility-style synthesis off around H2-H3.
+        self.complete_via_route_opts(messages, Some(8192)).await
     }
 
     // ── Skills ──────────────────────────────────────────────────────────
@@ -1372,6 +1450,19 @@ impl EchoMind {
         &self,
         messages: Vec<ChatMessage>,
     ) -> Result<String, String> {
+        self.complete_via_route_opts(messages, None).await
+    }
+
+    /// Same as `complete_via_route` but lets the caller bump `max_tokens`
+    /// for long-form generation (synthesize plan, summarize many thoughts).
+    /// The default 2048 set by `load_llm_config` truncates ~3-page reports
+    /// mid-sentence; pass e.g. Some(8192) for full plan synthesis.
+    /// Bridge path can't honor the override yet — VPS uses its own budget.
+    pub async fn complete_via_route_opts(
+        &self,
+        messages: Vec<ChatMessage>,
+        max_tokens_override: Option<u32>,
+    ) -> Result<String, String> {
         if self.bridge_llm_via_bridge_is_on()? {
             if let Some(client) = self.bridge_client()? {
                 let bridge_msgs: Vec<bridge::BridgeChatMessage> = messages
@@ -1386,7 +1477,10 @@ impl EchoMind {
                 return Ok(resp.content);
             }
         }
-        let (provider_type, config) = self.load_llm_config()?;
+        let (provider_type, mut config) = self.load_llm_config()?;
+        if let Some(mt) = max_tokens_override {
+            config.max_tokens = Some(mt);
+        }
         let provider = llm::get_provider(provider_type);
         provider.complete(messages, &config).await
     }
