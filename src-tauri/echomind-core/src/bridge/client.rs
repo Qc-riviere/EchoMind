@@ -1,14 +1,19 @@
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::sync::Mutex;
 
 use crate::db::thoughts::Thought;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BridgeClient {
     base_url: String,
     token: Option<String>,
     http: Client,
+    // Slot for the server's sliding-TTL refresh. Each authed response may
+    // carry `X-Refresh-Token`; we stash it here so the caller can persist
+    // it back to settings without forcing every method signature to change.
+    refreshed_token: Mutex<Option<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -60,6 +65,7 @@ impl BridgeClient {
                 .timeout(std::time::Duration::from_secs(30))
                 .build()
                 .expect("reqwest client"),
+            refreshed_token: Mutex::new(None),
         }
     }
 
@@ -73,6 +79,35 @@ impl BridgeClient {
             .as_ref()
             .ok_or_else(|| "bridge not paired (no token)".to_string())?;
         Ok(req.bearer_auth(token))
+    }
+
+    /// Send an authed request and capture any sliding-TTL refresh token from
+    /// the response. Use this in place of `auth(req)?.send().await` for any
+    /// call that should benefit from token rotation.
+    async fn send_authed(
+        &self,
+        req: reqwest::RequestBuilder,
+    ) -> Result<reqwest::Response, String> {
+        let req = self.auth(req)?;
+        let resp = req.send().await.map_err(|e| e.to_string())?;
+        // Server may set `x-refresh-token` on every successful authed call.
+        // Only store if it differs from the token we sent — saves a DB write.
+        if let Some(hv) = resp.headers().get("x-refresh-token") {
+            if let Ok(s) = hv.to_str() {
+                if !s.is_empty() && self.token.as_deref() != Some(s) {
+                    if let Ok(mut slot) = self.refreshed_token.lock() {
+                        *slot = Some(s.to_string());
+                    }
+                }
+            }
+        }
+        Ok(resp)
+    }
+
+    /// Drain the slot if a refresh arrived during any previous `send_authed`
+    /// in this client's lifetime. Caller is responsible for persisting it.
+    pub fn take_refreshed_token(&self) -> Option<String> {
+        self.refreshed_token.lock().ok().and_then(|mut s| s.take())
     }
 
     pub async fn health(&self) -> Result<(), String> {
@@ -126,7 +161,7 @@ impl BridgeClient {
             "llm_config": llm_config,
         });
         let req = self.http.post(self.url("/bridge/config")).json(&body);
-        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let resp = self.send_authed(req).await?;
         expect_ok(resp).await
     }
 
@@ -139,7 +174,7 @@ impl BridgeClient {
         }
         let body = json!({ "thoughts": thoughts });
         let req = self.http.post(self.url("/bridge/thoughts/upsert")).json(&body);
-        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let resp = self.send_authed(req).await?;
         let v = expect_json(resp).await?;
         Ok(v["accepted"].as_u64().unwrap_or(0) as usize)
     }
@@ -152,14 +187,14 @@ impl BridgeClient {
             .http
             .post(self.url("/bridge/thoughts/delete"))
             .json(&json!({ "ids": ids }));
-        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let resp = self.send_authed(req).await?;
         let v = expect_json(resp).await?;
         Ok(v["deleted"].as_u64().unwrap_or(0) as usize)
     }
 
     pub async fn terminate(&self) -> Result<(), String> {
         let req = self.http.post(self.url("/bridge/terminate"));
-        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let resp = self.send_authed(req).await?;
         expect_ok(resp).await
     }
 
@@ -177,7 +212,7 @@ impl BridgeClient {
             url.push_str(&format!("&since={encoded}"));
         }
         let req = self.http.get(url);
-        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let resp = self.send_authed(req).await?;
         let v = expect_json(resp).await?;
         let arr = v["thoughts"].as_array().cloned().unwrap_or_default();
         Ok(arr
@@ -197,7 +232,7 @@ impl BridgeClient {
             "tags": tags,
         });
         let req = self.http.post(self.url("/bridge/thoughts/capture")).json(&body);
-        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let resp = self.send_authed(req).await?;
         let v = expect_json(resp).await?;
         Ok(RemoteCaptureResponse {
             id: v["id"].as_str().unwrap_or("").to_string(),
@@ -217,7 +252,7 @@ impl BridgeClient {
             "budget_cents": budget_cents,
         });
         let req = self.http.post(self.url("/bridge/config")).json(&body);
-        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let resp = self.send_authed(req).await?;
         expect_ok(resp).await
     }
 
@@ -225,7 +260,7 @@ impl BridgeClient {
     pub async fn clear_llm_config(&self) -> Result<(), String> {
         let body = json!({ "llm_config": null });
         let req = self.http.post(self.url("/bridge/config")).json(&body);
-        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let resp = self.send_authed(req).await?;
         expect_ok(resp).await
     }
 
@@ -237,7 +272,7 @@ impl BridgeClient {
             .collect();
         let body = json!({ "messages": msgs });
         let req = self.http.post(self.url("/bridge/chat")).json(&body);
-        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let resp = self.send_authed(req).await?;
         let v = expect_json(resp).await?;
         Ok(RemoteChatResponse {
             content: v["content"].as_str().unwrap_or("").to_string(),
@@ -252,7 +287,7 @@ impl BridgeClient {
     /// Get remote LLM usage/budget/disabled status.
     pub async fn remote_llm_status(&self) -> Result<RemoteLlmStatus, String> {
         let req = self.http.get(self.url("/bridge/status"));
-        let resp = self.auth(req)?.send().await.map_err(|e| e.to_string())?;
+        let resp = self.send_authed(req).await?;
         let v = expect_json(resp).await?;
         Ok(RemoteLlmStatus {
             has_llm_config: v["has_llm_config"].as_bool().unwrap_or(false),

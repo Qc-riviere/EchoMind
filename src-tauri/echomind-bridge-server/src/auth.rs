@@ -1,6 +1,6 @@
 use axum::{
     extract::{Request, State},
-    http::header::AUTHORIZATION,
+    http::{header::AUTHORIZATION, HeaderValue},
     middleware::Next,
     response::Response,
 };
@@ -9,6 +9,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::AppError;
 use crate::state::AppState;
+
+/// Sliding TTL applied on every successful authed request. Matches the
+/// initial `/bridge/pair` TTL — clients that talk to us at least once a year
+/// stay paired indefinitely.
+const SLIDING_TTL_SECS: i64 = 60 * 60 * 24 * 365;
 
 /// JWT claims. `sub` identifies the paired device (sync_key fingerprint).
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -51,6 +56,18 @@ pub async fn require_auth(
     )
     .map_err(|e| AppError::Unauthorized(format!("invalid token: {e}")))?;
 
-    req.extensions_mut().insert(AuthContext { device_id: data.claims.sub });
-    Ok(next.run(req).await)
+    let device_id = data.claims.sub.clone();
+    req.extensions_mut().insert(AuthContext { device_id: device_id.clone() });
+    let mut response = next.run(req).await;
+
+    // Sliding TTL: every successful authed call refreshes the token to a fresh
+    // 1-year window. Clients that read `X-Refresh-Token` persist it; old
+    // clients still get a year from initial pair.
+    if let Ok(new_token) = issue_token(&state.config.jwt_secret, &device_id, SLIDING_TTL_SECS) {
+        if let Ok(hv) = HeaderValue::from_str(&new_token) {
+            response.headers_mut().insert("x-refresh-token", hv);
+        }
+    }
+
+    Ok(response)
 }

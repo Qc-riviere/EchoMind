@@ -67,7 +67,10 @@ async fn pair(
         .pairings
         .consume(req.device_code.trim(), req.sync_key_fp.trim())?;
     state.pairings.audit(Some(&row.device_id), "bridge.pair", None);
-    let token = issue_token(&state.config.jwt_secret, &row.device_id, 60 * 60 * 24 * 30)?;
+    // 1 year — with sliding-TTL refresh in `require_auth`, any client that
+    // talks to us at least once a year never sees an expiry. Initial 30-day
+    // value was an oversight that forced monthly re-pairing.
+    let token = issue_token(&state.config.jwt_secret, &row.device_id, 60 * 60 * 24 * 365)?;
     Ok(Json(json!({
         "token": token,
         "device_id": row.device_id,

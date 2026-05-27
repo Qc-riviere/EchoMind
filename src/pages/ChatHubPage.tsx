@@ -5,6 +5,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { openUrl as tauriOpenUrl } from "@tauri-apps/plugin-opener";
 import { useChatStore } from "../stores/chatStore";
 import ConfirmDialog from "../components/ConfirmDialog";
+import ChatPlanModal from "../components/ChatPlanModal";
+import { notify } from "../lib/notify";
 import type { Thought, ToolEvent, Skill } from "../lib/types";
 
 function ToolEventList({ events }: { events: ToolEvent[] }) {
@@ -99,6 +101,9 @@ export default function ChatHubPage() {
   const [withdrawTarget, setWithdrawTarget] = useState<string | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillMenuOpen, setSkillMenuOpen] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [plan, setPlan] = useState("");
+  const [planLoading, setPlanLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -188,6 +193,25 @@ export default function ChatHubPage() {
     }
   }, []);
 
+  const handleSynthesizePlan = async () => {
+    if (!conversation || planLoading) return;
+    setPlanOpen(true);
+    setPlanLoading(true);
+    setPlan("");
+    try {
+      const markdown = await invoke<string>("synthesize_chat_plan", {
+        conversationId: conversation.id,
+      });
+      setPlan(markdown);
+    } catch (e) {
+      const msg = errorMsg(e);
+      setPlan(`> 整理失败：${msg}`);
+      notify("EchoMind", `整理方案失败：${msg}`);
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
   const refreshResources = () => {
     if (!thoughtId || resourcesLoading) return;
     setResources([]);
@@ -220,16 +244,30 @@ export default function ChatHubPage() {
               </p>
             )}
           </div>
-          {/* Panel toggle in header */}
-          {!panelOpen && (
+          {/* Synthesize-plan + panel toggle */}
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setPanelOpen(true)}
-              className="p-2 rounded-lg text-on-surface-variant/40 hover:text-primary hover:bg-surface-container-high transition-all"
-              title="Show resources"
+              onClick={handleSynthesizePlan}
+              disabled={!conversation || messages.length === 0 || planLoading || isStreaming}
+              aria-label="整理为方案文档"
+              title="让 AI 把本次对话整理为可交付的方案文档"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-[12px] text-primary transition-all ghost-border disabled:opacity-40"
             >
-              <span className="material-symbols-outlined text-[20px]">right_panel_open</span>
+              <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
+                {planLoading ? "progress_activity" : "description"}
+              </span>
+              整理为方案
             </button>
-          )}
+            {!panelOpen && (
+              <button
+                onClick={() => setPanelOpen(true)}
+                className="p-2 rounded-lg text-on-surface-variant/40 hover:text-primary hover:bg-surface-container-high transition-all"
+                title="Show resources"
+              >
+                <span className="material-symbols-outlined text-[20px]">right_panel_open</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Messages */}
@@ -500,6 +538,14 @@ export default function ChatHubPage() {
           setWithdrawTarget(null);
         }}
         onCancel={() => setWithdrawTarget(null)}
+      />
+
+      <ChatPlanModal
+        isOpen={planOpen}
+        onClose={() => setPlanOpen(false)}
+        thought={thought}
+        plan={plan}
+        loading={planLoading}
       />
     </div>
   );

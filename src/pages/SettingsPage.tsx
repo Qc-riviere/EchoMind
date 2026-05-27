@@ -39,6 +39,7 @@ export default function SettingsPage() {
   const [model, setModel] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
 
+  const [embProvider, setEmbProvider] = useState<"local" | "cloud">("local");
   const [embBaseUrl, setEmbBaseUrl] = useState("");
   const [embApiKey, setEmbApiKey] = useState("");
   const [embModel, setEmbModel] = useState("");
@@ -115,6 +116,11 @@ export default function SettingsPage() {
     setEmbApiKey(settings["embedding_api_key"] || "");
     setEmbModel(settings["embedding_model"] || "");
     setEmbDimensions(settings["embedding_dimensions"] || "1536");
+    // Infer current embedding mode: explicit "local" setting wins; else if
+    // base_url literally says "local" treat as local; otherwise cloud.
+    const provSetting = (settings["embedding_provider"] || "").toLowerCase();
+    const baseLooksLocal = (settings["embedding_base_url"] || "").toLowerCase() === "local";
+    setEmbProvider(provSetting === "local" || baseLooksLocal ? "local" : "cloud");
   }, [settings]);
 
   // Mirror current form fields into the active provider's draft on every change.
@@ -195,10 +201,22 @@ export default function SettingsPage() {
       if (finalBaseUrl) await setSetting(`llm_base_url__${provider}`, finalBaseUrl);
       else await deleteSetting(`llm_base_url__${provider}`);
 
-      if (embBaseUrl) await setSetting("embedding_base_url", embBaseUrl); else await deleteSetting("embedding_base_url");
-      if (embApiKey) await setSetting("embedding_api_key", embApiKey); else await deleteSetting("embedding_api_key");
-      if (embModel) await setSetting("embedding_model", embModel); else await deleteSetting("embedding_model");
-      await setSetting("embedding_dimensions", embDimensions || "1536");
+      if (embProvider === "local") {
+        // Local mode: stamp the provider marker and force 512-dim BGE so the
+        // SQLite vec table matches what local_embedding produces. Wipe the
+        // cloud-side fields to keep load/save round-trip clean.
+        await setSetting("embedding_provider", "local");
+        await setSetting("embedding_model", "bge-small-zh-v1.5");
+        await setSetting("embedding_dimensions", "512");
+        await deleteSetting("embedding_base_url");
+        await deleteSetting("embedding_api_key");
+      } else {
+        await deleteSetting("embedding_provider");
+        if (embBaseUrl) await setSetting("embedding_base_url", embBaseUrl); else await deleteSetting("embedding_base_url");
+        if (embApiKey) await setSetting("embedding_api_key", embApiKey); else await deleteSetting("embedding_api_key");
+        if (embModel) await setSetting("embedding_model", embModel); else await deleteSetting("embedding_model");
+        await setSetting("embedding_dimensions", embDimensions || "1536");
+      }
 
       // Update snapshot now that the save succeeded.
       savedLlmRef.current = { provider, apiKey, model: finalModel, baseUrl: finalBaseUrl };
@@ -501,12 +519,45 @@ export default function SettingsPage() {
             <section>
               <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">向量嵌入配置</h3>
               <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-6">
-                {/* Hint - always visible */}
-                <div className="flex items-center gap-3 text-sm text-on-surface-variant bg-surface-container px-4 py-3 rounded-xl">
-                  <span className="material-symbols-outlined text-[18px]">info</span>
-                  <span>默认与 LLM 共用 API Key 和模型，无需配置。如需独立的 embedding provider，展开下面高级选项。</span>
+                {/* Provider mode selector — the most common source of "search
+                    broken" support requests was DeepSeek users whose embedding
+                    silently fell back to OpenAI URL with a non-OpenAI key. */}
+                <div className="grid grid-cols-2 gap-3">
+                  {([
+                    { key: "local", title: "本地嵌入", desc: "BGE-small-zh · 512维 · 离线 · 零成本", icon: "computer", recommended: true },
+                    { key: "cloud", title: "云端嵌入", desc: "OpenAI 兼容 · 需 API Key · 1536维", icon: "cloud", recommended: false },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => setEmbProvider(opt.key)}
+                      className={`text-left p-4 rounded-xl border transition-all ${
+                        embProvider === opt.key
+                          ? "bg-primary/10 border-primary/40"
+                          : "bg-surface-container border-outline-variant/10 hover:border-outline-variant/30"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`material-symbols-outlined text-[18px] ${embProvider === opt.key ? "text-primary" : "text-on-surface-variant"}`}>
+                          {opt.icon}
+                        </span>
+                        <span className={`text-sm font-semibold ${embProvider === opt.key ? "text-primary" : "text-on-surface"}`}>{opt.title}</span>
+                        {opt.recommended && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary uppercase tracking-wider font-bold">推荐</span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant mt-1.5 leading-relaxed">{opt.desc}</p>
+                    </button>
+                  ))}
                 </div>
 
+                {embProvider === "local" && (
+                  <div className="flex items-start gap-3 text-sm text-on-surface-variant bg-surface-container px-4 py-3 rounded-xl">
+                    <span className="material-symbols-outlined text-[18px] mt-0.5">info</span>
+                    <span>本地模式使用内置 BGE-small-zh-v1.5 模型（首次启动会自动下载约 90MB ONNX 文件），之后完全离线运行。保存后建议「数据 → 重建向量索引」一次。</span>
+                  </div>
+                )}
+
+                {embProvider === "cloud" && (
                 <details className="group border-t border-outline-variant/10 pt-4">
                   <summary className="cursor-pointer flex items-center gap-2 text-xs font-headline uppercase tracking-widest text-on-surface-variant/60 hover:text-on-surface-variant select-none list-none [&::-webkit-details-marker]:hidden">
                     <span className="material-symbols-outlined text-[16px] transition-transform group-open:rotate-90">chevron_right</span>
@@ -596,6 +647,7 @@ export default function SettingsPage() {
                 </div>
                   </div>
                 </details>
+                )}
               </div>
             </section>
           )}

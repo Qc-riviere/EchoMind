@@ -205,29 +205,63 @@ pub fn run() {
 
             let app_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                // 5s = "feels instant" for WeChat→desktop sync. Single GET /bridge/thoughts?since=
-                // is cheap; even 30 concurrent users only pump ~6 req/s through bridge.
-                let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+                // 5s when healthy; auto-backs off to 5min on auth-expired so
+                // a stale JWT doesn't flood logs with 12 errors/minute.
+                const NORMAL_SECS: u64 = 5;
+                const BACKOFF_SECS: u64 = 300;
+                let mut current_secs = NORMAL_SECS;
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(current_secs));
                 interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                let mut last_err: Option<String> = None;
+                let mut backed_off = false;
                 loop {
                     interval.tick().await;
                     let state: tauri::State<'_, AppCore> = app_handle.state();
                     match state.0.bridge_sync_pull().await {
-                        Ok(n) if n > 0 => {
-                            use tauri_plugin_notification::NotificationExt;
-                            let _ = app_handle
-                                .notification()
-                                .builder()
-                                .title("EchoMind")
-                                .body(format!("从云端同步到 {n} 条新灵感"))
-                                .show();
-                            let _ = tauri::Emitter::emit(&app_handle, "bridge:synced", n);
-                            refresh_tray_tooltip(&app_handle);
+                        Ok(n) => {
+                            if backed_off {
+                                eprintln!("[bridge-sync] recovered, resuming {NORMAL_SECS}s interval");
+                                backed_off = false;
+                                current_secs = NORMAL_SECS;
+                                interval = tokio::time::interval(std::time::Duration::from_secs(current_secs));
+                                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                            }
+                            last_err = None;
+                            if n > 0 {
+                                use tauri_plugin_notification::NotificationExt;
+                                let _ = app_handle
+                                    .notification()
+                                    .builder()
+                                    .title("EchoMind")
+                                    .body(format!("从云端同步到 {n} 条新灵感"))
+                                    .show();
+                                let _ = tauri::Emitter::emit(&app_handle, "bridge:synced", n);
+                                refresh_tray_tooltip(&app_handle);
+                            }
                         }
                         Err(e) => {
-                            eprintln!("[bridge-sync] {e}");
+                            // Only print on transition (e.g. recovered → newly-failing,
+                            // or error message changed). Avoids flooding the console.
+                            let same_as_last = last_err.as_deref() == Some(e.as_str());
+                            let is_auth_expired = e.contains("401")
+                                && (e.contains("ExpiredSignature") || e.contains("invalid token"));
+                            if !same_as_last {
+                                eprintln!("[bridge-sync] {e}");
+                                if is_auth_expired && !backed_off {
+                                    eprintln!(
+                                        "[bridge-sync] auth expired — backing off to {BACKOFF_SECS}s; \
+                                         re-pair in 设置 → 云桥 to restore live sync"
+                                    );
+                                }
+                                last_err = Some(e);
+                            }
+                            if is_auth_expired && !backed_off {
+                                backed_off = true;
+                                current_secs = BACKOFF_SECS;
+                                interval = tokio::time::interval(std::time::Duration::from_secs(current_secs));
+                                interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+                            }
                         }
-                        _ => {}
                     }
                 }
             });

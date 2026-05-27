@@ -362,8 +362,19 @@ impl EchoMind {
             let llm_key = llm_key_cfg
                 .ok_or("API Key not configured. Please set up in Settings.")?;
 
-            let provider_str = settings::get_setting(conn, "llm_provider")
+            // Prefer the UI preset (e.g. "deepseek") over the backend name
+            // (e.g. "openai"). Without this, DeepSeek users — whose backend is
+            // openai-compatible — would fall into the "openai" arm below and
+            // hit api.openai.com with a DeepSeek key (401).
+            let provider_str = settings::get_setting(conn, "llm_provider_preset")
                 .map_err(|e| e.to_string())?
+                .filter(|s| !s.is_empty())
+                .or_else(|| {
+                    settings::get_setting(conn, "llm_provider")
+                        .ok()
+                        .flatten()
+                        .filter(|s| !s.is_empty())
+                })
                 .unwrap_or_else(|| "openai".to_string());
 
             match provider_str.as_str() {
@@ -1371,6 +1382,7 @@ impl EchoMind {
                     })
                     .collect();
                 let resp = client.remote_chat(&bridge_msgs).await?;
+                let _ = self.persist_bridge_refresh(&client);
                 return Ok(resp.content);
             }
         }
@@ -1588,6 +1600,18 @@ impl EchoMind {
         }
     }
 
+    /// Persist any sliding-TTL refresh token the bridge sent during this
+    /// client's lifetime. Called after every bridge_client() use; cheap
+    /// no-op if the slot is empty.
+    fn persist_bridge_refresh(&self, client: &bridge::BridgeClient) -> Result<(), String> {
+        if let Some(new_token) = client.take_refreshed_token() {
+            let conn = self.conn()?;
+            settings::set_setting(&conn, bridge::settings_keys::TOKEN, &new_token)
+                .map_err(|e| e.to_string())?;
+        }
+        Ok(())
+    }
+
     pub fn bridge_get_subset_rules(&self) -> Result<bridge::SubsetRules, String> {
         let conn = self.conn()?;
         let raw = settings::get_setting(&conn, bridge::settings_keys::SUBSET_RULES)
@@ -1683,10 +1707,12 @@ impl EchoMind {
         if !rules.matches(&thought) {
             // Thought no longer eligible — make sure VPS doesn't keep a stale copy.
             let _ = client.delete_thoughts(&[thought.id.clone()]).await;
+            let _ = self.persist_bridge_refresh(&client);
             return Ok(false);
         }
         let payload = bridge::SubsetThoughtPayload::from_thought(&thought, embedding);
         client.upsert_thoughts(&[payload]).await?;
+        let _ = self.persist_bridge_refresh(&client);
         Ok(true)
     }
 
@@ -1699,6 +1725,7 @@ impl EchoMind {
             return Ok(());
         };
         client.delete_thoughts(&[thought_id.to_string()]).await?;
+        let _ = self.persist_bridge_refresh(&client);
         Ok(())
     }
 
@@ -1734,6 +1761,7 @@ impl EchoMind {
         for chunk in payloads.chunks(50) {
             total += client.upsert_thoughts(chunk).await?;
         }
+        let _ = self.persist_bridge_refresh(&client);
         Ok(total)
     }
 
@@ -1758,7 +1786,9 @@ impl EchoMind {
             "model": cfg.model,
             "base_url": cfg.base_url,
         });
-        client.push_llm_config(&llm_json, budget_cents).await
+        let r = client.push_llm_config(&llm_json, budget_cents).await;
+        let _ = self.persist_bridge_refresh(&client);
+        r
     }
 
     /// Remove the LLM config stored on the VPS.
@@ -1766,7 +1796,9 @@ impl EchoMind {
         let Some(client) = self.bridge_client()? else {
             return Err("bridge not paired".into());
         };
-        client.clear_llm_config().await
+        let r = client.clear_llm_config().await;
+        let _ = self.persist_bridge_refresh(&client);
+        r
     }
 
     /// Get remote LLM usage/budget/disabled status.
@@ -1776,7 +1808,9 @@ impl EchoMind {
         let Some(client) = self.bridge_client()? else {
             return Err("bridge not paired".into());
         };
-        client.remote_llm_status().await
+        let r = client.remote_llm_status().await;
+        let _ = self.persist_bridge_refresh(&client);
+        r
     }
 
     /// Terminate the remote subscription: wipe cloud data, clear local bridge settings.
@@ -1884,6 +1918,9 @@ impl EchoMind {
                 break;
             }
         }
+
+        // Drain sliding-TTL refresh from the polling loop's request.
+        let _ = self.persist_bridge_refresh(&client);
 
         // Enrich + embed bridge-sourced thoughts that arrived bare (no
         // domain/tags). LLM calls are sequential per item — typical wechat
