@@ -16,6 +16,9 @@ export interface CommandResult {
   text: string;
   /** If set, send this first as a "pending" indicator before the main text */
   pending?: string;
+  /** If set, send this AFTER the main text as a separate message (e.g. ⏱ 1.8s).
+   *  Gives CLI-agent feel: pending → answer → meta. */
+  footer?: string;
 }
 
 export async function handleMessage(
@@ -411,12 +414,12 @@ async function handleBridgeChatReply(
     const assistantMsg: ChatMessage = { role: "assistant", content: result.content };
     updateSession(userId, { messages: [...messages, assistantMsg] });
 
-    let suffix = `\n\n⏱ ${elapsed}s`;
+    let footer = `⏱ ${elapsed}s`;
     if (result.llm_disabled) {
-      suffix += "\n⚠ LLM 已因超出预算而禁用，本次为最后回复。";
+      footer += "\n⚠ LLM 已因超出预算而禁用，本次为最后回复。";
       clearSession(userId);
     }
-    return { text: result.content + suffix };
+    return { text: result.content, footer };
   } catch (e) {
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     clearSession(userId);
@@ -436,7 +439,7 @@ async function handleChatReply(
     const reply = await client.sendMessage(conversationId, content);
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     updateSession(userId, {});
-    return { text: `${reply}\n\n⏱ ${elapsed}s` };
+    return { text: reply, footer: `⏱ ${elapsed}s` };
   } catch (e) {
     const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     // Auto-exit chatting on persistent errors (e.g. conversation not found)

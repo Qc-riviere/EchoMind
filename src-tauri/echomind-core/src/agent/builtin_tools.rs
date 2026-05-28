@@ -156,6 +156,30 @@ pub fn default_registry() -> ToolRegistry {
                 .get("content")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| "missing 'content' argument".to_string())?;
+            // Idempotency guard: if the user (or the model in a retry loop)
+            // creates the same content twice within 30s, return the existing
+            // id instead of dirtying the DB with a duplicate. list_thoughts
+            // returns newest-first so we only need to look at index 0.
+            if let Ok(existing) = core.list_thoughts() {
+                if let Some(latest) = existing.first() {
+                    if latest.content.trim() == content.trim() {
+                        if let Ok(then) =
+                            chrono::DateTime::parse_from_rfc3339(&latest.created_at)
+                        {
+                            let age = chrono::Utc::now()
+                                .signed_duration_since(then.with_timezone(&chrono::Utc));
+                            if age.num_seconds().abs() < 30 {
+                                return Ok(json!({
+                                    "id": latest.id,
+                                    "created_at": latest.created_at,
+                                    "deduped": true,
+                                })
+                                .to_string());
+                            }
+                        }
+                    }
+                }
+            }
             let t = core.create_thought(content)?;
             Ok(json!({"id": t.id, "created_at": t.created_at}).to_string())
         })),

@@ -1,5 +1,8 @@
 /** Bridge-mode client: talks to the VPS bridge server instead of the local EchoMind server. */
 
+import fs from "node:fs";
+import path from "node:path";
+
 export interface BridgeThought {
   id: string;
   content: string;
@@ -24,10 +27,15 @@ export interface BridgeChatResult {
 export class BridgeClient {
   private baseUrl: string;
   private token: string;
+  /** If set, refreshed tokens (server-side sliding TTL via X-Refresh-Token
+   *  header) are persisted here so restarts pick up the rotated value
+   *  instead of falling back to the original stale env value. */
+  private tokenPath?: string;
 
-  constructor(baseUrl: string, token: string) {
+  constructor(baseUrl: string, token: string, tokenPath?: string) {
     this.baseUrl = baseUrl.replace(/\/+$/, "");
     this.token = token;
+    this.tokenPath = tokenPath;
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -39,6 +47,9 @@ export class BridgeClient {
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
+    // Capture sliding-TTL refresh BEFORE error handling — server only
+    // sets this header on successful authed responses.
+    this.captureRefresh(resp);
     const text = await resp.text();
     const data = text ? JSON.parse(text) : undefined;
     if (!resp.ok) {
@@ -46,6 +57,24 @@ export class BridgeClient {
       throw new Error(`bridge (${resp.status}): ${msg}`);
     }
     return data as T;
+  }
+
+  private captureRefresh(resp: Response): void {
+    const fresh = resp.headers.get("x-refresh-token");
+    if (!fresh || fresh === this.token) return;
+    this.token = fresh;
+    if (!this.tokenPath) return;
+    try {
+      fs.mkdirSync(path.dirname(this.tokenPath), { recursive: true });
+      // Write atomically: write to .tmp first then rename, so a crash
+      // mid-write doesn't leave the bot with a half-written token file
+      // that would brick auth on restart.
+      const tmp = this.tokenPath + ".tmp";
+      fs.writeFileSync(tmp, fresh, { mode: 0o600 });
+      fs.renameSync(tmp, this.tokenPath);
+    } catch (e) {
+      console.warn(`[bridge] failed to persist refreshed token: ${(e as Error).message}`);
+    }
   }
 
   async listThoughts(limit = 20): Promise<BridgeThought[]> {
@@ -78,12 +107,39 @@ export class BridgeClient {
   }
 }
 
-/** Read bridge config from environment. Returns null if not configured. */
+/** Read bridge config from environment. Returns null if not configured.
+ *
+ *  Token resolution order (newest wins):
+ *    1. Persisted refresh file (if exists and non-empty) — set by previous
+ *       runs via sliding TTL.
+ *    2. ECHOMIND_BRIDGE_TOKEN env var — initial value from .env at first
+ *       deploy.
+ *
+ *  Persisted path defaults to `${ECHOMIND_BRIDGE_DATA_DIR}/.bridge-token`
+ *  (typically /data in the Docker bot container, where bot_data volume
+ *  is mounted). Override with ECHOMIND_BRIDGE_TOKEN_PATH for testing.
+ */
 export function bridgeClientFromEnv(): BridgeClient | null {
   const url = process.env.ECHOMIND_BRIDGE_URL;
-  const token = process.env.ECHOMIND_BRIDGE_TOKEN;
-  if (url && token) {
-    return new BridgeClient(url, token);
+  const envToken = process.env.ECHOMIND_BRIDGE_TOKEN;
+  if (!url || !envToken) return null;
+
+  const tokenPath =
+    process.env.ECHOMIND_BRIDGE_TOKEN_PATH ||
+    path.join(process.env.ECHOMIND_BRIDGE_DATA_DIR || "/data", ".bridge-token");
+
+  let token = envToken;
+  try {
+    if (fs.existsSync(tokenPath)) {
+      const persisted = fs.readFileSync(tokenPath, "utf8").trim();
+      if (persisted) {
+        token = persisted;
+        console.log(`[bridge] using persisted refreshed token from ${tokenPath}`);
+      }
+    }
+  } catch (e) {
+    console.warn(`[bridge] failed to read persisted token (${(e as Error).message}); falling back to env`);
   }
-  return null;
+
+  return new BridgeClient(url, token, tokenPath);
 }

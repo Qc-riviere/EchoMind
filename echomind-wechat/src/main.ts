@@ -113,12 +113,15 @@ async function onMessage(
 
   try {
     const result = await handleMessage(userId, text);
-    // Send pending indicator first (e.g., "thinking...")
+    // CLI-agent feel: 🤔 思考中 → answer → ⏱ 1.8s, three separate messages.
     if (result.pending) {
       await sender.sendText(result.pending, msg);
     }
     console.log(`[${timestamp()}] → ${result.text.slice(0, 80)}`);
     await sender.sendText(result.text, msg);
+    if (result.footer) {
+      await sender.sendText(result.footer, msg);
+    }
   } catch (e) {
     console.error(`[${timestamp()}] Error handling message:`, e);
     await sender.sendText(
