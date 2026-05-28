@@ -66,7 +66,13 @@ async fn pair(
     let row = state
         .pairings
         .consume(req.device_code.trim(), req.sync_key_fp.trim())?;
-    state.pairings.audit(Some(&row.device_id), "bridge.pair", None);
+    // Record the sync_key_fp so ops can later trace which client identity
+    // claimed this device (e.g. desktop vs bot when debugging互通 issues).
+    state.pairings.audit(
+        Some(&row.device_id),
+        "bridge.pair",
+        Some(&format!("fp={}", row.sync_key_fp)),
+    );
     // 1 year — with sliding-TTL refresh in `require_auth`, any client that
     // talks to us at least once a year never sees an expiry. Initial 30-day
     // value was an oversight that forced monthly re-pairing.

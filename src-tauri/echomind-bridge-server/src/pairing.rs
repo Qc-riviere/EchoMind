@@ -32,6 +32,7 @@ pub struct PendingCodeRow {
 #[derive(serde::Serialize)]
 pub struct DeviceRow {
     pub device_id: String,
+    pub sync_key_fp: String,
     pub paired_at: i64,
     pub config_updated_at: Option<i64>,
     pub has_bot_token: bool,
@@ -361,8 +362,8 @@ impl PairingStore {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn
             .prepare(
-                "SELECT d.device_id, d.paired_at, c.updated_at, c.bot_token_enc IS NOT NULL,
-                        c.llm_config_enc IS NOT NULL
+                "SELECT d.device_id, d.sync_key_fp, d.paired_at, c.updated_at,
+                        c.bot_token_enc IS NOT NULL, c.llm_config_enc IS NOT NULL
                  FROM devices d LEFT JOIN device_configs c ON c.device_id = d.device_id
                  ORDER BY d.paired_at DESC",
             )
@@ -371,10 +372,11 @@ impl PairingStore {
             .query_map([], |r| {
                 Ok(DeviceRow {
                     device_id: r.get(0)?,
-                    paired_at: r.get(1)?,
-                    config_updated_at: r.get(2)?,
-                    has_bot_token: r.get(3)?,
-                    has_llm_config: r.get(4)?,
+                    sync_key_fp: r.get(1)?,
+                    paired_at: r.get(2)?,
+                    config_updated_at: r.get(3)?,
+                    has_bot_token: r.get(4)?,
+                    has_llm_config: r.get(5)?,
                 })
             })
             .map_err(|e| AppError::Internal(e.to_string()))?

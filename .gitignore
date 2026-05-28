@@ -34,3 +34,12 @@ src-tauri/binaries/
 .claude/
 skills-lock.json
 workspace/
+
+# ── Secrets ──
+# Catches local dev env, bridge server .env, bot daemon .env, etc.
+# Bridge server uses JWT_SECRET / ADMIN_TOKEN / ENCRYPTION_KEY_HEX —
+# a leaked .env to git history = compromised auth + decryptable token store.
+.env
+.env.*
+!.env.example
+!.env.template

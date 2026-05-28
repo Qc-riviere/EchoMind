@@ -30,4 +30,23 @@ export default defineConfig(async () => ({
       ignored: ["**/src-tauri/**"],
     },
   },
+
+  build: {
+    // Split heavy/independent deps into their own chunks so the main bundle
+    // isn't 1 MB. Helps cold-start and lets the webview cache vendor chunks
+    // across reloads.
+    chunkSizeWarningLimit: 700,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React + router rarely change → biggest cacheable win
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          // Graph viz: only loaded by GraphPage, ~250KB
+          "vendor-graph": ["react-force-graph-2d"],
+          // DOCX builder: only loaded when user clicks export, ~300KB
+          "vendor-docx": ["docx"],
+        },
+      },
+    },
+  },
 }));
