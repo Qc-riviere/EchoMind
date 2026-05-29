@@ -134,16 +134,44 @@ impl EchoMind {
 
     pub fn list_thoughts(&self) -> Result<Vec<Thought>, String> {
         let conn = self.conn()?;
+        thoughts::list_root_thoughts(&conn).map_err(|e| e.to_string())
+    }
+
+    /// All non-archived thoughts including children. Used by sync / embedding /
+    /// search where the full corpus is needed.
+    pub fn list_all_thoughts(&self) -> Result<Vec<Thought>, String> {
+        let conn = self.conn()?;
         thoughts::list_thoughts(&conn).map_err(|e| e.to_string())
     }
 
-    /// Return two slices for the home page: 5 most recent thoughts and 5 most-
-    /// chatted thoughts. `hot` may be empty if no conversations exist yet.
+    pub fn list_thought_children(&self, parent_id: &str) -> Result<Vec<Thought>, String> {
+        let conn = self.conn()?;
+        thoughts::list_children(&conn, parent_id).map_err(|e| e.to_string())
+    }
+
+    pub fn list_thought_descendants(&self, root_id: &str) -> Result<Vec<Thought>, String> {
+        let conn = self.conn()?;
+        thoughts::list_descendants(&conn, root_id).map_err(|e| e.to_string())
+    }
+
+    pub fn find_root_thought(&self, id: &str) -> Result<Thought, String> {
+        let conn = self.conn()?;
+        thoughts::find_root(&conn, id).map_err(|e| e.to_string())
+    }
+
+    pub fn append_to_thought(&self, parent_id: &str, content: &str) -> Result<Thought, String> {
+        let conn = self.conn()?;
+        thoughts::create_child_thought(&conn, parent_id, content).map_err(|e| e.to_string())
+    }
+
+    /// Return two slices for the home page: 5 most recent root thoughts and
+    /// 5 most-chatted thoughts. `hot` may be empty if no conversations exist
+    /// yet. Children are hidden — they live inside their root's expand panel.
     pub fn list_home_thoughts(&self) -> Result<HomeThoughts, String> {
         let conn = self.conn()?;
         let pinned = thoughts::get_pinned_thought(&conn).map_err(|e| e.to_string())?;
         let pinned_id = pinned.as_ref().map(|t| t.id.clone());
-        let mut recent = thoughts::list_thoughts(&conn).map_err(|e| e.to_string())?;
+        let mut recent = thoughts::list_root_thoughts(&conn).map_err(|e| e.to_string())?;
         // Drop the pinned thought from `recent` to avoid duplicate display.
         if let Some(ref pid) = pinned_id {
             recent.retain(|t| &t.id != pid);

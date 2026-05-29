@@ -8,6 +8,7 @@ export interface Thought {
   file_summary: string | null;
   is_archived: boolean;
   is_pinned: boolean;
+  parent_id: string | null;
   created_at: string;
   updated_at: string;
 }

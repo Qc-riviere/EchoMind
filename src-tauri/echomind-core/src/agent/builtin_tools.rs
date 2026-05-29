@@ -119,7 +119,7 @@ pub fn default_registry() -> ToolRegistry {
                 .get("limit")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(10) as usize;
-            let all = core.list_thoughts()?;
+            let all = core.list_all_thoughts()?;
             let trimmed: Vec<Value> = all
                 .into_iter()
                 .take(limit)
@@ -160,7 +160,7 @@ pub fn default_registry() -> ToolRegistry {
             // creates the same content twice within 30s, return the existing
             // id instead of dirtying the DB with a duplicate. list_thoughts
             // returns newest-first so we only need to look at index 0.
-            if let Ok(existing) = core.list_thoughts() {
+            if let Ok(existing) = core.list_all_thoughts() {
                 if let Some(latest) = existing.first() {
                     if latest.content.trim() == content.trim() {
                         if let Ok(then) =

@@ -132,7 +132,7 @@ async fn list_thoughts(
     State(core): State<AppState>,
     Query(q): Query<ListQuery>,
 ) -> impl IntoResponse {
-    match core.list_thoughts() {
+    match core.list_all_thoughts() {
         Ok(mut thoughts) => {
             let offset = q.offset.unwrap_or(0);
             let limit = q.limit.unwrap_or(thoughts.len());

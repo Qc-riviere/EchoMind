@@ -95,6 +95,19 @@ pub fn initialize_database(db_path: &Path) -> Result<Connection> {
         conn.execute_batch("ALTER TABLE thoughts ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0;")?;
     }
 
+    // Migration: add parent_id column (N2 thread/follow-up support).
+    // No FK constraint — SQLite ALTER TABLE can't add ON DELETE CASCADE on an
+    // existing table; cascade is handled in delete_thought instead.
+    let has_parent_id: bool = conn
+        .prepare("SELECT parent_id FROM thoughts LIMIT 0")
+        .is_ok();
+    if !has_parent_id {
+        conn.execute_batch("ALTER TABLE thoughts ADD COLUMN parent_id TEXT;")?;
+        conn.execute_batch(
+            "CREATE INDEX IF NOT EXISTS idx_thoughts_parent_id ON thoughts(parent_id);",
+        )?;
+    }
+
     // Migration: add reasoning_content column on messages — DeepSeek-Reasoner /
     // Qwen-Thinking style providers require the prior assistant turn's
     // reasoning_content be echoed back in subsequent rounds.

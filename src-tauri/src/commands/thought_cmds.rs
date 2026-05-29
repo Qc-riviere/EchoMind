@@ -140,6 +140,46 @@ pub fn create_thought_with_image(
     Ok(t)
 }
 
+/// Append a follow-up child thought under `parent_id` (N2 thread/follow-up).
+#[tauri::command]
+pub fn append_to_thought(
+    app: AppHandle,
+    state: State<AppCore>,
+    parent_id: String,
+    content: String,
+) -> Result<echomind_core::Thought, String> {
+    let t = state.0.append_to_thought(&parent_id, &content)?;
+    bridge_hooks::spawn_push(app, t.id.clone());
+    Ok(t)
+}
+
+/// Immediate children of a thought (one level down).
+#[tauri::command]
+pub fn list_thought_children(
+    state: State<AppCore>,
+    parent_id: String,
+) -> Result<Vec<echomind_core::Thought>, String> {
+    state.0.list_thought_children(&parent_id)
+}
+
+/// Entire descendant subtree (any depth, unsorted).
+#[tauri::command]
+pub fn list_thought_descendants(
+    state: State<AppCore>,
+    root_id: String,
+) -> Result<Vec<echomind_core::Thought>, String> {
+    state.0.list_thought_descendants(&root_id)
+}
+
+/// Walk up parent_id chain and return the root thought for any node.
+#[tauri::command]
+pub fn find_root_thought(
+    state: State<AppCore>,
+    id: String,
+) -> Result<echomind_core::Thought, String> {
+    state.0.find_root_thought(&id)
+}
+
 /// Open a file with the system's default application.
 #[tauri::command]
 pub fn open_file(app: tauri::AppHandle, filename: String) -> Result<(), String> {
