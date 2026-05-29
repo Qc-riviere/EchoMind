@@ -19,8 +19,6 @@ pub fn store_embedding(conn: &Connection, thought_id: &str, embedding: &[f32]) -
     Ok(())
 }
 
-const MAX_DISTANCE_THRESHOLD: f64 = 1.0;
-
 /// KNN search: find the most similar thoughts to a query embedding
 pub fn search_similar(
     conn: &Connection,
@@ -32,17 +30,23 @@ pub fn search_similar(
         .flat_map(|f| f.to_le_bytes())
         .collect();
 
+    // No absolute distance threshold — sqlite-vec's vec0 uses raw L2 by
+    // default, and BGE-small-zh-v1.5 (the local default) emits un-normalized
+    // vectors where typical semantic-match L2 sits in the 0.5-2.0 range. The
+    // previous hard cap of 1.0 silently dropped the obvious matches GitHub
+    // issue #5 was reporting (search "拍照" → 0 results despite a thought
+    // titled "拍照配料表给出购买建议"). KNN top-K is the right primitive: let
+    // the caller see the actual closest results regardless of magnitude.
     let mut stmt = conn.prepare(
         "SELECT thought_id, distance
          FROM thought_embeddings
          WHERE embedding MATCH ?1
-           AND distance < ?2
          ORDER BY distance
-         LIMIT ?3",
+         LIMIT ?2",
     )?;
 
     let rows = stmt.query_map(
-        params![bytes, MAX_DISTANCE_THRESHOLD, limit as i64],
+        params![bytes, limit as i64],
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?)),
     )?;
 
@@ -61,18 +65,18 @@ pub fn find_related(
         |row| row.get(0),
     )?;
 
+    // Same reasoning as search_similar: no distance cap, just top-K closest.
     let mut stmt = conn.prepare(
         "SELECT thought_id, distance
          FROM thought_embeddings
          WHERE embedding MATCH ?1
            AND thought_id != ?2
-           AND distance < ?3
          ORDER BY distance
-         LIMIT ?4",
+         LIMIT ?3",
     )?;
 
     let rows = stmt.query_map(
-        params![embedding, thought_id, MAX_DISTANCE_THRESHOLD, limit as i64],
+        params![embedding, thought_id, limit as i64],
         |row| Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?)),
     )?;
 

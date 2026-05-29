@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use futures_util::StreamExt;
-use reqwest::Client;
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
@@ -47,7 +46,7 @@ impl LLMProvider for ClaudeProvider {
             body["temperature"] = json!(t);
         }
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!("{}/v1/messages", base_url))
             .header("x-api-key", &config.api_key)
             .header("anthropic-version", "2023-06-01")
@@ -107,7 +106,7 @@ impl LLMProvider for ClaudeProvider {
             body["temperature"] = json!(t);
         }
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!("{}/v1/messages", base_url))
             .header("x-api-key", &config.api_key)
             .header("anthropic-version", "2023-06-01")
@@ -181,7 +180,7 @@ impl LLMProvider for ClaudeProvider {
             }]
         });
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!("{}/v1/messages", base_url))
             .header("x-api-key", &config.api_key)
             .header("anthropic-version", "2023-06-01")
@@ -282,7 +281,7 @@ impl LLMProvider for ClaudeProvider {
             body["temperature"] = json!(t);
         }
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!("{}/v1/messages", base_url))
             .header("x-api-key", &config.api_key)
             .header("anthropic-version", "2023-06-01")

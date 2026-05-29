@@ -51,9 +51,22 @@ export default function Sidebar() {
     }
   }, [isChatActive]);
 
-  // Load sessions when expanded
+  // Load sessions when expanded. Also re-fetch whenever pathname changes
+  // while expanded — covers the "started a new chat / sent a message that
+  // updated the latest preview" case so the sidebar doesn't go stale
+  // (GitHub issue #6). pathname-change is cheap and predictable; explicit
+  // events would be more elegant but require touching the chat store.
   useEffect(() => {
     if (chatExpanded) loadSessions();
+  }, [chatExpanded, loadSessions, location.pathname]);
+
+  // Also re-fetch when a chat message lands — `chatStore.sendMessage` doesn't
+  // touch pathname, so without this the preview never refreshes mid-conv.
+  useEffect(() => {
+    if (!chatExpanded) return;
+    const onChatChanged = () => loadSessions();
+    window.addEventListener("echomind:chat-changed", onChatChanged);
+    return () => window.removeEventListener("echomind:chat-changed", onChatChanged);
   }, [chatExpanded, loadSessions]);
 
   const handleChatClick = () => {

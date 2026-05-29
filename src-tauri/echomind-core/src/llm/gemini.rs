@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use futures_util::StreamExt;
-use reqwest::Client;
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
@@ -57,7 +56,7 @@ impl LLMProvider for GeminiProvider {
             }
         }
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!(
                 "{}/models/{}:generateContent?key={}",
                 base_url, config.model, config.api_key
@@ -118,7 +117,7 @@ impl LLMProvider for GeminiProvider {
             });
         }
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!(
                 "{}/models/{}:streamGenerateContent?alt=sse&key={}",
                 base_url, config.model, config.api_key
@@ -189,7 +188,7 @@ impl LLMProvider for GeminiProvider {
             }]
         });
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!(
                 "{}/models/{}:generateContent?key={}",
                 base_url, config.model, config.api_key
@@ -294,7 +293,7 @@ impl LLMProvider for GeminiProvider {
             body["generationConfig"] = json!({ "temperature": t });
         }
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!(
                 "{}/models/{}:generateContent?key={}",
                 base_url, config.model, config.api_key

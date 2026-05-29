@@ -278,12 +278,20 @@ impl EchoMind {
                 )
             })?;
 
+        // Trim — copy-paste from web UIs often appends \n or trailing space,
+        // which silently breaks `Authorization: Bearer <key>` and the provider
+        // returns a misleading 401. (Source of GitHub issue #3 — three real
+        // users hit "API Key invalid" with verified-valid keys.)
         let api_key = settings::get_setting(conn, "llm_api_key")
             .map_err(|e| e.to_string())?
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
             .ok_or("API Key not configured. Please set up in Settings.")?;
 
         let model = settings::get_setting(conn, "llm_model")
             .map_err(|e| e.to_string())?
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
             .unwrap_or_else(|| match provider_type {
                 ProviderType::OpenAI => "gpt-4o-mini".to_string(),
                 ProviderType::Claude => "claude-sonnet-4-20250514".to_string(),
@@ -291,7 +299,9 @@ impl EchoMind {
             });
 
         let base_url = settings::get_setting(conn, "llm_base_url")
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| e.to_string())?
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
 
         Ok((
             provider_type,
@@ -316,12 +326,15 @@ impl EchoMind {
             .filter(|s| !s.is_empty())
             .map(|s| s.to_ascii_lowercase());
 
+        // Same trim guard as load_llm_config_from_conn — see GitHub issue #3.
         let emb_api_key = settings::get_setting(conn, "embedding_api_key")
             .map_err(|e| e.to_string())?
+            .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
 
         let llm_key_cfg = settings::get_setting(conn, "llm_api_key")
             .map_err(|e| e.to_string())?
+            .map(|s| s.trim().to_string())
             .filter(|s| !s.is_empty());
 
         let use_local = matches!(emb_provider.as_deref(), Some("local"))

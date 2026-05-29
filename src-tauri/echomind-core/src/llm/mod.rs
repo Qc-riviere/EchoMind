@@ -7,7 +7,28 @@ pub mod openai;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::OnceLock;
+use std::time::Duration;
 use tokio::sync::mpsc;
+
+/// Shared HTTP client for every LLM provider call.
+///
+/// `reqwest::Client::new()` has *no* timeout by default — a hung connection
+/// (slow network, mid-flight reset, server stalled) leaves the whole Tauri
+/// command waiting forever with no way to cancel. GitHub issue #3 ("DeepSeek
+/// test stuck, no interrupt button") was the user-visible symptom. 60s is
+/// long enough for streaming-class responses to start, short enough that a
+/// truly broken connection surfaces as a timeout error instead of hanging.
+pub fn http_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(Duration::from_secs(60))
+            .connect_timeout(Duration::from_secs(15))
+            .build()
+            .expect("reqwest client init")
+    })
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {

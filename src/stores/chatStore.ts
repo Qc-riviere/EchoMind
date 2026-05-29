@@ -44,6 +44,10 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       error: null,
       currentConversationId: conv.id,
     });
+    // Sidebar's conversation list listens for this and re-fetches its
+    // preview — without it, starting a new chat won't show up in the
+    // sidebar until next pathname change (GitHub issue #6).
+    window.dispatchEvent(new CustomEvent("echomind:chat-changed"));
     return conv;
   },
 
@@ -143,6 +147,8 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
     try {
       await invoke("send_chat_message", { conversationId, content });
+      // Updated preview / last-message-at — let Sidebar refresh.
+      window.dispatchEvent(new CustomEvent("echomind:chat-changed"));
     } catch (e) {
       set({ error: errorMsg(e), isStreaming: false });
       unlistenAgent?.();

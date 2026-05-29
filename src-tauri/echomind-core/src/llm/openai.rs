@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 use futures_util::StreamExt;
-use reqwest::Client;
 use serde_json::{json, Value};
 use tokio::sync::mpsc;
 
@@ -39,7 +38,7 @@ impl LLMProvider for OpenAIProvider {
             body["max_tokens"] = json!(mt);
         }
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!("{}/chat/completions", base_url))
             .header("Authorization", format!("Bearer {}", config.api_key))
             .json(&body)
@@ -90,7 +89,7 @@ impl LLMProvider for OpenAIProvider {
             body["max_tokens"] = json!(mt);
         }
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!("{}/chat/completions", base_url))
             .header("Authorization", format!("Bearer {}", config.api_key))
             .json(&body)
@@ -159,7 +158,7 @@ impl LLMProvider for OpenAIProvider {
             "max_tokens": config.max_tokens.unwrap_or(2048),
         });
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!("{}/chat/completions", base_url))
             .header("Authorization", format!("Bearer {}", config.api_key))
             .json(&body)
@@ -256,7 +255,7 @@ impl LLMProvider for OpenAIProvider {
             body["max_tokens"] = json!(mt);
         }
 
-        let resp = Client::new()
+        let resp = super::http_client()
             .post(format!("{}/chat/completions", base_url))
             .header("Authorization", format!("Bearer {}", config.api_key))
             .json(&body)

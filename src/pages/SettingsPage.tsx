@@ -6,7 +6,7 @@ import { useThemeStore } from "../stores/themeStore";
 import type { Skill, DiscoveredSkill } from "../lib/types";
 import { checkForUpdatesManual } from "../lib/updater";
 
-const APP_VERSION = "0.3.5";
+const APP_VERSION = "0.3.6";
 
 const LLM_PROVIDERS = [
   { value: "openai", label: "OpenAI", backend: "openai", defaultModel: "gpt-4o-mini", defaultBaseUrl: "" },
@@ -388,8 +388,20 @@ export default function SettingsPage() {
                     <div className="flex gap-2">
                       <input type="text" value={model} onChange={(e) => setModel(e.target.value)} placeholder="如 gpt-4o-mini" className={inputClass} />
                       <button
-                        onClick={handleFetchModels}
-                        disabled={loadingModels || !apiKey}
+                        onClick={() => {
+                          // Toggle dropdown. If user has an API key, also fetch
+                          // the full live model list in the background. Without
+                          // a key we still show default + current (issue #4).
+                          if (showModelDropdown) {
+                            setShowModelDropdown(false);
+                          } else {
+                            setShowModelDropdown(true);
+                            if (apiKey && !loadingModels) {
+                              handleFetchModels();
+                            }
+                          }
+                        }}
+                        disabled={loadingModels}
                         className="shrink-0 px-3 py-3 bg-surface-container-highest text-on-surface-variant hover:text-primary rounded-xl transition-colors disabled:opacity-50"
                       >
                         {loadingModels ? (
@@ -399,22 +411,47 @@ export default function SettingsPage() {
                         )}
                       </button>
                     </div>
-                    {showModelDropdown && availableModels.length > 0 && (
-                      <div className="absolute z-10 mt-1 w-full bg-surface-container-high rounded-xl ghost-border max-h-60 overflow-y-auto shadow-xl">
-                        {availableModels.map((m) => (
-                          <button
-                            key={m}
-                            onClick={() => { setModel(m); setShowModelDropdown(false); }}
-                            className={`w-full text-left px-4 py-3 text-sm hover:bg-surface-container-highest transition-colors flex items-center justify-between ${
-                              m === model ? "text-primary font-medium" : "text-on-surface"
-                            }`}
-                          >
-                            {m}
-                            {m === model && <span className="material-symbols-outlined text-[16px] text-primary">check</span>}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+                    {showModelDropdown && (() => {
+                      // Always include the provider's default and the user's
+                      // current model in the dropdown — without this, switching
+                      // away from DeepSeek-Chat (or any default) loses access
+                      // to the obvious entry to switch *back* via dropdown
+                      // (GitHub issue #4).
+                      const def = LLM_PROVIDERS.find((p) => p.value === provider);
+                      const seen = new Set<string>();
+                      const list: string[] = [];
+                      const push = (m: string) => {
+                        const trimmed = m?.trim();
+                        if (!trimmed || seen.has(trimmed)) return;
+                        seen.add(trimmed);
+                        list.push(trimmed);
+                      };
+                      if (def?.defaultModel) push(def.defaultModel);
+                      if (model) push(model);
+                      availableModels.forEach(push);
+                      if (list.length === 0) return null;
+                      return (
+                        <div className="absolute z-10 mt-1 w-full bg-surface-container-high rounded-xl ghost-border max-h-60 overflow-y-auto shadow-xl">
+                          {list.map((m) => (
+                            <button
+                              key={m}
+                              onClick={() => { setModel(m); setShowModelDropdown(false); }}
+                              className={`w-full text-left px-4 py-3 text-sm hover:bg-surface-container-highest transition-colors flex items-center justify-between ${
+                                m === model ? "text-primary font-medium" : "text-on-surface"
+                              }`}
+                            >
+                              <span className="flex items-center gap-2">
+                                {m}
+                                {m === def?.defaultModel && (
+                                  <span className="text-[10px] uppercase tracking-wider text-on-surface-variant/50">default</span>
+                                )}
+                              </span>
+                              {m === model && <span className="material-symbols-outlined text-[16px] text-primary">check</span>}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Advanced */}

@@ -1,4 +1,3 @@
-use reqwest::Client;
 use serde_json::{json, Value};
 
 use super::EmbeddingConfig;
@@ -24,7 +23,7 @@ async fn generate_embedding_gemini(text: &str, config: &EmbeddingConfig) -> Resu
         "outputDimensionality": config.dimensions
     });
 
-    let resp = Client::new()
+    let resp = super::http_client()
         .post(&url)
         .header("Content-Type", "application/json")
         .json(&body)
@@ -66,7 +65,7 @@ async fn generate_embedding_openai(text: &str, config: &EmbeddingConfig) -> Resu
         "input": text,
     });
 
-    let resp = Client::new()
+    let resp = super::http_client()
         .post(&config.base_url)
         .header("Authorization", format!("Bearer {}", config.api_key))
         .header("Content-Type", "application/json")

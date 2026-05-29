@@ -464,9 +464,14 @@ export default function ChatHubPage() {
 
             {/* Error state */}
             {resourcesError && !resourcesLoading && (
-              <div className="p-4 rounded-xl bg-error-container/10 ghost-border text-center">
-                <span className="material-symbols-outlined text-error/60 text-[24px] mb-2 block">cloud_off</span>
-                <p className="text-xs text-on-surface-variant/60 mb-3">资源加载失败</p>
+              <div className="p-4 rounded-xl bg-error-container/10 ghost-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-error/70 text-[20px]">cloud_off</span>
+                  <p className="text-xs font-semibold text-on-surface">资源加载失败</p>
+                </div>
+                <p className="text-[11px] text-on-surface-variant/70 mb-3 leading-relaxed break-words">
+                  {resourcesError}
+                </p>
                 <button
                   onClick={refreshResources}
                   className="text-[11px] font-bold text-primary hover:underline"
