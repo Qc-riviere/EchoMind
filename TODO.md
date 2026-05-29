@@ -19,7 +19,6 @@
 
 | ID | 是什么 | 工作量 | 来源 |
 |---|---|---|---|
-| **N1** | **Chat 消息加时间戳** — 每条 user/AI 消息显示发出时间（hover 全时间，inline 相对时间如 "5 分钟前" / "今天 14:32"）；后端 `messages.created_at` 已存，只需前端 ChatHubPage 渲染 | 半天 | user 2026-05-28 |
 | D4 | **Phase 4 三项**：(a) `/bridge/chat` 速率限制 / (b) bridge 客户端断线重连指数退避 / (c) Budget 超限 Tauri 事件通知 | 1-2 周 | §13 P1 #10 |
 | D5 | **自己 e2e 走一遍完整 onboarding + 微信桥扫码** — 找出 dead loop / 状态机死锁 | 半天 | §13 P1 #8 |
 | D6 | LLM Key 注册引导文档（一键链接 + DeepSeek 充值教程） | 半天 | §13 P1 #6 |

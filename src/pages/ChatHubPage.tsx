@@ -7,6 +7,7 @@ import { useChatStore } from "../stores/chatStore";
 import ConfirmDialog from "../components/ConfirmDialog";
 import ChatPlanModal from "../components/ChatPlanModal";
 import { notify } from "../lib/notify";
+import { formatRelative, formatFull } from "../lib/relativeTime";
 import type { Thought, ToolEvent, Skill } from "../lib/types";
 
 function ToolEventList({ events }: { events: ToolEvent[] }) {
@@ -283,14 +284,22 @@ export default function ChatHubPage() {
                   }`}>
                     <p className="leading-relaxed text-sm whitespace-pre-wrap">{msg.content}</p>
                   </div>
-                  {!msg.withdrawn && (
-                    <button
-                      onClick={() => setWithdrawTarget(msg.id)}
-                      className="mt-1 opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant/40 hover:text-on-surface"
+                  <div className="mt-1 flex items-center gap-2">
+                    <span
+                      className="text-[10px] text-on-surface-variant/40 font-mono"
+                      title={formatFull(msg.created_at)}
                     >
-                      <span className="material-symbols-outlined text-[14px]">undo</span>
-                    </button>
-                  )}
+                      {formatRelative(msg.created_at)}
+                    </span>
+                    {!msg.withdrawn && (
+                      <button
+                        onClick={() => setWithdrawTarget(msg.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-on-surface-variant/40 hover:text-on-surface"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">undo</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="mr-auto bg-gradient-to-br from-primary/5 to-primary-container/5 p-8 rounded-[2rem] ghost-border">
@@ -298,6 +307,12 @@ export default function ChatHubPage() {
                     <span className="material-symbols-outlined text-[18px] text-primary">auto_awesome</span>
                     <span className="text-[11px] uppercase tracking-[0.3em] font-headline text-primary font-bold">
                       EchoMind Logic Engine
+                    </span>
+                    <span
+                      className="ml-auto text-[10px] text-on-surface-variant/40 font-mono"
+                      title={formatFull(msg.created_at)}
+                    >
+                      {formatRelative(msg.created_at)}
                     </span>
                   </div>
                   {msg.tool_events && <ToolEventList events={msg.tool_events} />}
