@@ -24,11 +24,12 @@ jobs:
         with:
           workspaces: src-tauri
 
-      # The `echomind` main crate links against tauri / webkit2gtk and only
-      # exists to package the desktop binary — it has no Rust tests of its
-      # own. Excluding it lets CI skip the gtk/webkit apt dance and finish
-      # in under a minute. Real desktop-binary build is exercised by
-      # desktop-release.yml on tagged releases.
+      # Scope to echomind-core where every D1 test lives. The `echomind`
+      # main crate pulls tauri / webkit2gtk; `echomind-server` pulls
+      # keyring → libdbus-sys → libdbus-1-dev apt — neither has any tests
+      # of its own, so testing them just makes CI slower and brittle to
+      # Linux-specific system deps. The full desktop build is exercised
+      # by desktop-release.yml on tagged releases.
       - name: cargo test
         working-directory: src-tauri
-        run: cargo test --workspace --exclude echomind --locked
+        run: cargo test -p echomind-core --locked
