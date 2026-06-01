@@ -6,7 +6,7 @@ import { useThemeStore } from "../stores/themeStore";
 import type { Skill, DiscoveredSkill } from "../lib/types";
 import { checkForUpdatesManual } from "../lib/updater";
 
-const APP_VERSION = "0.3.6";
+const APP_VERSION = "0.3.7";
 
 const LLM_PROVIDERS = [
   { value: "openai", label: "OpenAI", backend: "openai", defaultModel: "gpt-4o-mini", defaultBaseUrl: "" },
