@@ -1,31 +1,30 @@
 import { useEffect, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import type { ConversationWithPreview } from "../lib/types";
 import { formatDistanceToNow } from "date-fns";
 import { EchoMindLogo } from "./EchoMindLogo";
 
-const navItems: { to: string; icon: string; label: string; hint?: string }[] = [
-  { to: "/", icon: "home", label: "首页" },
-  { to: "/search", icon: "search", label: "搜索" },
-  { to: "/graph", icon: "bubble_chart", label: "图谱" },
-  { to: "/archive", icon: "inventory_2", label: "归档" },
-  {
-    to: "/wechat",
-    icon: "hub",
-    label: "微信桥",
-    hint: "本地 Bot + 腾讯官方 ClawBot，把手机微信接进 EchoMind",
-  },
-  {
-    to: "/cloud",
-    icon: "cloud_sync",
-    label: "云桥",
-    hint: "通过 VPS 做多设备同步 + 可选共享 LLM 调用",
-  },
-  { to: "/settings", icon: "settings", label: "设置" },
+interface NavItemDef {
+  to: string;
+  icon: string;
+  labelKey: string;
+  hintKey?: string;
+}
+
+const navItems: NavItemDef[] = [
+  { to: "/", icon: "home", labelKey: "nav.home" },
+  { to: "/search", icon: "search", labelKey: "nav.search" },
+  { to: "/graph", icon: "bubble_chart", labelKey: "nav.graph" },
+  { to: "/archive", icon: "inventory_2", labelKey: "nav.archive" },
+  { to: "/wechat", icon: "hub", labelKey: "nav.wechat_bridge", hintKey: "sidebar.wechat_hint" },
+  { to: "/cloud", icon: "cloud_sync", labelKey: "nav.cloud_bridge", hintKey: "sidebar.cloud_hint" },
+  { to: "/settings", icon: "settings", labelKey: "nav.settings" },
 ];
 
 export default function Sidebar() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [chatExpanded, setChatExpanded] = useState(false);
@@ -92,7 +91,7 @@ export default function Sidebar() {
         <div className="flex flex-col gap-0.5">
           <h1 className="text-xl font-bold tracking-widest text-primary font-headline">EchoMind</h1>
           <span className="text-[11px] uppercase tracking-[0.2em] text-on-surface-variant/60">
-            灵感笔记
+            {t("sidebar.tagline")}
           </span>
         </div>
       </div>
@@ -118,7 +117,7 @@ export default function Sidebar() {
           >
             chat_bubble
           </span>
-          <span className="text-sm flex-1 text-left">对话</span>
+          <span className="text-sm flex-1 text-left">{t("nav.chat")}</span>
           <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${chatExpanded ? "rotate-180" : ""}`}>
             expand_more
           </span>
@@ -134,8 +133,8 @@ export default function Sidebar() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索对话…"
-                aria-label="搜索对话"
+                placeholder={t("sidebar.search_chats_placeholder")}
+                aria-label={t("sidebar.search_chats_aria")}
                 className="w-full bg-surface-container-low rounded-lg pl-7 pr-2 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
@@ -149,7 +148,7 @@ export default function Sidebar() {
               )}
               {!loadingSessions && filteredSessions.length === 0 && (
                 <p className="text-xs text-on-surface-variant py-2 px-2">
-                  {searchQuery ? "没有匹配的对话" : "还没有任何对话"}
+                  {searchQuery ? t("sidebar.no_matching_chats") : t("sidebar.no_chats_yet")}
                 </p>
               )}
               {filteredSessions.map((s) => {
@@ -192,21 +191,22 @@ export default function Sidebar() {
           }, 100);
         }}
         className="mt-4 flex items-center justify-center gap-3 luminous-pulse text-on-primary py-3 px-4 rounded-xl font-semibold shadow-xl active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-all text-sm"
-        aria-label="新建灵感"
+        aria-label={t("sidebar.new_thought")}
       >
         <span className="material-symbols-outlined text-[20px]">add</span>
-        <span>新建灵感</span>
+        <span>{t("sidebar.new_thought")}</span>
       </button>
     </aside>
   );
 }
 
-function NavItem({ to, icon, label, hint }: { to: string; icon: string; label: string; hint?: string }) {
+function NavItem({ to, icon, labelKey, hintKey }: NavItemDef) {
+  const { t } = useTranslation();
   return (
     <NavLink
       to={to}
       end={to === "/"}
-      title={hint}
+      title={hintKey ? t(hintKey) : undefined}
       className={({ isActive }) =>
         `flex items-center gap-4 py-3 px-4 rounded-lg transition-all ${
           isActive
@@ -223,7 +223,7 @@ function NavItem({ to, icon, label, hint }: { to: string; icon: string; label: s
           >
             {icon}
           </span>
-          <span className="text-sm">{label}</span>
+          <span className="text-sm">{t(labelKey)}</span>
         </>
       )}
     </NavLink>

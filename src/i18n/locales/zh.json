@@ -17,7 +17,8 @@
     "yes": "是",
     "no": "否",
     "search": "搜索",
-    "more": "更多"
+    "more": "更多",
+    "export": "导出"
   },
   "nav": {
     "home": "首页",
@@ -28,6 +29,32 @@
     "settings": "设置",
     "wechat_bridge": "微信桥",
     "cloud_bridge": "云桥"
+  },
+  "sidebar": {
+    "tagline": "灵感笔记",
+    "new_thought": "新建灵感",
+    "wechat_hint": "本地 Bot + 腾讯官方 ClawBot，把手机微信接进 EchoMind",
+    "cloud_hint": "通过 VPS 做多设备同步 + 可选共享 LLM 调用",
+    "search_chats_placeholder": "搜索对话…",
+    "search_chats_aria": "搜索对话",
+    "no_matching_chats": "没有匹配的对话",
+    "no_chats_yet": "还没有任何对话"
+  },
+  "confirm_dialog": {
+    "default_confirm": "确认",
+    "default_cancel": "取消"
+  },
+  "chat_plan": {
+    "title": "方案文档",
+    "loading": "AI 正在整理对话…",
+    "empty": "（暂无内容）",
+    "save_as_thought": "保存为新灵感",
+    "saved_as_thought": "方案已保存为新灵感",
+    "save_failed": "保存失败：{{msg}}",
+    "exported_md": "已导出 Markdown",
+    "exported_docx": "已导出 DOCX",
+    "export_failed": "导出失败：{{msg}}",
+    "pdf_print_label": "PDF（打印）"
   },
   "settings": {
     "tabs": {

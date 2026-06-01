@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile, writeFile } from "@tauri-apps/plugin-fs";
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function ChatPlanModal({ isOpen, onClose, thought, plan, loading, onSavedAsThought }: Props) {
+  const { t } = useTranslation();
   const [exportOpen, setExportOpen] = useState(false);
   const [savingThought, setSavingThought] = useState(false);
 
@@ -41,11 +43,11 @@ export default function ChatPlanModal({ isOpen, onClose, thought, plan, loading,
       invoke("enrich_thought", { thoughtId: created.id })
         .then(() => invoke("embed_thought", { thoughtId: created.id }))
         .catch((err) => console.error("[plan] enrich/embed failed:", err));
-      await notify("EchoMind", "方案已保存为新灵感");
+      await notify("EchoMind", t("chat_plan.saved_as_thought"));
       onSavedAsThought?.();
       onClose();
     } catch (e) {
-      await notify("EchoMind", `保存失败：${errorMsg(e)}`);
+      await notify("EchoMind", t("chat_plan.save_failed", { msg: errorMsg(e) }));
     } finally {
       setSavingThought(false);
     }
@@ -60,9 +62,9 @@ export default function ChatPlanModal({ isOpen, onClose, thought, plan, loading,
       });
       if (!path) return;
       await writeTextFile(path, buildPlanMarkdown(thought, plan));
-      await notify("EchoMind", "已导出 Markdown");
+      await notify("EchoMind", t("chat_plan.exported_md"));
     } catch (e) {
-      await notify("EchoMind", `导出失败：${errorMsg(e)}`);
+      await notify("EchoMind", t("chat_plan.export_failed", { msg: errorMsg(e) }));
     }
   };
 
@@ -76,9 +78,9 @@ export default function ChatPlanModal({ isOpen, onClose, thought, plan, loading,
       if (!path) return;
       const bytes = await buildPlanDocxBlob(thought, plan);
       await writeFile(path, bytes);
-      await notify("EchoMind", "已导出 DOCX");
+      await notify("EchoMind", t("chat_plan.exported_docx"));
     } catch (e) {
-      await notify("EchoMind", `导出失败：${errorMsg(e)}`);
+      await notify("EchoMind", t("chat_plan.export_failed", { msg: errorMsg(e) }));
     }
   };
 
@@ -94,9 +96,9 @@ export default function ChatPlanModal({ isOpen, onClose, thought, plan, loading,
         <div className="flex items-center justify-between px-6 py-4 border-b border-outline-variant/10 print:hidden">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[20px]">description</span>
-            <h2 className="font-headline font-semibold text-on-surface">方案文档</h2>
+            <h2 className="font-headline font-semibold text-on-surface">{t("chat_plan.title")}</h2>
           </div>
-          <button onClick={onClose} aria-label="关闭" className="text-on-surface-variant hover:text-on-surface">
+          <button onClick={onClose} aria-label={t("common.close")} className="text-on-surface-variant hover:text-on-surface">
             <span className="material-symbols-outlined" aria-hidden="true">close</span>
           </button>
         </div>
@@ -109,11 +111,11 @@ export default function ChatPlanModal({ isOpen, onClose, thought, plan, loading,
               <div className="h-4 bg-surface-container-high rounded animate-pulse w-3/4" />
               <div className="h-4 bg-surface-container-high rounded animate-pulse w-5/6" />
               <div className="h-4 bg-surface-container-high rounded animate-pulse w-1/2" />
-              <p className="text-xs text-on-surface-variant/60 mt-4">AI 正在整理对话…</p>
+              <p className="text-xs text-on-surface-variant/60 mt-4">{t("chat_plan.loading")}</p>
             </div>
           ) : (
             <article className="prose prose-sm max-w-none text-on-surface whitespace-pre-wrap leading-relaxed">
-              {plan || <span className="text-on-surface-variant/60">（暂无内容）</span>}
+              {plan || <span className="text-on-surface-variant/60">{t("chat_plan.empty")}</span>}
             </article>
           )}
         </div>
@@ -123,7 +125,7 @@ export default function ChatPlanModal({ isOpen, onClose, thought, plan, loading,
             onClick={onClose}
             className="px-4 py-2 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
           >
-            关闭
+            {t("common.close")}
           </button>
           <div className="relative">
             <button
@@ -132,14 +134,14 @@ export default function ChatPlanModal({ isOpen, onClose, thought, plan, loading,
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container-highest text-on-surface text-sm font-medium hover:text-primary disabled:opacity-40 transition-colors"
             >
               <span className="material-symbols-outlined text-[18px]">download</span>
-              导出
+              {t("common.export")}
               <span className="material-symbols-outlined text-[16px]">expand_more</span>
             </button>
             {exportOpen && (
               <div className="absolute bottom-full mb-2 right-0 bg-surface-container-high rounded-xl border border-outline-variant/20 shadow-xl overflow-hidden min-w-[140px]">
                 <button onClick={handleExportMd} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container-highest transition-colors">Markdown</button>
                 <button onClick={handleExportDocx} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container-highest transition-colors">DOCX</button>
-                <button onClick={handleExportPdf} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container-highest transition-colors">PDF（打印）</button>
+                <button onClick={handleExportPdf} className="w-full text-left px-4 py-2.5 text-sm hover:bg-surface-container-highest transition-colors">{t("chat_plan.pdf_print_label")}</button>
               </div>
             )}
           </div>
@@ -153,7 +155,7 @@ export default function ChatPlanModal({ isOpen, onClose, thought, plan, loading,
             ) : (
               <span className="material-symbols-outlined text-[18px]">save</span>
             )}
-            保存为新灵感
+            {t("chat_plan.save_as_thought")}
           </button>
         </div>
       </div>

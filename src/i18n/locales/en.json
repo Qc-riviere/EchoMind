@@ -17,7 +17,8 @@
     "yes": "Yes",
     "no": "No",
     "search": "Search",
-    "more": "More"
+    "more": "More",
+    "export": "Export"
   },
   "nav": {
     "home": "Home",
@@ -28,6 +29,32 @@
     "settings": "Settings",
     "wechat_bridge": "WeChat Bridge",
     "cloud_bridge": "Cloud Bridge"
+  },
+  "sidebar": {
+    "tagline": "Inspiration Notes",
+    "new_thought": "New Note",
+    "wechat_hint": "Local bot + Tencent's official ClawBot — pipe WeChat into EchoMind",
+    "cloud_hint": "Multi-device sync via VPS + optional shared LLM calls",
+    "search_chats_placeholder": "Search chats…",
+    "search_chats_aria": "Search chats",
+    "no_matching_chats": "No matching chats",
+    "no_chats_yet": "No chats yet"
+  },
+  "confirm_dialog": {
+    "default_confirm": "Confirm",
+    "default_cancel": "Cancel"
+  },
+  "chat_plan": {
+    "title": "Plan Document",
+    "loading": "AI is synthesizing the conversation…",
+    "empty": "(no content)",
+    "save_as_thought": "Save as new note",
+    "saved_as_thought": "Plan saved as new note",
+    "save_failed": "Save failed: {{msg}}",
+    "exported_md": "Exported as Markdown",
+    "exported_docx": "Exported as DOCX",
+    "export_failed": "Export failed: {{msg}}",
+    "pdf_print_label": "PDF (Print)"
   },
   "settings": {
     "tabs": {

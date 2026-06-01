@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
@@ -21,13 +23,18 @@ export default function ConfirmDialog({
   isOpen,
   title,
   message,
-  confirmText = "确认",
-  cancelText = "取消",
+  confirmText,
+  cancelText,
   variant = 'warning',
   icon = 'warning',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
+  // Translate only when the caller didn't supply explicit text. Callers that
+  // pass localised strings (most pages) keep behaving exactly as before.
+  const resolvedConfirm = confirmText ?? t("confirm_dialog.default_confirm");
+  const resolvedCancel = cancelText ?? t("confirm_dialog.default_cancel");
   if (!isOpen) return null;
 
   const variantStyles = {
@@ -69,13 +76,13 @@ export default function ConfirmDialog({
             onClick={onCancel}
             className="flex-1 px-4 py-3 text-sm font-medium rounded-xl bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all"
           >
-            {cancelText}
+            {resolvedCancel}
           </button>
           <button
             onClick={onConfirm}
             className={`flex-1 px-4 py-3 text-sm font-medium rounded-xl text-on-primary ${styles.button} transition-all`}
           >
-            {confirmText}
+            {resolvedConfirm}
           </button>
         </div>
       </div>
