@@ -35,6 +35,7 @@
 | D12 | OpenClaw 官方文档阅读，记录 iLink 限流上限 | 0.5 天 | MVP 报告 |
 | D13 | Closed Alpha 申请表（Tally / 飞书）+ 微信反馈群 | 半天 | MVP 报告 |
 | D1b | **synthesize max_tokens 集成测试** — D1 第一轮覆盖了 4 文件 24 tests（embedding fallback 8 / N2 thoughts tree 8 / agent dedup 3 / bridge 401+refresh 5）；synthesize max_tokens 传递需要 LLM provider trait 抽象注入 mock，工程量大留作 follow-up | 0.5d | D1 spec 余项 |
+| D21 | **release workflow GitHub 权限回归** — `tauri-action@v0` (SHA 84b9d35b...) 自 2026-06-01 起 create-release 报 `Resource not accessible by integration`；v0.3.6 (5/29) push trigger 还能成，v0.3.7 (6/1) push + dispatch 都挂在同一步。yaml + tauri-action SHA 都没变 → GitHub 那边动了东西。当前 workaround：每次 release 先 `gh release create v0.X.X --draft --notes "..."` 手动建 draft → 再 push tag / dispatch，tauri-action 找到现有 draft 就跳过 create。要查：repo Settings → Actions / Org-level fine-grained perms / 或 pin tauri-action 到具体 SHA 锁住行为 | 1h | 2026-06-01 ship 时遇到 |
 
 ## 🟩 P3 — 长期演进
 
