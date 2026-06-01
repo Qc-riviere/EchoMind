@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 export default function CaptureWindow() {
+  const { t } = useTranslation();
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -82,15 +84,15 @@ export default function CaptureWindow() {
       >
         <div className="flex items-center gap-2 px-4 py-2 border-b border-outline-variant/10" data-tauri-drag-region>
           <span className="material-symbols-outlined text-primary text-[18px]">bolt</span>
-          <span className="text-xs font-headline font-bold text-primary uppercase tracking-[0.2em]">速记</span>
-          <span className="ml-auto text-[11px] text-on-surface-variant/50 font-mono">Enter 保存 · Esc 关闭</span>
+          <span className="text-xs font-headline font-bold text-primary uppercase tracking-[0.2em]">{t("capture.label")}</span>
+          <span className="ml-auto text-[11px] text-on-surface-variant/50 font-mono">{t("capture.shortcut_hint")}</span>
         </div>
         <textarea
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="一句话灵感…"
+          placeholder={t("capture.placeholder")}
           disabled={saving}
           className="flex-1 bg-transparent text-on-surface placeholder:text-on-surface-variant/40 resize-none outline-none border-none px-4 py-3 text-sm leading-relaxed"
         />

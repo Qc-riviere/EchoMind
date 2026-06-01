@@ -114,5 +114,73 @@
       "language_zh": "中文",
       "language_en": "English"
     }
+  },
+  "chat_hub": {
+    "header": "对话",
+    "synthesize_aria": "整理为方案文档",
+    "synthesize_title": "让 AI 把本次对话整理为可交付的方案文档",
+    "synthesize_button": "整理为方案",
+    "initial_prompt": "请开始拷问这个灵感，帮我想清楚。",
+    "synthesize_failed_plan": "> 整理失败：{{msg}}",
+    "synthesize_failed_notify": "整理方案失败：{{msg}}",
+    "resources_title": "相关资源",
+    "refresh_resources": "刷新资源",
+    "collapse_panel": "收起面板",
+    "resources_analyzing": "AI 正在分析并推荐资源...",
+    "resources_failed": "资源加载失败",
+    "resources_empty": "暂无资源推荐",
+    "withdraw_title": "撤回消息",
+    "withdraw_message": "撤回后，该消息及其后续的 AI 回复将被永久删除，无法恢复。",
+    "withdraw_confirm": "撤回",
+    "picker_heading": "挑一个灵感开始对话",
+    "picker_subhead": "从侧边栏选已有对话，或从下方挑一个灵感继续深聊。",
+    "picker_loading": "正在加载…",
+    "picker_empty": "还没有灵感，先去首页记一条吧",
+    "picker_recent": "最近",
+    "picker_hot": "对话最多",
+    "type_article": "文章",
+    "type_tool": "工具",
+    "type_doc": "文档",
+    "type_project": "项目",
+    "type_book": "书籍",
+    "type_course": "课程"
+  },
+  "search": {
+    "reindex_done": "已重新索引 {{count}} 条想法",
+    "reindex_failed": "索引失败：{{msg}}",
+    "reindex_title": "重新索引所有想法（在嵌入逻辑改变后使用）",
+    "no_results_title": "没有找到相关想法",
+    "no_results_hint": "试试其他关键词，或记录更多想法",
+    "initial_title": "AI 语义搜索",
+    "initial_hint": "输入描述后按回车，AI 会理解语义找到相关内容"
+  },
+  "archive": {
+    "action_failed": "操作失败：{{msg}}",
+    "confirm_restore_title": "确认恢复",
+    "confirm_delete_title": "确认永久删除",
+    "confirm_restore_message": "确定要恢复这条灵感吗？它将重新出现在主列表中。",
+    "confirm_delete_message": "确定要永久删除\"{{preview}}…\"吗？此操作不可撤销。",
+    "restore_button": "恢复",
+    "delete_button": "删除",
+    "loading": "正在加载归档…",
+    "empty_title": "暂无归档内容",
+    "empty_hint": "归档的思想会显示在这里"
+  },
+  "capture": {
+    "label": "速记",
+    "shortcut_hint": "Enter 保存 · Esc 关闭",
+    "placeholder": "一句话灵感…"
+  },
+  "drawer": {
+    "reanalyze_done": "AI 已完成重新分析",
+    "archive_confirm_title": "确认归档",
+    "archive_confirm_message": "归档后这条灵感将从主列表移除，你可以在归档页面找到它并恢复。",
+    "archive_button": "归档",
+    "placeholder": "写下你的想法...",
+    "reanalyzing": "AI 重新分析中…",
+    "reanalyze": "重新分析",
+    "chat": "对话",
+    "archive": "归档",
+    "save": "保存"
   }
 }

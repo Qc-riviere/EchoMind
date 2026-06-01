@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import type { Thought } from "../lib/types";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -11,6 +12,7 @@ function isImageFile(filename: string): boolean {
 }
 
 export default function ArchivePage() {
+  const { t } = useTranslation();
   const [thoughts, setThoughts] = useState<Thought[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "week" | "month">("all");
@@ -44,7 +46,7 @@ export default function ArchivePage() {
       else await invoke("delete_thought", { id: thoughtId });
       setThoughts((prev) => prev.filter((t) => t.id !== thoughtId));
     } catch (e) {
-      alert(`操作失败: ${e}`);
+      alert(t("archive.action_failed", { msg: String(e) }));
     } finally {
       setConfirmDialog({ isOpen: false, type: "restore", thoughtId: "", thoughtContent: "" });
     }
@@ -54,14 +56,14 @@ export default function ArchivePage() {
     <div className="max-w-5xl mx-auto px-8 py-12">
       <ConfirmDialog
         isOpen={confirmDialog.isOpen}
-        title={confirmDialog.type === "restore" ? "确认恢复" : "确认永久删除"}
+        title={confirmDialog.type === "restore" ? t("archive.confirm_restore_title") : t("archive.confirm_delete_title")}
         message={
           confirmDialog.type === "restore"
-            ? "确定要恢复这条灵感吗？它将重新出现在主列表中。"
-            : `确定要永久删除"${confirmDialog.thoughtContent}..."吗？此操作不可撤销。`
+            ? t("archive.confirm_restore_message")
+            : t("archive.confirm_delete_message", { preview: confirmDialog.thoughtContent })
         }
-        confirmText={confirmDialog.type === "restore" ? "恢复" : "删除"}
-        cancelText="取消"
+        confirmText={confirmDialog.type === "restore" ? t("archive.restore_button") : t("archive.delete_button")}
+        cancelText={t("common.cancel")}
         variant={confirmDialog.type === "delete" ? "danger" : "info"}
         icon={confirmDialog.type === "restore" ? "restore" : "delete"}
         onConfirm={confirmAction}
@@ -98,7 +100,7 @@ export default function ArchivePage() {
       {loading && (
         <div className="flex items-center justify-center py-16 text-on-surface-variant gap-3">
           <span className="material-symbols-outlined animate-spin">progress_activity</span>
-          正在加载归档...
+          {t("archive.loading")}
         </div>
       )}
 
@@ -107,8 +109,8 @@ export default function ArchivePage() {
         <div className="text-center py-20 space-y-4 bg-surface-container-low rounded-2xl">
           <span className="material-symbols-outlined text-6xl text-on-surface-variant/30">inventory_2</span>
           <div>
-            <p className="text-lg font-headline font-semibold text-on-surface">暂无归档内容</p>
-            <p className="text-on-surface-variant text-sm mt-1">归档的思想会显示在这里</p>
+            <p className="text-lg font-headline font-semibold text-on-surface">{t("archive.empty_title")}</p>
+            <p className="text-on-surface-variant text-sm mt-1">{t("archive.empty_hint")}</p>
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import type { Thought } from "../lib/types";
 import { useThoughtStore } from "../stores/thoughtStore";
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function ThoughtDrawer({ thought, onClose }: Props) {
+  const { t } = useTranslation();
   const [content, setContent] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [lastSavedContent, setLastSavedContent] = useState("");
@@ -112,7 +114,7 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
       });
       // Re-embed in background so search/related uses the new content
       invoke("embed_thought", { thoughtId: enriched.id }).catch(() => {});
-      notify("EchoMind", "AI 已完成重新分析").catch(() => {});
+      notify("EchoMind", t("drawer.reanalyze_done")).catch(() => {});
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     } catch (e) {
@@ -124,10 +126,10 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
     <>
       <ConfirmDialog
         isOpen={showArchiveConfirm}
-        title="确认归档"
-        message="归档后这条灵感将从主列表移除，你可以在归档页面找到它并恢复。"
-        confirmText="归档"
-        cancelText="取消"
+        title={t("drawer.archive_confirm_title")}
+        message={t("drawer.archive_confirm_message")}
+        confirmText={t("drawer.archive_button")}
+        cancelText={t("common.cancel")}
         variant="warning"
         icon="archive"
         onConfirm={confirmArchive}
@@ -162,7 +164,7 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
                 </span>
               )}
             </div>
-            <button onClick={handleClose} aria-label="关闭" className="p-2 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-high transition-colors">
+            <button onClick={handleClose} aria-label={t("common.close")} className="p-2 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-container-high transition-colors">
               <span className="material-symbols-outlined" aria-hidden="true">close</span>
             </button>
           </div>
@@ -209,7 +211,7 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
                   e.target.style.height = "auto";
                   e.target.style.height = e.target.scrollHeight + "px";
                 }}
-                placeholder="写下你的想法..."
+                placeholder={t("drawer.placeholder")}
                 className="w-full bg-transparent border-none p-0 text-sm text-on-surface leading-relaxed resize-none focus:outline-none placeholder:text-on-surface-variant/30"
               />
 
@@ -237,31 +239,31 @@ export default function ThoughtDrawer({ thought, onClose }: Props) {
               {isAnalyzing && (
                 <div className="flex items-center gap-2 mb-3 text-[11px] text-primary bg-primary/5 rounded-lg px-3 py-2">
                   <span className="material-symbols-outlined text-[14px] animate-spin" aria-hidden="true">progress_activity</span>
-                  AI 重新分析中…
+                  {t("drawer.reanalyzing")}
                 </div>
               )}
               <div className="grid grid-cols-4 gap-1.5">
                   <button onClick={handleReanalyze} disabled={isAnalyzing}
                     className="flex items-center justify-center gap-1 py-2 text-[11px] font-bold tracking-wider rounded-lg text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-50 transition-colors">
                     <span className="material-symbols-outlined text-[16px]" aria-hidden="true">{isAnalyzing ? "progress_activity" : "auto_awesome"}</span>
-                    重新分析
+                    {t("drawer.reanalyze")}
                   </button>
                   <button onClick={() => navigate(`/thought/${displayThought.id}/chat`)}
                     className="flex items-center justify-center gap-1 py-2 text-[11px] font-bold tracking-wider rounded-lg text-on-surface-variant bg-surface-container-high hover:text-on-surface transition-colors">
                     <span className="material-symbols-outlined text-[16px]" aria-hidden="true">chat_bubble</span>
-                    对话
+                    {t("drawer.chat")}
                   </button>
                   <button onClick={() => setShowArchiveConfirm(true)}
                     className="flex items-center justify-center gap-1 py-2 text-[11px] font-bold tracking-wider rounded-lg text-error/60 hover:text-error hover:bg-error-container/20 transition-colors">
                     <span className="material-symbols-outlined text-[16px]" aria-hidden="true">inventory_2</span>
-                    归档
+                    {t("drawer.archive")}
                   </button>
                   <button
                     onClick={() => { if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current); handleSave(content); }}
                     disabled={!hasUnsavedChanges || isSaving}
                     className="flex items-center justify-center gap-1 py-2 text-[11px] font-bold tracking-wider rounded-lg luminous-pulse text-on-primary disabled:opacity-50 transition-all">
                     <span className="material-symbols-outlined text-[16px]" aria-hidden="true">save</span>
-                    保存
+                    {t("drawer.save")}
                   </button>
               </div>
             </div>

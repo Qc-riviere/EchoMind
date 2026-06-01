@@ -114,5 +114,73 @@
       "language_zh": "中文",
       "language_en": "English"
     }
+  },
+  "chat_hub": {
+    "header": "Chat",
+    "synthesize_aria": "Synthesize as plan document",
+    "synthesize_title": "Let AI turn this conversation into a deliverable plan document",
+    "synthesize_button": "Synthesize plan",
+    "initial_prompt": "Please start probing this idea — help me think it through.",
+    "synthesize_failed_plan": "> Synthesis failed: {{msg}}",
+    "synthesize_failed_notify": "Plan synthesis failed: {{msg}}",
+    "resources_title": "Related resources",
+    "refresh_resources": "Refresh resources",
+    "collapse_panel": "Collapse panel",
+    "resources_analyzing": "AI is analyzing and recommending resources...",
+    "resources_failed": "Failed to load resources",
+    "resources_empty": "No resource suggestions",
+    "withdraw_title": "Withdraw message",
+    "withdraw_message": "After withdrawing, this message and the subsequent AI replies will be permanently deleted and cannot be recovered.",
+    "withdraw_confirm": "Withdraw",
+    "picker_heading": "Pick an idea to start chatting",
+    "picker_subhead": "Pick an existing chat from the sidebar, or pick an idea below to dive deeper.",
+    "picker_loading": "Loading…",
+    "picker_empty": "No ideas yet — go capture one from the home page",
+    "picker_recent": "Recent",
+    "picker_hot": "Most chatted",
+    "type_article": "Article",
+    "type_tool": "Tool",
+    "type_doc": "Doc",
+    "type_project": "Project",
+    "type_book": "Book",
+    "type_course": "Course"
+  },
+  "search": {
+    "reindex_done": "Reindexed {{count}} ideas",
+    "reindex_failed": "Reindex failed: {{msg}}",
+    "reindex_title": "Reindex all ideas (use after embedding logic changes)",
+    "no_results_title": "No matching ideas",
+    "no_results_hint": "Try different keywords, or capture more ideas",
+    "initial_title": "AI semantic search",
+    "initial_hint": "Type a description and hit Enter — AI will surface semantically related content"
+  },
+  "archive": {
+    "action_failed": "Action failed: {{msg}}",
+    "confirm_restore_title": "Confirm restore",
+    "confirm_delete_title": "Confirm permanent deletion",
+    "confirm_restore_message": "Restore this idea? It will reappear in the main list.",
+    "confirm_delete_message": "Permanently delete \"{{preview}}…\"? This cannot be undone.",
+    "restore_button": "Restore",
+    "delete_button": "Delete",
+    "loading": "Loading archive…",
+    "empty_title": "No archived items",
+    "empty_hint": "Archived thoughts will appear here"
+  },
+  "capture": {
+    "label": "Quick capture",
+    "shortcut_hint": "Enter to save · Esc to close",
+    "placeholder": "One-line idea…"
+  },
+  "drawer": {
+    "reanalyze_done": "AI re-analysis complete",
+    "archive_confirm_title": "Confirm archive",
+    "archive_confirm_message": "After archiving, this idea will be removed from the main list — you can find and restore it from the archive page.",
+    "archive_button": "Archive",
+    "placeholder": "Write down your thoughts...",
+    "reanalyzing": "AI is re-analyzing…",
+    "reanalyze": "Re-analyze",
+    "chat": "Chat",
+    "archive": "Archive",
+    "save": "Save"
   }
 }

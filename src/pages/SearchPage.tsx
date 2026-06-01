@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import type { Thought } from "../lib/types";
 import ThoughtCard from "../components/ThoughtCard";
 
 export default function SearchPage() {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Thought[]>([]);
   const [searching, setSearching] = useState(false);
@@ -19,9 +21,9 @@ export default function SearchPage() {
     setReindexMessage(null);
     try {
       const count = await invoke<number>("reembed_all_thoughts");
-      setReindexMessage(`已重新索引 ${count} 条想法`);
+      setReindexMessage(t("search.reindex_done", { count }));
     } catch (e) {
-      setReindexMessage(`索引失败：${errorMsg(e)}`);
+      setReindexMessage(t("search.reindex_failed", { msg: errorMsg(e) }));
     } finally {
       setReindexing(false);
     }
@@ -80,7 +82,7 @@ export default function SearchPage() {
             onClick={handleReindex}
             disabled={reindexing}
             className="text-[11px] text-on-surface-variant/60 hover:text-primary uppercase tracking-widest font-mono flex items-center gap-1 disabled:opacity-50"
-            title="重新索引所有想法（在嵌入逻辑改变后使用）"
+            title={t("search.reindex_title")}
           >
             <span className={`material-symbols-outlined text-[14px] ${reindexing ? "animate-spin" : ""}`}>
               {reindexing ? "progress_activity" : "refresh"}
@@ -139,8 +141,8 @@ export default function SearchPage() {
         <div className="text-center py-20 space-y-4 bg-surface-container-low rounded-2xl">
           <span className="material-symbols-outlined text-6xl text-on-surface-variant/30">search_off</span>
           <div>
-            <p className="text-lg font-headline font-semibold text-on-surface">没有找到相关想法</p>
-            <p className="text-on-surface-variant text-sm mt-1">试试其他关键词，或记录更多想法</p>
+            <p className="text-lg font-headline font-semibold text-on-surface">{t("search.no_results_title")}</p>
+            <p className="text-on-surface-variant text-sm mt-1">{t("search.no_results_hint")}</p>
           </div>
         </div>
       )}
@@ -150,8 +152,8 @@ export default function SearchPage() {
         <div className="text-center py-20 space-y-4 bg-surface-container-low rounded-2xl">
           <span className="material-symbols-outlined text-6xl text-primary/40">auto_awesome</span>
           <div>
-            <p className="text-lg font-headline font-semibold text-on-surface">AI 语义搜索</p>
-            <p className="text-on-surface-variant text-sm mt-1">输入描述后按回车，AI 会理解语义找到相关内容</p>
+            <p className="text-lg font-headline font-semibold text-on-surface">{t("search.initial_title")}</p>
+            <p className="text-on-surface-variant text-sm mt-1">{t("search.initial_hint")}</p>
           </div>
         </div>
       )}

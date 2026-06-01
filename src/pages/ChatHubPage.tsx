@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { errorMsg } from "../lib/errorMsg";
 import { useNavigate, useParams } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
@@ -80,16 +81,17 @@ const TYPE_ICONS: Record<string, string> = {
   course: "school",
 };
 
-const TYPE_LABELS: Record<string, string> = {
-  article: "文章",
-  tool: "工具",
-  doc: "文档",
-  project: "项目",
-  book: "书籍",
-  course: "课程",
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  article: "chat_hub.type_article",
+  tool: "chat_hub.type_tool",
+  doc: "chat_hub.type_doc",
+  project: "chat_hub.type_project",
+  book: "chat_hub.type_book",
+  course: "chat_hub.type_course",
 };
 
 export default function ChatHubPage() {
+  const { t } = useTranslation();
   const { thoughtId } = useParams<{ thoughtId: string }>();
   const navigate = useNavigate();
 
@@ -127,7 +129,7 @@ export default function ChatHubPage() {
       const msgs = useChatStore.getState().messages;
       if (msgs.length === 0 && !hasSentInitialRef.current) {
         hasSentInitialRef.current = true;
-        sendMessage(conv.id, "请开始拷问这个灵感，帮我想清楚。");
+        sendMessage(conv.id, t("chat_hub.initial_prompt"));
       }
     });
   }, [thoughtId]);
@@ -206,8 +208,8 @@ export default function ChatHubPage() {
       setPlan(markdown);
     } catch (e) {
       const msg = errorMsg(e);
-      setPlan(`> 整理失败：${msg}`);
-      notify("EchoMind", `整理方案失败：${msg}`);
+      setPlan(t("chat_hub.synthesize_failed_plan", { msg }));
+      notify("EchoMind", t("chat_hub.synthesize_failed_notify", { msg }));
     } finally {
       setPlanLoading(false);
     }
@@ -237,7 +239,7 @@ export default function ChatHubPage() {
         <div className="flex items-center gap-3 px-8 py-4 border-b border-outline-variant/10 shrink-0">
           <div className="flex-1 min-w-0">
             <h1 className="text-xs font-headline font-bold text-primary uppercase tracking-[0.2em]">
-              对话
+              {t("chat_hub.header")}
             </h1>
             {thought && (
               <p className="text-[11px] text-on-surface-variant truncate mt-0.5">
@@ -250,14 +252,14 @@ export default function ChatHubPage() {
             <button
               onClick={handleSynthesizePlan}
               disabled={!conversation || messages.length === 0 || planLoading || isStreaming}
-              aria-label="整理为方案文档"
-              title="让 AI 把本次对话整理为可交付的方案文档"
+              aria-label={t("chat_hub.synthesize_aria")}
+              title={t("chat_hub.synthesize_title")}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-[12px] text-primary transition-all ghost-border disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-[16px]" aria-hidden="true">
                 {planLoading ? "progress_activity" : "description"}
               </span>
-              整理为方案
+              {t("chat_hub.synthesize_button")}
             </button>
             {!panelOpen && (
               <button
@@ -442,21 +444,21 @@ export default function ChatHubPage() {
             {/* Header */}
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-headline text-xs font-bold uppercase tracking-[0.2em] text-primary">
-                相关资源
+                {t("chat_hub.resources_title")}
               </h3>
               <div className="flex items-center gap-1">
                 <button
                   onClick={refreshResources}
                   disabled={resourcesLoading}
                   className="p-1.5 rounded-md text-on-surface-variant/40 hover:text-primary hover:bg-surface-container-high transition-all disabled:opacity-30"
-                  title="刷新资源"
+                  title={t("chat_hub.refresh_resources")}
                 >
                   <span className={`material-symbols-outlined text-[16px] ${resourcesLoading ? "animate-spin" : ""}`}>refresh</span>
                 </button>
                 <button
                   onClick={() => setPanelOpen(false)}
                   className="p-1.5 rounded-md text-on-surface-variant/40 hover:text-on-surface hover:bg-surface-container-high transition-all"
-                  title="收起面板"
+                  title={t("chat_hub.collapse_panel")}
                 >
                   <span className="material-symbols-outlined text-[16px]">right_panel_close</span>
                 </button>
@@ -473,7 +475,7 @@ export default function ChatHubPage() {
                     <div className="h-2 bg-on-surface/5 rounded w-2/3" />
                   </div>
                 ))}
-                <p className="text-[11px] text-on-surface-variant/40 text-center mt-4">AI 正在分析并推荐资源...</p>
+                <p className="text-[11px] text-on-surface-variant/40 text-center mt-4">{t("chat_hub.resources_analyzing")}</p>
               </div>
             )}
 
@@ -482,7 +484,7 @@ export default function ChatHubPage() {
               <div className="p-4 rounded-xl bg-error-container/10 ghost-border">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="material-symbols-outlined text-error/70 text-[20px]">cloud_off</span>
-                  <p className="text-xs font-semibold text-on-surface">资源加载失败</p>
+                  <p className="text-xs font-semibold text-on-surface">{t("chat_hub.resources_failed")}</p>
                 </div>
                 <p className="text-[11px] text-on-surface-variant/70 mb-3 leading-relaxed break-words">
                   {resourcesError}
@@ -491,7 +493,7 @@ export default function ChatHubPage() {
                   onClick={refreshResources}
                   className="text-[11px] font-bold text-primary hover:underline"
                 >
-                  重试
+                  {t("common.retry")}
                 </button>
               </div>
             )}
@@ -512,7 +514,7 @@ export default function ChatHubPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="text-[8px] text-primary/50 uppercase tracking-widest font-bold">
-                            {TYPE_LABELS[res.type] || res.type}
+                            {TYPE_LABEL_KEYS[res.type] ? t(TYPE_LABEL_KEYS[res.type]) : res.type}
                           </span>
                         </div>
                         <h4 className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors mt-0.5 leading-snug">
@@ -538,7 +540,7 @@ export default function ChatHubPage() {
             {!resourcesLoading && !resourcesError && resources.length === 0 && (
               <div className="text-center py-8">
                 <span className="material-symbols-outlined text-[32px] text-on-surface-variant/15 mb-2 block">explore</span>
-                <p className="text-xs text-on-surface-variant/40">暂无资源推荐</p>
+                <p className="text-xs text-on-surface-variant/40">{t("chat_hub.resources_empty")}</p>
               </div>
             )}
           </div>
@@ -547,10 +549,10 @@ export default function ChatHubPage() {
 
       <ConfirmDialog
         isOpen={!!withdrawTarget}
-        title="撤回消息"
-        message="撤回后，该消息及其后续的 AI 回复将被永久删除，无法恢复。"
-        confirmText="撤回"
-        cancelText="取消"
+        title={t("chat_hub.withdraw_title")}
+        message={t("chat_hub.withdraw_message")}
+        confirmText={t("chat_hub.withdraw_confirm")}
+        cancelText={t("common.cancel")}
         variant="warning"
         icon="warning"
         onConfirm={() => {
@@ -577,6 +579,7 @@ interface HomeThoughts {
 }
 
 function ChatHubPicker() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [home, setHome] = useState<HomeThoughts>({ recent: [], hot: [] });
   const [loading, setLoading] = useState(true);
@@ -597,31 +600,31 @@ function ChatHubPicker() {
       <div className="max-w-5xl mx-auto px-8 py-12">
         <div className="mb-10 text-center space-y-3">
           <span className="material-symbols-outlined text-5xl text-primary/40">forum</span>
-          <h2 className="text-xl font-headline font-bold text-on-surface">挑一个灵感开始对话</h2>
+          <h2 className="text-xl font-headline font-bold text-on-surface">{t("chat_hub.picker_heading")}</h2>
           <p className="text-sm text-on-surface-variant/60 max-w-md mx-auto">
-            从侧边栏选已有对话，或从下方挑一个灵感继续深聊。
+            {t("chat_hub.picker_subhead")}
           </p>
         </div>
 
         {loading && (
           <div className="flex items-center justify-center py-16 text-on-surface-variant gap-3">
             <span className="material-symbols-outlined animate-spin">progress_activity</span>
-            正在加载…
+            {t("chat_hub.picker_loading")}
           </div>
         )}
 
         {empty && (
           <div className="text-center py-20 bg-surface-container-low rounded-2xl">
             <span className="material-symbols-outlined text-5xl text-primary/30">lightbulb</span>
-            <p className="text-sm text-on-surface-variant mt-3">还没有灵感，先去首页记一条吧</p>
+            <p className="text-sm text-on-surface-variant mt-3">{t("chat_hub.picker_empty")}</p>
           </div>
         )}
 
         {!loading && !empty && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-            <ChatPickerColumn title="最近" thoughts={home.recent} onPick={open} />
+            <ChatPickerColumn title={t("chat_hub.picker_recent")} thoughts={home.recent} onPick={open} />
             {home.hot.length > 0 && (
-              <ChatPickerColumn title="对话最多" thoughts={home.hot} onPick={open} />
+              <ChatPickerColumn title={t("chat_hub.picker_hot")} thoughts={home.hot} onPick={open} />
             )}
           </div>
         )}
