@@ -28,7 +28,7 @@
 
 | ID | 是什么 | 工作量 | 来源 |
 |---|---|---|---|
-| **N2** | **同主题追加（thread / follow-up）** — 在一条灵感上追加新消息，多条聚合到同一主题；UI 主条 + 子条 thread；微信端识别"补充：xxx"语义自动 attach 到上一条 | 1-2 周<br>(schema 加 `parent_id` / `thread_id` 字段 + bridge_sync 兼容 + 桌面 ThoughtCard 渲染 + 微信 router 解析) | user 2026-05-28 |
+| **N2** | **同主题追加（thread / follow-up）** — phase 1（schema + cascade）✅ d2ac703；phase 2（folder-fold UI + AI 看完整 thread）✅ 1bf4137；**剩 phase 3-5**：微信 router 识别"补充：/追加：" + bridge sync 带 parent_id + 集成测试 | ≈ 3 天 | user 2026-05-28 |
 | D8 | 用户协议 / 隐私政策（"知情同意"叙事必备） | 1-2 周含外部 | §13 P2 #11 |
 | D9 | Landing Page — Vercel 部署 1 页（公开发布入口） | 2-3 天 | §13 P2 #12 |
 | D10 | 支付通道 — Stripe 国际 + 国内 Pingxx / 易支付 | 1 周 | §13 P2 #13 |
@@ -55,7 +55,6 @@
 
 ```
 立即（< 半天）：
-  N1 (chat 时间戳, 半天)
   D11 (DB 日志静默, 1h)
   D5 (e2e onboarding, 半天)
   D6 + D12 (各半天)
@@ -63,10 +62,10 @@
 近期（1-3 天）：
   D1 (测试覆盖, 1 天)
   D3 (Win 签名兜底文档, 1h)
+  N2 phase 3-5 (微信 router + bridge sync + 测试，≈ 3 天)
   D9 (Landing Page, 2-3 天)
 
 中期（1-2 周）：
-  N2 (thread / follow-up)
   D4 (Phase 4 三项)
   D8 (用户协议 / 隐私政策)
   D10 (支付通道)
