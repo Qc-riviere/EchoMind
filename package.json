@@ -20,11 +20,13 @@
     "@tauri-apps/plugin-updater": "^2",
     "date-fns": "^4.1.0",
     "docx": "^9.6.1",
+    "i18next": "^26.3.0",
     "lucide-react": "^1.0.1",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-force-graph-2d": "^1.29.1",
+    "react-i18next": "^17.0.8",
     "react-router-dom": "^7.13.2",
     "zustand": "^5.0.12"
   },

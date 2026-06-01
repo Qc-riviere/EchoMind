@@ -1,0 +1,49 @@
+{
+  "common": {
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "close": "Close",
+    "open": "Open",
+    "back": "Back",
+    "next": "Next",
+    "done": "Done",
+    "yes": "Yes",
+    "no": "No",
+    "search": "Search",
+    "more": "More"
+  },
+  "nav": {
+    "home": "Home",
+    "search": "Search",
+    "graph": "Graph",
+    "archive": "Archive",
+    "chat": "Chat",
+    "settings": "Settings",
+    "wechat_bridge": "WeChat Bridge",
+    "cloud_bridge": "Cloud Bridge"
+  },
+  "settings": {
+    "tabs": {
+      "llm": "LLM",
+      "embedding": "Embeddings",
+      "websearch": "Web Search",
+      "ai": "AI Behavior",
+      "skills": "Skills",
+      "appearance": "Appearance",
+      "data": "Data",
+      "about": "About"
+    },
+    "appearance": {
+      "language": "Language",
+      "language_zh": "中文",
+      "language_en": "English"
+    }
+  }
+}

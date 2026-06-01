@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import { useSettingStore } from "../stores/settingStore";
 import { useThemeStore } from "../stores/themeStore";
 import type { Skill, DiscoveredSkill } from "../lib/types";
 import { checkForUpdatesManual } from "../lib/updater";
+import { setLocale, SUPPORTED_LOCALES, type Locale } from "../i18n";
 
 const APP_VERSION = "0.3.7";
 
@@ -17,19 +19,22 @@ const LLM_PROVIDERS = [
 
 type SettingsTab = "llm" | "embedding" | "websearch" | "ai" | "skills" | "appearance" | "data" | "about";
 
-const NAV_ITEMS: { key: SettingsTab; icon: string; label: string }[] = [
-  { key: "llm", icon: "auto_awesome", label: "LLM 配置" },
-  { key: "embedding", icon: "hub", label: "向量嵌入" },
-  { key: "websearch", icon: "travel_explore", label: "联网搜索" },
-  { key: "ai", icon: "psychology", label: "AI 行为" },
-  { key: "skills", icon: "bolt", label: "技能" },
-  { key: "appearance", icon: "palette", label: "外观" },
-  { key: "data", icon: "database", label: "数据" },
-  { key: "about", icon: "info", label: "关于" },
+// Label is a translation key — resolved at render via t(). Icons + tab keys
+// stay literal because they don't depend on locale.
+const NAV_ITEMS: { key: SettingsTab; icon: string; labelKey: string }[] = [
+  { key: "llm", icon: "auto_awesome", labelKey: "settings.tabs.llm" },
+  { key: "embedding", icon: "hub", labelKey: "settings.tabs.embedding" },
+  { key: "websearch", icon: "travel_explore", labelKey: "settings.tabs.websearch" },
+  { key: "ai", icon: "psychology", labelKey: "settings.tabs.ai" },
+  { key: "skills", icon: "bolt", labelKey: "settings.tabs.skills" },
+  { key: "appearance", icon: "palette", labelKey: "settings.tabs.appearance" },
+  { key: "data", icon: "database", labelKey: "settings.tabs.data" },
+  { key: "about", icon: "info", labelKey: "settings.tabs.about" },
 ];
 
 export default function SettingsPage() {
   const { settings, fetchSettings, setSetting, deleteSetting } = useSettingStore();
+  const { t } = useTranslation();
   const [showKey, setShowKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -361,7 +366,7 @@ export default function SettingsPage() {
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px] shrink-0">{item.icon}</span>
-                <span className="truncate">{item.label}</span>
+                <span className="truncate">{t(item.labelKey)}</span>
               </button>
             ))}
           </nav>
@@ -1409,16 +1414,63 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
 
 function AppearanceTab({ labelClass }: { labelClass: string }) {
   const { theme, setTheme } = useThemeStore();
+  const { t, i18n } = useTranslation();
+  const setSetting = useSettingStore((s) => s.setSetting);
   const themes = [
     { key: "dark" as const, label: "暗色", icon: "dark_mode" },
     { key: "light" as const, label: "亮色", icon: "light_mode" },
     { key: "system" as const, label: "跟随系统", icon: "desktop_windows" },
   ];
 
+  const currentLocale = (
+    SUPPORTED_LOCALES.includes(i18n.language as Locale) ? i18n.language : "zh"
+  ) as Locale;
+
+  const handleLocale = async (loc: Locale) => {
+    if (loc === currentLocale) return;
+    setLocale(loc);
+    // Persist to the SQLite settings table so a localStorage wipe doesn't
+    // lose the user's choice. Failure to persist is non-fatal — the in-
+    // memory + localStorage state still tracks the new locale.
+    try {
+      await setSetting("ui_locale", loc);
+    } catch {
+      /* ignore */
+    }
+  };
+
   return (
     <section>
       <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">外观</h3>
       <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-6">
+        {/* Language switcher — wired in D23 phase 1. Most strings are still
+            Chinese for now; phase 2 sweeps the rest. */}
+        <div className="space-y-2">
+          <label className={labelClass}>{t("settings.appearance.language")}</label>
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleLocale("zh")}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                currentLocale === "zh"
+                  ? "bg-primary text-on-primary"
+                  : "bg-surface-container-highest text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              中文
+            </button>
+            <button
+              onClick={() => handleLocale("en")}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                currentLocale === "en"
+                  ? "bg-primary text-on-primary"
+                  : "bg-surface-container-highest text-on-surface-variant hover:text-on-surface"
+              }`}
+            >
+              English
+            </button>
+          </div>
+        </div>
+        <div className="h-px w-full bg-outline-variant/10" />
         <div className="space-y-2">
           <label className={labelClass}>主题</label>
           <div className="flex gap-3">
