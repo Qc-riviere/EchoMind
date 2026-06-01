@@ -70,7 +70,7 @@ export default function SettingsPage() {
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   // Banner shown after saving when local LLM config changed and the
-  // 「通过云桥调用 LLM」toggle is on — the VPS still holds the old key/model.
+  // "Route LLM via cloud bridge" toggle is on — the VPS still holds the old key/model.
   type BridgeStaleState = "stale" | "pushing" | "pushed" | "error" | null;
   const [bridgeStale, setBridgeStale] = useState<BridgeStaleState>(null);
   const [bridgeStaleError, setBridgeStaleError] = useState<string | null>(null);
@@ -234,7 +234,7 @@ export default function SettingsPage() {
       }
 
       // Web search (Tavily) — optional, grounds the resource recommender.
-      // Empty key → 删除设置，后端 fall back 到 LLM-only 路径。
+      // Empty key → delete the setting, backend falls back to LLM-only path.
       if (webSearchKey.trim()) {
         await setSetting("web_search_provider", webSearchProvider || "tavily");
         await setSetting("web_search_api_key", webSearchKey.trim());
@@ -346,8 +346,8 @@ export default function SettingsPage() {
           <span className="material-symbols-outlined text-[24px] text-primary">settings</span>
         </div>
         <div>
-          <h1 className="text-3xl font-headline font-bold text-on-surface">设置</h1>
-          <p className="text-sm text-on-surface-variant mt-1">配置你的思考环境。</p>
+          <h1 className="text-3xl font-headline font-bold text-on-surface">{t("settings.title")}</h1>
+          <p className="text-sm text-on-surface-variant mt-1">{t("settings.subtitle")}</p>
         </div>
       </div>
 
@@ -378,11 +378,11 @@ export default function SettingsPage() {
           {activeTab === "llm" && (
             <>
               <section>
-                <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">LLM 提供商</h3>
+                <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">{t("settings.llm.section_title")}</h3>
                 <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-6">
                   {/* Provider */}
                   <div className="space-y-2">
-                    <label className={labelClass}>服务商</label>
+                    <label className={labelClass}>{t("settings.llm.provider")}</label>
                     <div className="flex gap-2">
                       {LLM_PROVIDERS.map((p) => (
                         <button
@@ -425,9 +425,9 @@ export default function SettingsPage() {
 
                   {/* Model */}
                   <div className="space-y-2 relative" ref={modelDropdownRef}>
-                    <label className={labelClass}>模型</label>
+                    <label className={labelClass}>{t("settings.llm.model")}</label>
                     <div className="flex gap-2">
-                      <input type="text" value={model} onChange={(e) => setModel(e.target.value)} placeholder="如 gpt-4o-mini" className={inputClass} />
+                      <input type="text" value={model} onChange={(e) => setModel(e.target.value)} placeholder={t("settings.llm.model_placeholder")} className={inputClass} />
                       <button
                         onClick={() => {
                           // Toggle dropdown. If user has an API key, also fetch
@@ -499,12 +499,12 @@ export default function SettingsPage() {
                   <details className="group border-t border-outline-variant/10 pt-4">
                     <summary className="cursor-pointer flex items-center gap-2 text-xs font-headline uppercase tracking-widest text-on-surface-variant/60 hover:text-on-surface-variant select-none list-none [&::-webkit-details-marker]:hidden">
                       <span className="material-symbols-outlined text-[16px] transition-transform group-open:rotate-90">chevron_right</span>
-                      高级选项
+                      {t("settings.advanced")}
                     </summary>
                     <div className="mt-4 space-y-2">
-                      <label className={labelClass}>Base URL（可选）</label>
+                      <label className={labelClass}>{t("settings.llm.base_url")}</label>
                       <input type="text" value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder="https://api.openai.com/v1" className={inputClass} />
-                      <p className="text-[11px] text-on-surface-variant/50">DeepSeek 已自动填充。其他 provider 一般留空。</p>
+                      <p className="text-[11px] text-on-surface-variant/50">{t("settings.llm.base_url_hint")}</p>
                     </div>
                   </details>
                 </div>
@@ -512,12 +512,12 @@ export default function SettingsPage() {
 
               {/* Test Connection */}
               <section>
-                <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">连接测试</h3>
+                <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">{t("settings.test.section_title")}</h3>
                 <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h4 className="font-medium text-on-surface text-sm">验证 LLM 连接</h4>
-                      <p className="text-xs text-on-surface-variant mt-1">保存并测试当前配置。</p>
+                      <h4 className="font-medium text-on-surface text-sm">{t("settings.test.verify")}</h4>
+                      <p className="text-xs text-on-surface-variant mt-1">{t("settings.test.verify_desc")}</p>
                     </div>
                     <button
                       onClick={handleTest}
@@ -529,7 +529,7 @@ export default function SettingsPage() {
                       ) : (
                         <span className="material-symbols-outlined text-[18px]">bolt</span>
                       )}
-                      {testing ? "测试中…" : "测试"}
+                      {testing ? t("settings.test.testing") : t("settings.test.test")}
                     </button>
                   </div>
                   {testResult && (
@@ -550,22 +550,22 @@ export default function SettingsPage() {
                   <div className="mt-4 p-4 rounded-xl bg-amber-500/5 border border-amber-500/30 flex items-start gap-3">
                     <span className="material-symbols-outlined text-amber-400 mt-0.5">cloud_sync</span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-semibold text-on-surface">云桥仍在用旧 LLM 配置</div>
+                      <div className="text-sm font-semibold text-on-surface">{t("settings.bridge_stale.title")}</div>
                       <div className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                        本地 LLM 配置已更新，但「通过云桥调用 LLM」是开启的——微信 <code className="font-mono">/chat</code> 和其它走云桥的调用仍使用 VPS 上之前推送的 Key / 模型。
+                        {t("settings.bridge_stale.desc_a")}<code className="font-mono">/chat</code>{t("settings.bridge_stale.desc_b")}
                       </div>
                       <div className="mt-3 flex gap-2">
                         <button
                           onClick={handlePushToBridge}
                           className="px-3 py-1.5 text-xs font-medium rounded-lg bg-primary text-on-primary hover:bg-primary/90 transition-colors"
                         >
-                          推送到云桥
+                          {t("settings.bridge_stale.push")}
                         </button>
                         <button
                           onClick={() => setBridgeStale(null)}
                           className="px-3 py-1.5 text-xs rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors"
                         >
-                          稍后
+                          {t("settings.bridge_stale.later")}
                         </button>
                       </div>
                     </div>
@@ -574,18 +574,18 @@ export default function SettingsPage() {
                 {bridgeStale === "pushing" && (
                   <div className="mt-4 p-3 rounded-xl bg-amber-500/5 border border-amber-500/30 flex items-center gap-2 text-xs text-on-surface-variant">
                     <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
-                    正在推送到云桥…
+                    {t("settings.bridge_stale.pushing")}
                   </div>
                 )}
                 {bridgeStale === "pushed" && (
                   <div className="mt-4 p-3 rounded-xl bg-primary/10 border border-primary/30 flex items-center gap-2 text-xs text-primary">
                     <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                    已推送到云桥，新配置生效
+                    {t("settings.bridge_stale.pushed")}
                   </div>
                 )}
                 {bridgeStale === "error" && (
                   <div className="mt-4 p-3 rounded-xl bg-error-container/20 border border-error/30 text-xs text-error">
-                    推送失败：{bridgeStaleError ?? "未知错误"}
+                    {t("settings.bridge_stale.push_failed", { msg: bridgeStaleError ?? t("settings.bridge_stale.unknown_error") })}
                   </div>
                 )}
               </section>
@@ -595,15 +595,15 @@ export default function SettingsPage() {
           {/* Embedding Config */}
           {activeTab === "embedding" && (
             <section>
-              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">向量嵌入配置</h3>
+              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">{t("settings.embedding.section_title")}</h3>
               <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-6">
                 {/* Provider mode selector — the most common source of "search
                     broken" support requests was DeepSeek users whose embedding
                     silently fell back to OpenAI URL with a non-OpenAI key. */}
                 <div className="grid grid-cols-2 gap-3">
                   {([
-                    { key: "local", title: "本地嵌入", desc: "BGE-small-zh · 512维 · 离线 · 零成本", icon: "computer", recommended: true },
-                    { key: "cloud", title: "云端嵌入", desc: "OpenAI 兼容 · 需 API Key · 1536维", icon: "cloud", recommended: false },
+                    { key: "local", title: t("settings.embedding.local_title"), desc: t("settings.embedding.local_desc"), icon: "computer", recommended: true },
+                    { key: "cloud", title: t("settings.embedding.cloud_title"), desc: t("settings.embedding.cloud_desc"), icon: "cloud", recommended: false },
                   ] as const).map((opt) => (
                     <button
                       key={opt.key}
@@ -620,7 +620,7 @@ export default function SettingsPage() {
                         </span>
                         <span className={`text-sm font-semibold ${embProvider === opt.key ? "text-primary" : "text-on-surface"}`}>{opt.title}</span>
                         {opt.recommended && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary uppercase tracking-wider font-bold">推荐</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/15 text-primary uppercase tracking-wider font-bold">{t("settings.embedding.recommended")}</span>
                         )}
                       </div>
                       <p className="text-[11px] text-on-surface-variant mt-1.5 leading-relaxed">{opt.desc}</p>
@@ -631,7 +631,7 @@ export default function SettingsPage() {
                 {embProvider === "local" && (
                   <div className="flex items-start gap-3 text-sm text-on-surface-variant bg-surface-container px-4 py-3 rounded-xl">
                     <span className="material-symbols-outlined text-[18px] mt-0.5">info</span>
-                    <span>本地模式使用内置 BGE-small-zh-v1.5 模型（首次启动会自动下载约 90MB ONNX 文件），之后完全离线运行。保存后建议「数据 → 重建向量索引」一次。</span>
+                    <span>{t("settings.embedding.local_info")}</span>
                   </div>
                 )}
 
@@ -639,19 +639,19 @@ export default function SettingsPage() {
                 <details className="group border-t border-outline-variant/10 pt-4">
                   <summary className="cursor-pointer flex items-center gap-2 text-xs font-headline uppercase tracking-widest text-on-surface-variant/60 hover:text-on-surface-variant select-none list-none [&::-webkit-details-marker]:hidden">
                     <span className="material-symbols-outlined text-[16px] transition-transform group-open:rotate-90">chevron_right</span>
-                    高级选项 — 独立配置 Embedding
+                    {t("settings.embedding.advanced_emb")}
                   </summary>
                   <div className="mt-4 space-y-6">
 
                 {/* Independent API Key */}
                 <div className="space-y-2">
-                  <label className={labelClass}>独立 API Key（可选）</label>
+                  <label className={labelClass}>{t("settings.embedding.api_key_independent")}</label>
                   <div className="relative">
                     <input
                       type={showEmbKey ? "text" : "password"}
                       value={embApiKey}
                       onChange={(e) => setEmbApiKey(e.target.value)}
-                      placeholder="留空则与 LLM 共用 API Key"
+                      placeholder={t("settings.embedding.api_key_placeholder")}
                       className={inputClass}
                       style={{ paddingRight: "2.75rem" }}
                     />
@@ -669,7 +669,7 @@ export default function SettingsPage() {
                 {/* Model + Dimensions */}
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2 relative" ref={embModelDropdownRef}>
-                    <label className={labelClass}>模型名</label>
+                    <label className={labelClass}>{t("settings.embedding.model_name")}</label>
                     <div className="flex gap-2">
                       <input
                         type="text"
@@ -707,19 +707,19 @@ export default function SettingsPage() {
                     )}
                   </div>
                   <div className="space-y-2">
-                    <label className={labelClass}>维度</label>
+                    <label className={labelClass}>{t("settings.embedding.dimensions")}</label>
                     <input type="number" value={embDimensions} onChange={(e) => setEmbDimensions(e.target.value)} placeholder="1536" className={inputClass} />
                   </div>
                 </div>
 
                 {/* Base URL */}
                 <div className="space-y-2">
-                  <label className={labelClass}>API Base URL（可选）</label>
+                  <label className={labelClass}>{t("settings.embedding.api_base")}</label>
                   <input
                     type="text"
                     value={embBaseUrl}
                     onChange={(e) => setEmbBaseUrl(e.target.value)}
-                    placeholder={provider === "gemini" ? "自动使用 Gemini 端点" : "https://api.openai.com/v1/embeddings"}
+                    placeholder={provider === "gemini" ? t("settings.embedding.auto_gemini") : "https://api.openai.com/v1/embeddings"}
                     className={inputClass}
                   />
                 </div>
@@ -733,22 +733,20 @@ export default function SettingsPage() {
           {/* Web Search (Tavily) — grounds resource recommendations in real URLs */}
           {activeTab === "websearch" && (
             <section>
-              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">联网搜索</h3>
+              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">{t("settings.websearch.section_title")}</h3>
               <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-5">
                 <p className="text-xs text-on-surface-variant/70 leading-relaxed">
-                  对话页右侧的「相关资源」当前依靠 LLM 凭记忆推荐 URL，经常出现 404。
-                  配置一个搜索 API 后，后端会先做真实网页搜索，再让模型从可访问的候选里挑选，从而消灭 404。
-                  留空 = 走原 LLM 路径（保持兼容）。
+                  {t("settings.websearch.intro")}
                 </p>
 
                 <div className="space-y-2">
-                  <label className={labelClass}>搜索后端</label>
+                  <label className={labelClass}>{t("settings.websearch.backend")}</label>
                   <select
                     value={webSearchProvider}
                     onChange={(e) => setWebSearchProvider(e.target.value)}
                     className={inputClass}
                   >
-                    <option value="tavily">Tavily（推荐 · 1000 次/月免费）</option>
+                    <option value="tavily">{t("settings.websearch.tavily_option")}</option>
                   </select>
                 </div>
 
@@ -766,7 +764,7 @@ export default function SettingsPage() {
                       type="button"
                       onClick={() => setShowWebSearchKey((v) => !v)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 hover:text-on-surface"
-                      aria-label={showWebSearchKey ? "隐藏" : "显示"}
+                      aria-label={showWebSearchKey ? t("settings.websearch.hide") : t("settings.websearch.show")}
                     >
                       <span className="material-symbols-outlined text-[18px]">
                         {showWebSearchKey ? "visibility_off" : "visibility"}
@@ -774,7 +772,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   <p className="text-[11px] text-on-surface-variant/50">
-                    去
+                    {t("settings.websearch.key_hint_a")}
                     <a
                       href="https://app.tavily.com/home"
                       target="_blank"
@@ -783,7 +781,7 @@ export default function SettingsPage() {
                     >
                       app.tavily.com
                     </a>
-                    注册 → Dashboard 复制 API Key。
+                    {t("settings.websearch.key_hint_b")}
                   </p>
                 </div>
 
@@ -797,7 +795,7 @@ export default function SettingsPage() {
                     <span className="material-symbols-outlined text-[16px]">
                       {webSearchTesting ? "progress_activity" : "wifi_tethering"}
                     </span>
-                    {webSearchTesting ? "测试中…" : "测试连接"}
+                    {webSearchTesting ? t("settings.websearch.testing") : t("settings.websearch.test_connection")}
                   </button>
                   {webSearchTestResult && (
                     <div
@@ -821,38 +819,38 @@ export default function SettingsPage() {
           {/* AI Behavior */}
           {activeTab === "ai" && (
             <section>
-              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">AI 行为</h3>
+              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">{t("settings.ai.section_title")}</h3>
               <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-6">
                 <ToggleRow
-                  title="自动标签"
-                  desc="让 AI 自动为新想法生成 domain 与 tags。"
+                  title={t("settings.ai.auto_tag_title")}
+                  desc={t("settings.ai.auto_tag_desc")}
                   defaultOn
                 />
                 <div className="h-px w-full bg-outline-variant/10" />
                 <ToggleRow
-                  title="语义关联"
-                  desc="为相似想法推荐关联条目。"
+                  title={t("settings.ai.semantic_title")}
+                  desc={t("settings.ai.semantic_desc")}
                   defaultOn
                 />
                 <div className="h-px w-full bg-outline-variant/10" />
                 <ToggleRow
-                  title="保存时自动分析"
-                  desc="新想法保存后自动调用 AI 生成上下文。"
+                  title={t("settings.ai.auto_analyze_title")}
+                  desc={t("settings.ai.auto_analyze_desc")}
                   defaultOn
                 />
 
                 <details className="group border-t border-outline-variant/10 pt-4">
                   <summary className="cursor-pointer flex items-center gap-2 text-xs font-headline uppercase tracking-widest text-on-surface-variant/60 hover:text-on-surface-variant select-none list-none [&::-webkit-details-marker]:hidden">
                     <span className="material-symbols-outlined text-[16px] transition-transform group-open:rotate-90">chevron_right</span>
-                    高级选项
+                    {t("settings.advanced")}
                   </summary>
                   <div className="mt-4 space-y-3">
-                    <label className={labelClass}>模型创造性（Temperature）</label>
+                    <label className={labelClass}>{t("settings.ai.temperature")}</label>
                     <input type="range" min="0" max="100" defaultValue="70" className="w-full accent-primary" />
                     <div className="flex justify-between text-[11px] text-on-surface-variant font-mono">
-                      <span>严谨</span>
-                      <span>均衡</span>
-                      <span>发散</span>
+                      <span>{t("settings.ai.temp_strict")}</span>
+                      <span>{t("settings.ai.temp_balanced")}</span>
+                      <span>{t("settings.ai.temp_creative")}</span>
                     </div>
                   </div>
                 </details>
@@ -873,54 +871,54 @@ export default function SettingsPage() {
           {/* Data Management */}
           {activeTab === "data" && (
             <section>
-              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">数据管理</h3>
+              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">{t("settings.data.section_title")}</h3>
               <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium text-on-surface text-sm">导出全部数据</h4>
-                    <p className="text-xs text-on-surface-variant mt-1">将所有想法、对话与设置导出为 JSON 文件。</p>
+                    <h4 className="font-medium text-on-surface text-sm">{t("settings.data.export_title")}</h4>
+                    <p className="text-xs text-on-surface-variant mt-1">{t("settings.data.export_desc")}</p>
                   </div>
                   <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all">
                     <span className="material-symbols-outlined text-[18px]">download</span>
-                    导出
+                    {t("settings.data.export_button")}
                   </button>
                 </div>
                 <div className="h-px w-full bg-outline-variant/10" />
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium text-on-surface text-sm">导入数据</h4>
-                    <p className="text-xs text-on-surface-variant mt-1">从之前导出的文件还原。</p>
+                    <h4 className="font-medium text-on-surface text-sm">{t("settings.data.import_title")}</h4>
+                    <p className="text-xs text-on-surface-variant mt-1">{t("settings.data.import_desc")}</p>
                   </div>
                   <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all">
                     <span className="material-symbols-outlined text-[18px]">upload</span>
-                    导入
+                    {t("settings.data.import_button")}
                   </button>
                 </div>
                 <details className="group border-t border-outline-variant/10 pt-4">
                   <summary className="cursor-pointer flex items-center gap-2 text-xs font-headline uppercase tracking-widest text-on-surface-variant/60 hover:text-on-surface-variant select-none list-none [&::-webkit-details-marker]:hidden">
                     <span className="material-symbols-outlined text-[16px] transition-transform group-open:rotate-90">chevron_right</span>
-                    高级选项 — 危险操作
+                    {t("settings.data.advanced_danger")}
                   </summary>
                   <div className="mt-4 space-y-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium text-on-surface text-sm">重建向量索引</h4>
-                        <p className="text-xs text-on-surface-variant mt-1">重新嵌入所有想法以恢复语义搜索，可能需要一会儿。</p>
+                        <h4 className="font-medium text-on-surface text-sm">{t("settings.data.rebuild_title")}</h4>
+                        <p className="text-xs text-on-surface-variant mt-1">{t("settings.data.rebuild_desc")}</p>
                       </div>
                       <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-all">
                         <span className="material-symbols-outlined text-[18px]">refresh</span>
-                        重建
+                        {t("settings.data.rebuild_button")}
                       </button>
                     </div>
                     <div className="h-px w-full bg-outline-variant/10" />
                     <div className="flex items-center justify-between">
                       <div>
-                        <h4 className="font-medium text-error text-sm">清空全部数据</h4>
-                        <p className="text-xs text-on-surface-variant mt-1">永久删除所有想法、对话与嵌入向量。</p>
+                        <h4 className="font-medium text-error text-sm">{t("settings.data.wipe_title")}</h4>
+                        <p className="text-xs text-on-surface-variant mt-1">{t("settings.data.wipe_desc")}</p>
                       </div>
                       <button className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl bg-error-container/20 text-error hover:bg-error-container/30 transition-all">
                         <span className="material-symbols-outlined text-[18px]">delete_forever</span>
-                        清空
+                        {t("settings.data.wipe_button")}
                       </button>
                     </div>
                   </div>
@@ -932,31 +930,31 @@ export default function SettingsPage() {
           {/* About */}
           {activeTab === "about" && (
             <section>
-              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">关于 EchoMind</h3>
+              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">{t("settings.about.section_title")}</h3>
               <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-4">
                 <div className="flex items-center gap-4">
                   <img src="/logo.svg" alt="EchoMind" className="w-12 h-12" />
                   <div>
                     <h4 className="text-lg font-headline font-bold text-on-surface">EchoMind</h4>
-                    <p className="text-xs text-on-surface-variant">灵感笔记 · v{APP_VERSION}</p>
+                    <p className="text-xs text-on-surface-variant">{t("settings.about.tagline_with_version", { version: APP_VERSION })}</p>
                   </div>
                 </div>
                 <div className="h-px w-full bg-outline-variant/10" />
                 <p className="text-sm text-on-surface-variant leading-relaxed">
-                  本地优先的 AI 灵感伙伴，帮你记录、补完并深挖每一条想法。基于 Tauri、React 与 Rust 构建。
+                  {t("settings.about.description")}
                 </p>
                 <div className="h-px w-full bg-outline-variant/10" />
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-on-surface">检查更新</p>
-                    <p className="text-xs text-on-surface-variant mt-0.5">启动时会自动检查；点这里可以立即检查一次。</p>
+                    <p className="text-sm font-semibold text-on-surface">{t("settings.about.check_updates_title")}</p>
+                    <p className="text-xs text-on-surface-variant mt-0.5">{t("settings.about.check_updates_desc")}</p>
                   </div>
                   <button
                     onClick={() => { void checkForUpdatesManual(); }}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl bg-surface-container text-on-surface text-sm font-medium hover:bg-surface-container-high active:scale-[0.98] transition-all"
                   >
                     <span className="material-symbols-outlined text-[18px]">refresh</span>
-                    检查更新
+                    {t("settings.about.check_updates_button")}
                   </button>
                 </div>
               </div>
@@ -971,7 +969,7 @@ export default function SettingsPage() {
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-bold hover:brightness-110 active:scale-[0.98] disabled:opacity-50 transition-all"
             >
               <span className="material-symbols-outlined text-[18px]">save</span>
-              {saved ? "已保存" : saving ? "保存中…" : "保存更改"}
+              {saved ? t("settings.saved") : saving ? t("settings.saving") : t("settings.save_changes")}
             </button>
           </div>
         </div>
@@ -994,6 +992,7 @@ Your prompt template here. Use {{topic}} for parameters.
 `;
 
 function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass: string }) {
+  const { t } = useTranslation();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillsDir, setSkillsDir] = useState("");
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -1134,14 +1133,14 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
       {/* Skills list */}
       <section>
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary">技能</h3>
+          <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary">{t("settings.skills_tab.section_title")}</h3>
           <button
             onClick={startCreate}
             disabled={isEditorOpen}
             className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50 transition-all"
           >
             <span className="material-symbols-outlined text-[16px]">add</span>
-            新建技能
+            {t("settings.skills_tab.new_skill")}
           </button>
         </div>
 
@@ -1193,14 +1192,14 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
                     onClick={() => startEdit(skill)}
                     disabled={isEditorOpen}
                     className="p-2 rounded-lg text-on-surface-variant/40 hover:text-primary hover:bg-surface-container-high transition-all disabled:opacity-30"
-                    title="编辑"
+                    title={t("settings.skills_tab.edit")}
                   >
                     <span className="material-symbols-outlined text-[16px]">edit</span>
                   </button>
                   <button
                     onClick={() => setDeleteTarget(skill.name)}
                     className="p-2 rounded-lg text-on-surface-variant/40 hover:text-error hover:bg-error-container/10 transition-all"
-                    title="删除"
+                    title={t("settings.skills_tab.delete")}
                   >
                     <span className="material-symbols-outlined text-[16px]">delete</span>
                   </button>
@@ -1212,8 +1211,8 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
           {skills.length === 0 && (
             <div className="text-center py-12">
               <span className="material-symbols-outlined text-[40px] text-on-surface-variant/15 mb-3 block">bolt</span>
-              <p className="text-sm text-on-surface-variant/40">还没有技能</p>
-              <p className="text-xs text-on-surface-variant/30 mt-1">新建一个，或把 .md 文件放进技能目录</p>
+              <p className="text-sm text-on-surface-variant/40">{t("settings.skills_tab.empty_title")}</p>
+              <p className="text-xs text-on-surface-variant/30 mt-1">{t("settings.skills_tab.empty_hint")}</p>
             </div>
           )}
         </div>
@@ -1223,7 +1222,7 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
       <section>
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary">
-            从其它 AI 工具导入
+            {t("settings.skills_tab.import_section_title")}
           </h3>
           <button
             onClick={handleScan}
@@ -1235,7 +1234,7 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
             ) : (
               <span className="material-symbols-outlined text-[16px]">radar</span>
             )}
-            {scanning ? "扫描中…" : "扫描"}
+            {scanning ? t("settings.skills_tab.scanning") : t("settings.skills_tab.scan")}
           </button>
         </div>
 
@@ -1244,7 +1243,7 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
             <div className="text-center py-8">
               <span className="material-symbols-outlined text-[32px] text-on-surface-variant/15 mb-3 block">search</span>
               <p className="text-xs text-on-surface-variant/40">
-                扫描 ~/.claude、~/.cursor、~/.codex 中可导入的技能
+                {t("settings.skills_tab.scan_hint")}
               </p>
             </div>
           )}
@@ -1252,14 +1251,14 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
           {scanning && (
             <div className="text-center py-8">
               <span className="material-symbols-outlined animate-spin text-[28px] text-primary/40 mb-3 block">progress_activity</span>
-              <p className="text-xs text-on-surface-variant/40">正在扫描 AI 工具目录…</p>
+              <p className="text-xs text-on-surface-variant/40">{t("settings.skills_tab.scan_in_progress")}</p>
             </div>
           )}
 
           {scanDone && discovered.length === 0 && (
             <div className="text-center py-8">
               <span className="material-symbols-outlined text-[32px] text-on-surface-variant/15 mb-3 block">check_circle</span>
-              <p className="text-xs text-on-surface-variant/40">没找到新技能（全部已导入）</p>
+              <p className="text-xs text-on-surface-variant/40">{t("settings.skills_tab.scan_no_new")}</p>
             </div>
           )}
 
@@ -1274,8 +1273,8 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
                   <span className="material-symbols-outlined text-[16px]">
                     {selected.size === discovered.length ? "check_box" : selected.size > 0 ? "indeterminate_check_box" : "check_box_outline_blank"}
                   </span>
-                  {selected.size === discovered.length ? "取消全选" : "全选"}
-                  <span className="text-on-surface-variant/40">（共 {discovered.length} 个）</span>
+                  {selected.size === discovered.length ? t("settings.skills_tab.deselect_all") : t("settings.skills_tab.select_all")}
+                  <span className="text-on-surface-variant/40">{t("settings.skills_tab.total_count", { count: discovered.length })}</span>
                 </button>
                 {selected.size > 0 && (
                   <button
@@ -1288,7 +1287,7 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
                     ) : (
                       <span className="material-symbols-outlined text-[14px]">download</span>
                     )}
-                    导入 {selected.size} 个
+                    {t("settings.skills_tab.import_n", { count: selected.size })}
                   </button>
                 )}
               </div>
@@ -1331,11 +1330,11 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
       {isEditorOpen && (
         <section>
           <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">
-            {creating ? "新建技能" : `编辑：${editing}`}
+            {creating ? t("settings.skills_tab.editor_new_title") : t("settings.skills_tab.editor_edit_title", { name: editing })}
           </h3>
           <div className="bg-surface-container-low rounded-2xl ghost-border p-6 space-y-4">
             <div className="space-y-2">
-              <label className={labelClass}>文件名</label>
+              <label className={labelClass}>{t("settings.skills_tab.filename")}</label>
               <input
                 type="text"
                 value={editorFilename}
@@ -1345,7 +1344,7 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
               />
             </div>
             <div className="space-y-2">
-              <label className={labelClass}>内容（YAML frontmatter + Markdown）</label>
+              <label className={labelClass}>{t("settings.skills_tab.content_label")}</label>
               <textarea
                 ref={editorRef}
                 value={editorContent}
@@ -1366,14 +1365,14 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
                 onClick={() => { setEditing(null); setCreating(false); setError(null); }}
                 className="px-5 py-2.5 rounded-xl text-sm font-medium text-on-surface-variant ghost-border hover:bg-surface-container-high transition-all"
               >
-                取消
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleSave}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-primary text-on-primary hover:brightness-110 transition-all"
               >
                 <span className="material-symbols-outlined text-[16px]">save</span>
-                保存
+                {t("common.save")}
               </button>
             </div>
           </div>
@@ -1386,23 +1385,23 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
           <div className="bg-surface-container rounded-3xl ghost-border p-6 w-[360px] shadow-xl">
             <div className="flex items-center gap-3 mb-3">
               <span className="material-symbols-outlined text-error">warning</span>
-              <h3 className="font-headline font-bold text-sm text-on-surface">删除技能</h3>
+              <h3 className="font-headline font-bold text-sm text-on-surface">{t("settings.skills_tab.delete_skill_title")}</h3>
             </div>
             <p className="text-sm text-on-surface-variant mb-5">
-              确定要删除 <strong>{deleteTarget}</strong> 吗？该操作不可撤销。
+              {t("settings.skills_tab.delete_confirm_a")}<strong>{deleteTarget}</strong>{t("settings.skills_tab.delete_confirm_b")}
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setDeleteTarget(null)}
                 className="flex-1 py-2 rounded-xl text-xs font-bold text-on-surface-variant ghost-border hover:bg-surface-container-high transition-all"
               >
-                取消
+                {t("common.cancel")}
               </button>
               <button
                 onClick={() => handleDelete(deleteTarget)}
                 className="flex-1 py-2 rounded-xl text-xs font-bold bg-error text-on-error hover:brightness-110 transition-all"
               >
-                删除
+                {t("common.delete")}
               </button>
             </div>
           </div>
@@ -1417,9 +1416,9 @@ function AppearanceTab({ labelClass }: { labelClass: string }) {
   const { t, i18n } = useTranslation();
   const setSetting = useSettingStore((s) => s.setSetting);
   const themes = [
-    { key: "dark" as const, label: "暗色", icon: "dark_mode" },
-    { key: "light" as const, label: "亮色", icon: "light_mode" },
-    { key: "system" as const, label: "跟随系统", icon: "desktop_windows" },
+    { key: "dark" as const, label: t("settings.appearance.theme_dark"), icon: "dark_mode" },
+    { key: "light" as const, label: t("settings.appearance.theme_light"), icon: "light_mode" },
+    { key: "system" as const, label: t("settings.appearance.theme_system"), icon: "desktop_windows" },
   ];
 
   const currentLocale = (
@@ -1441,7 +1440,7 @@ function AppearanceTab({ labelClass }: { labelClass: string }) {
 
   return (
     <section>
-      <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">外观</h3>
+      <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">{t("settings.appearance.section_title")}</h3>
       <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-6">
         {/* Language switcher — wired in D23 phase 1. Most strings are still
             Chinese for now; phase 2 sweeps the rest. */}
@@ -1456,7 +1455,7 @@ function AppearanceTab({ labelClass }: { labelClass: string }) {
                   : "bg-surface-container-highest text-on-surface-variant hover:text-on-surface"
               }`}
             >
-              中文
+              {t("settings.appearance.language_zh")}
             </button>
             <button
               onClick={() => handleLocale("en")}
@@ -1466,13 +1465,13 @@ function AppearanceTab({ labelClass }: { labelClass: string }) {
                   : "bg-surface-container-highest text-on-surface-variant hover:text-on-surface"
               }`}
             >
-              English
+              {t("settings.appearance.language_en")}
             </button>
           </div>
         </div>
         <div className="h-px w-full bg-outline-variant/10" />
         <div className="space-y-2">
-          <label className={labelClass}>主题</label>
+          <label className={labelClass}>{t("settings.appearance.theme")}</label>
           <div className="flex gap-3">
             {themes.map((t) => (
               <button
@@ -1492,12 +1491,12 @@ function AppearanceTab({ labelClass }: { labelClass: string }) {
         </div>
         <div className="h-px w-full bg-outline-variant/10" />
         <ToggleRow
-          title="紧凑模式"
-          desc="减小间距与字号，提高信息密度。"
+          title={t("settings.appearance.compact_title")}
+          desc={t("settings.appearance.compact_desc")}
         />
         <div className="h-px w-full bg-outline-variant/10" />
         <div className="space-y-2">
-          <label className={labelClass}>字体大小</label>
+          <label className={labelClass}>{t("settings.appearance.font_size")}</label>
           <input type="range" min="12" max="20" defaultValue="14" className="w-full accent-primary" />
           <div className="flex justify-between text-[11px] text-on-surface-variant font-mono">
             <span>12px</span>
