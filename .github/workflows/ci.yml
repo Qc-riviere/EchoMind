@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Cancel in-flight runs when a new commit lands on the same ref — saves CI
+# minutes on push-heavy days.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: cargo test (workspace minus tauri main)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # The `echomind` main crate links against tauri / webkit2gtk and only
+      # exists to package the desktop binary — it has no Rust tests of its
+      # own. Excluding it lets CI skip the gtk/webkit apt dance and finish
+      # in under a minute. Real desktop-binary build is exercised by
+      # desktop-release.yml on tagged releases.
+      - name: cargo test
+        working-directory: src-tauri
+        run: cargo test --workspace --exclude echomind --locked

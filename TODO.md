@@ -11,7 +11,6 @@
 
 | ID | 是什么 | 工作量 | 来源 |
 |---|---|---|---|
-| D1 | **自动化测试覆盖** — 至少 4-6 个集成测试（bridge sync 401 退避 / embedding fallback 8 组合 / synthesize max_tokens 传递 / agent tool dedup），CI 加 `cargo test --workspace` | 1 天 | audit B1 |
 | D2 | **Mac 代码签名** — Apple Developer ID 注册 + signing pipeline 接入 desktop-release.yml | \$99 + 半天 | §13 P1 #5 |
 | D3 | **Windows 签名兜底文档** — SmartScreen 提示用户右键打开（短期，长期上 EV 证书） | 1 小时 | §13 P1 #5 |
 
@@ -35,6 +34,7 @@
 | D11 | DB 迁移日志静默化（`ALTER TABLE` 满屏不专业） | 1 小时 | §13 P2 #15 |
 | D12 | OpenClaw 官方文档阅读，记录 iLink 限流上限 | 0.5 天 | MVP 报告 |
 | D13 | Closed Alpha 申请表（Tally / 飞书）+ 微信反馈群 | 半天 | MVP 报告 |
+| D1b | **synthesize max_tokens 集成测试** — D1 第一轮覆盖了 4 文件 24 tests（embedding fallback 8 / N2 thoughts tree 8 / agent dedup 3 / bridge 401+refresh 5）；synthesize max_tokens 传递需要 LLM provider trait 抽象注入 mock，工程量大留作 follow-up | 0.5d | D1 spec 余项 |
 
 ## 🟩 P3 — 长期演进
 
@@ -60,7 +60,6 @@
   D6 + D12 (各半天)
 
 近期（1-3 天）：
-  D1 (测试覆盖, 1 天)
   D3 (Win 签名兜底文档, 1h)
   N2 phase 3-5 (微信 router + bridge sync + 测试，≈ 3 天)
   D9 (Landing Page, 2-3 天)
