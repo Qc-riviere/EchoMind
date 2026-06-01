@@ -873,7 +873,12 @@ impl EchoMind {
 
     /// Send a chat message and get the full AI response (non-streaming).
     /// Build the chat system prompt with all available thought context.
-    fn build_chat_system_prompt(&self, thought: &Thought, related_context: &str) -> String {
+    fn build_chat_system_prompt(
+        &self,
+        thought: &Thought,
+        related_context: &str,
+        appendices: &[Thought],
+    ) -> String {
         let mut system = format!(
             "{}\n\n---\n用户正在拷问的灵感：\n「{}」",
             INTERROGATION_SYSTEM_PROMPT, thought.content
@@ -927,6 +932,17 @@ impl EchoMind {
             system.push_str(&format!("\n\n用户的相关历史灵感：\n{}", related_context));
         }
 
+        // N2 — append follow-up children (sorted by creation time) so the AI
+        // sees the entire thread, not just the root note. Skip if none.
+        if !appendices.is_empty() {
+            let mut sorted: Vec<&Thought> = appendices.iter().collect();
+            sorted.sort_by(|a, b| a.created_at.cmp(&b.created_at));
+            system.push_str("\n\n用户后续追加内容（按时间先后）：");
+            for (i, t) in sorted.iter().enumerate() {
+                system.push_str(&format!("\n{}. {}", i + 1, t.content));
+            }
+        }
+
         system
     }
 
@@ -936,7 +952,7 @@ impl EchoMind {
         content: &str,
     ) -> Result<String, String> {
         // Save user message and load context
-        let (thought, related_context, history, provider_type, config) = {
+        let (thought, appendices, related_context, history, provider_type, config) = {
             let conn = self.conn()?;
 
             conversations::add_message(&conn, conversation_id, "user", content)
@@ -946,6 +962,10 @@ impl EchoMind {
                 .map_err(|e| e.to_string())?;
             let thought = thoughts::get_thought(&conn, &conv.thought_id)
                 .map_err(|e| e.to_string())?;
+            // N2 — include the entire follow-up subtree so the AI sees the
+            // full thread, not just the anchor note.
+            let appendices = thoughts::list_descendants(&conn, &thought.id)
+                .unwrap_or_default();
 
             let related = vectors::find_related(&conn, &conv.thought_id, 3).unwrap_or_default();
             let mut related_context = String::new();
@@ -966,11 +986,11 @@ impl EchoMind {
                 .collect();
 
             let (pt, cfg) = Self::load_llm_config_from_conn(&conn)?;
-            (thought, related_context, history, pt, cfg)
+            (thought, appendices, related_context, history, pt, cfg)
         };
 
         // Build system prompt with full thought context including file content
-        let system = self.build_chat_system_prompt(&thought, &related_context);
+        let system = self.build_chat_system_prompt(&thought, &related_context, &appendices);
 
         let mut messages = vec![ChatMessage {
             role: "system".to_string(),
@@ -1001,7 +1021,7 @@ impl EchoMind {
         tx: tokio::sync::mpsc::Sender<String>,
     ) -> Result<String, String> {
         // Save user message and load context
-        let (thought, related_context, history, provider_type, config) = {
+        let (thought, appendices, related_context, history, provider_type, config) = {
             let conn = self.conn()?;
 
             conversations::add_message(&conn, conversation_id, "user", content)
@@ -1011,6 +1031,8 @@ impl EchoMind {
                 .map_err(|e| e.to_string())?;
             let thought = thoughts::get_thought(&conn, &conv.thought_id)
                 .map_err(|e| e.to_string())?;
+            let appendices = thoughts::list_descendants(&conn, &thought.id)
+                .unwrap_or_default();
 
             let related = vectors::find_related(&conn, &conv.thought_id, 3).unwrap_or_default();
             let mut related_context = String::new();
@@ -1031,11 +1053,11 @@ impl EchoMind {
                 .collect();
 
             let (pt, cfg) = Self::load_llm_config_from_conn(&conn)?;
-            (thought, related_context, history, pt, cfg)
+            (thought, appendices, related_context, history, pt, cfg)
         };
 
         // Build system prompt with full thought context including file content
-        let system = self.build_chat_system_prompt(&thought, &related_context);
+        let system = self.build_chat_system_prompt(&thought, &related_context, &appendices);
 
         let mut messages = vec![ChatMessage {
             role: "system".to_string(),
@@ -1083,7 +1105,7 @@ impl EchoMind {
         content: &str,
         tx: tokio::sync::mpsc::Sender<agent::AgentEvent>,
     ) -> Result<String, String> {
-        let (thought, related_context, history, provider_type, config) = {
+        let (thought, appendices, related_context, history, provider_type, config) = {
             let conn = self.conn()?;
             conversations::add_message(&conn, conversation_id, "user", content)
                 .map_err(|e| e.to_string())?;
@@ -1092,6 +1114,8 @@ impl EchoMind {
                 .map_err(|e| e.to_string())?;
             let thought = thoughts::get_thought(&conn, &conv.thought_id)
                 .map_err(|e| e.to_string())?;
+            let appendices = thoughts::list_descendants(&conn, &thought.id)
+                .unwrap_or_default();
 
             let related = vectors::find_related(&conn, &conv.thought_id, 3).unwrap_or_default();
             let mut related_context = String::new();
@@ -1109,10 +1133,10 @@ impl EchoMind {
                 .collect();
 
             let (pt, cfg) = Self::load_llm_config_from_conn(&conn)?;
-            (thought, related_context, history, pt, cfg)
+            (thought, appendices, related_context, history, pt, cfg)
         };
 
-        let system = self.build_chat_system_prompt(&thought, &related_context);
+        let system = self.build_chat_system_prompt(&thought, &related_context, &appendices);
         let mut messages: Vec<AgentMessage> =
             vec![AgentMessage::System { content: system }];
         for (role, content, reasoning_content) in history {
