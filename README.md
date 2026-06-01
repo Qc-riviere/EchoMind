@@ -1,5 +1,7 @@
 # EchoMind
 
+> 🌐 **中文** · [English](./README.en.md)
+
 灵感笔记 · 跨设备记录 + AI 自动整理 + 偶尔深度对话
 
 ## 核心特性
