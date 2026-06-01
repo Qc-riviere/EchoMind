@@ -15,11 +15,12 @@ const LLM_PROVIDERS = [
   { value: "deepseek", label: "DeepSeek", backend: "openai", defaultModel: "deepseek-chat", defaultBaseUrl: "https://api.deepseek.com/v1" },
 ];
 
-type SettingsTab = "llm" | "embedding" | "ai" | "skills" | "appearance" | "data" | "about";
+type SettingsTab = "llm" | "embedding" | "websearch" | "ai" | "skills" | "appearance" | "data" | "about";
 
 const NAV_ITEMS: { key: SettingsTab; icon: string; label: string }[] = [
   { key: "llm", icon: "auto_awesome", label: "LLM 配置" },
   { key: "embedding", icon: "hub", label: "向量嵌入" },
+  { key: "websearch", icon: "travel_explore", label: "联网搜索" },
   { key: "ai", icon: "psychology", label: "AI 行为" },
   { key: "skills", icon: "bolt", label: "技能" },
   { key: "appearance", icon: "palette", label: "外观" },
@@ -53,6 +54,12 @@ export default function SettingsPage() {
   const [availableEmbModels, setAvailableEmbModels] = useState<string[]>([]);
   const [loadingEmbModels, setLoadingEmbModels] = useState(false);
   const [showEmbModelDropdown, setShowEmbModelDropdown] = useState(false);
+
+  const [webSearchProvider, setWebSearchProvider] = useState("tavily");
+  const [webSearchKey, setWebSearchKey] = useState("");
+  const [showWebSearchKey, setShowWebSearchKey] = useState(false);
+  const [webSearchTesting, setWebSearchTesting] = useState(false);
+  const [webSearchTestResult, setWebSearchTestResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -116,6 +123,9 @@ export default function SettingsPage() {
     setEmbApiKey(settings["embedding_api_key"] || "");
     setEmbModel(settings["embedding_model"] || "");
     setEmbDimensions(settings["embedding_dimensions"] || "1536");
+
+    setWebSearchProvider(settings["web_search_provider"] || "tavily");
+    setWebSearchKey(settings["web_search_api_key"] || "");
     // Infer current embedding mode: explicit "local" setting wins; else if
     // base_url literally says "local" treat as local; otherwise cloud.
     const provSetting = (settings["embedding_provider"] || "").toLowerCase();
@@ -218,6 +228,16 @@ export default function SettingsPage() {
         await setSetting("embedding_dimensions", embDimensions || "1536");
       }
 
+      // Web search (Tavily) — optional, grounds the resource recommender.
+      // Empty key → 删除设置，后端 fall back 到 LLM-only 路径。
+      if (webSearchKey.trim()) {
+        await setSetting("web_search_provider", webSearchProvider || "tavily");
+        await setSetting("web_search_api_key", webSearchKey.trim());
+      } else {
+        await deleteSetting("web_search_provider");
+        await deleteSetting("web_search_api_key");
+      }
+
       // Update snapshot now that the save succeeded.
       savedLlmRef.current = { provider, apiKey, model: finalModel, baseUrl: finalBaseUrl };
 
@@ -268,6 +288,22 @@ export default function SettingsPage() {
     } catch (e) {
       setTestResult({ ok: false, message: errorMsg(e) });
     } finally { setTesting(false); }
+  };
+
+  const handleWebSearchTest = async () => {
+    setWebSearchTesting(true);
+    setWebSearchTestResult(null);
+    try {
+      // Persist first so backend reads the key the user just typed (mirrors
+      // handleTest's save-then-test pattern).
+      await handleSave();
+      const response = await invoke<string>("test_web_search");
+      setWebSearchTestResult({ ok: true, message: response });
+    } catch (e) {
+      setWebSearchTestResult({ ok: false, message: errorMsg(e) });
+    } finally {
+      setWebSearchTesting(false);
+    }
   };
 
   const handleFetchModels = async () => {
@@ -685,6 +721,94 @@ export default function SettingsPage() {
                   </div>
                 </details>
                 )}
+              </div>
+            </section>
+          )}
+
+          {/* Web Search (Tavily) — grounds resource recommendations in real URLs */}
+          {activeTab === "websearch" && (
+            <section>
+              <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">联网搜索</h3>
+              <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-5">
+                <p className="text-xs text-on-surface-variant/70 leading-relaxed">
+                  对话页右侧的「相关资源」当前依靠 LLM 凭记忆推荐 URL，经常出现 404。
+                  配置一个搜索 API 后，后端会先做真实网页搜索，再让模型从可访问的候选里挑选，从而消灭 404。
+                  留空 = 走原 LLM 路径（保持兼容）。
+                </p>
+
+                <div className="space-y-2">
+                  <label className={labelClass}>搜索后端</label>
+                  <select
+                    value={webSearchProvider}
+                    onChange={(e) => setWebSearchProvider(e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="tavily">Tavily（推荐 · 1000 次/月免费）</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className={labelClass}>API Key</label>
+                  <div className="relative">
+                    <input
+                      type={showWebSearchKey ? "text" : "password"}
+                      value={webSearchKey}
+                      onChange={(e) => setWebSearchKey(e.target.value)}
+                      placeholder="tvly-..."
+                      className={`${inputClass} pr-10`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowWebSearchKey((v) => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/50 hover:text-on-surface"
+                      aria-label={showWebSearchKey ? "隐藏" : "显示"}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        {showWebSearchKey ? "visibility_off" : "visibility"}
+                      </span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-on-surface-variant/50">
+                    去
+                    <a
+                      href="https://app.tavily.com/home"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary hover:underline mx-1"
+                    >
+                      app.tavily.com
+                    </a>
+                    注册 → Dashboard 复制 API Key。
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleWebSearchTest}
+                    disabled={webSearchTesting || !webSearchKey.trim()}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-on-primary text-xs font-semibold tracking-wider uppercase disabled:opacity-40 hover:brightness-110 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">
+                      {webSearchTesting ? "progress_activity" : "wifi_tethering"}
+                    </span>
+                    {webSearchTesting ? "测试中…" : "测试连接"}
+                  </button>
+                  {webSearchTestResult && (
+                    <div
+                      className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-xs ${
+                        webSearchTestResult.ok
+                          ? "bg-primary/10 text-primary"
+                          : "bg-error-container/20 text-error"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        {webSearchTestResult.ok ? "check_circle" : "error"}
+                      </span>
+                      <span className="break-all">{webSearchTestResult.message}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </section>
           )}

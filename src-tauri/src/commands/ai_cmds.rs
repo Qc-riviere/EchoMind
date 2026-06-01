@@ -70,6 +70,11 @@ pub async fn suggest_resources(
 }
 
 #[tauri::command]
+pub async fn test_web_search(state: State<'_, AppCore>) -> Result<String, String> {
+    state.0.test_web_search().await
+}
+
+#[tauri::command]
 pub async fn summarize_thoughts(
     state: State<'_, AppCore>,
     ids: Vec<String>,

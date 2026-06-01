@@ -306,6 +306,7 @@ pub fn run() {
             commands::ai_cmds::semantic_search,
             commands::ai_cmds::find_related_thoughts,
             commands::ai_cmds::suggest_resources,
+            commands::ai_cmds::test_web_search,
             commands::ai_cmds::reembed_all_thoughts,
             commands::chat_cmds::list_recent_conversations,
             commands::chat_cmds::get_conversations,

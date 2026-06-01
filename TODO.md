@@ -42,6 +42,7 @@
 |---|---|---|
 | D14 | 「导出」更多 case 作为 Skills 实现（除 MD/DOCX/PDF 外，如 Roam EDN / Markdown 单文件 archive） | PLAN 阶段 5 |
 | D15 | Obsidian 风格 **Plugin 系统** — 用户写 .js / .ts 扩展（M4，未开工） | PLAN 阶段 6 |
+| D15b | **MCP client 子系统** — 让用户像 Claude Desktop 那样配 MCP servers（filesystem / GitHub / Notion 等任意工具）；agent 能调任意 MCP tool。短期 Tavily 走自写 Rust client（已 ship），MCP 作为高级用户扩展通道；长期把 EchoMind 也开成 MCP server（供 Claude Desktop / Cursor 读灵感库） | 2026-05-29 |
 | D16 | **L3 Sync** — 多桌面 E2E 加密同步（产品三层架构里唯一未实现的） | MVP 报告 |
 | D17 | 4 方对比测评草稿（vs Obsidian / Notion / Flomo / 语雀小记） | MVP 报告 |
 | D18 | sqlite-vec 10K 规模 benchmark（验证 H4 性能假设） | MVP 报告 |
