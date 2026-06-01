@@ -44,6 +44,48 @@
     "default_confirm": "Confirm",
     "default_cancel": "Cancel"
   },
+  "home": {
+    "most_important": "Most important",
+    "all_thoughts": "All notes",
+    "count_zero": "0",
+    "pagination_aria": "Notes pagination",
+    "prev_page": "Previous page",
+    "next_page": "Next page",
+    "page_x_of_y": "Page {{current}} of {{total}}",
+    "most_chatted": "Most chatted",
+    "no_chats_yet": "No chats yet",
+    "no_chats_hint": "Pick a note from the main list and click \"Chat\" to start",
+    "topic_clusters": "Topic clusters",
+    "clusters_empty": "Record more notes to surface topic clusters",
+    "clusters_summary": "Analyzed {{thoughts}} notes — surfaced {{clusters}} topics",
+    "random_review": "Random review",
+    "review_empty": "Once you've captured a few notes, the forgotten gems will surface here.",
+    "shuffle": "Shuffle",
+    "revisit": "Revisit",
+    "summary_done": "AI summary complete",
+    "summary_failed": "Summary failed: {{msg}}"
+  },
+  "thought": {
+    "chat": "Chat",
+    "append": "Append",
+    "appending": "Appending…",
+    "pin": "Pin",
+    "pinned": "Pinned",
+    "archive": "Archive",
+    "select_aria": "Select this note",
+    "deselect_aria": "Deselect",
+    "append_placeholder_root": "Append to this note… (Cmd/Ctrl+Enter to send)",
+    "append_placeholder_child": "Append to this follow-up…",
+    "n_appendices": "{{count}} follow-ups",
+    "expand_n_appendices": "Expand {{count}} follow-ups",
+    "collapse": "Collapse"
+  },
+  "appendix": {
+    "continue_title": "Append under this note",
+    "continue_aria": "Append under",
+    "delete_title": "Delete this follow-up",
+    "delete_aria": "Delete follow-up"
+  },
   "chat_plan": {
     "title": "Plan Document",
     "loading": "AI is synthesizing the conversation…",

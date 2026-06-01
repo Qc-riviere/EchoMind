@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
 import type { Thought } from "../lib/types";
@@ -63,6 +64,7 @@ const depthOpacity = (depth: number): number =>
   Math.max(0.32, 1 - (depth - 1) * 0.16);
 
 export default function ThoughtCard({ thought, showRelated = false, onClick, isActive = false, selected = false, onToggleSelect, onChanged, defaultExpanded = false }: Props) {
+  const { t } = useTranslation();
   const archiveThought = useThoughtStore((s) => s.archiveThought);
   const enrichAndEmbed = useThoughtStore((s) => s.enrichAndEmbed);
   const enrichingIds = useThoughtStore((s) => s.enrichingIds);
@@ -177,7 +179,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
             key={`peek-${i}`}
             type="button"
             onClick={(e) => { e.stopPropagation(); openFolder(); }}
-            aria-label={`展开 ${count} 条追加`}
+            aria-label={t("thought.expand_n_appendices", { count })}
             style={{
               position: "absolute",
               inset: 0,
@@ -241,7 +243,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onToggleSelect?.(); }}
-              aria-label={selected ? "取消选择" : "选择此条"}
+              aria-label={selected ? t("thought.deselect_aria") : t("thought.select_aria")}
               aria-pressed={selected}
               className={`group/sel relative w-7 h-7 rounded-full flex items-center justify-center transition-all ${
                 selected
@@ -328,7 +330,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
               className="flex items-center gap-1.5 text-[11px] text-on-surface-variant hover:text-primary uppercase tracking-wider transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">chat_bubble</span>
-              对话
+              {t("thought.chat")}
             </button>
             <button
               onClick={(e) => {
@@ -339,7 +341,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
               className="flex items-center gap-1.5 text-[11px] text-on-surface-variant hover:text-primary uppercase tracking-wider transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">add</span>
-              追加
+              {t("thought.append")}
             </button>
             <button
               onClick={async (e) => {
@@ -356,14 +358,14 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
               }`}
             >
               <span className="material-symbols-outlined text-[16px]">push_pin</span>
-              {thought.is_pinned ? "已置顶" : "置顶"}
+              {thought.is_pinned ? t("thought.pinned") : t("thought.pin")}
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); archiveThought(thought.id); onChanged?.(); }}
               className="flex items-center gap-1.5 text-[11px] text-on-surface-variant hover:text-error uppercase tracking-wider transition-colors"
             >
               <span className="material-symbols-outlined text-[16px]">inventory_2</span>
-              归档
+              {t("thought.archive")}
             </button>
           </div>
 
@@ -382,7 +384,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
                     handleAppend();
                   }
                 }}
-                placeholder={appendTarget === thought.id ? "追加到此灵感…（Cmd/Ctrl+Enter 发送）" : "追加到此追加…"}
+                placeholder={appendTarget === thought.id ? t("thought.append_placeholder_root") : t("thought.append_placeholder_child")}
                 className="w-full bg-transparent border-none focus:ring-0 focus:outline-none text-sm resize-none text-on-surface placeholder:text-on-surface-variant/40"
                 rows={2}
                 autoFocus
@@ -395,7 +397,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
                   className="text-[11px] text-on-surface-variant/60 hover:text-on-surface px-2 py-1"
                   disabled={appending}
                 >
-                  取消
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="button"
@@ -403,7 +405,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
                   disabled={!appendText.trim() || appending}
                   className="text-[11px] bg-primary text-on-primary px-3 py-1 rounded-md disabled:opacity-40 hover:brightness-110"
                 >
-                  {appending ? "追加中…" : "追加"}
+                  {appending ? t("thought.appending") : t("thought.append")}
                 </button>
               </div>
             </div>
@@ -428,7 +430,7 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
             className="group/tab flex items-center gap-1.5 pl-3 pr-3.5 py-1.5 rounded-full bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-primary text-[11px] font-semibold tracking-wide transition-colors"
           >
             <span className="material-symbols-outlined text-[15px]">folder_copy</span>
-            {count} 条追加
+            {t("thought.n_appendices", { count })}
             <span className="material-symbols-outlined text-[15px] transition-transform group-hover/tab:translate-y-0.5">expand_more</span>
           </button>
         </div>
@@ -469,6 +471,7 @@ function AppendixCard({
   onAppend: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   // Stagger entrance forward, exit reverse — so closing the folder collapses
   // bottom-to-top like sheets gathering back.
   const delay = (shown ? index : total - 1 - index) * 55;
@@ -505,8 +508,8 @@ function AppendixCard({
             type="button"
             onClick={() => onAppend(node.id)}
             className="p-1 text-on-surface-variant/60 hover:text-primary"
-            title="继续追加到此条"
-            aria-label="继续追加"
+            title={t("appendix.continue_title")}
+            aria-label={t("appendix.continue_aria")}
           >
             <span className="material-symbols-outlined text-[15px]">add</span>
           </button>
@@ -514,8 +517,8 @@ function AppendixCard({
             type="button"
             onClick={() => onDelete(node.id)}
             className="p-1 text-on-surface-variant/60 hover:text-error"
-            title="删除此追加"
-            aria-label="删除追加"
+            title={t("appendix.delete_title")}
+            aria-label={t("appendix.delete_aria")}
           >
             <span className="material-symbols-outlined text-[15px]">delete</span>
           </button>
@@ -541,6 +544,7 @@ function AppendixList({
   onDelete: (id: string) => void;
   onCollapse: () => void;
 }) {
+  const { t } = useTranslation();
   // useEffect fires reliably after commit (rAF is throttled when the tab
   // isn't compositing), so the entrance animation always plays even on
   // initial mount.
@@ -570,7 +574,7 @@ function AppendixList({
         className="flex items-center gap-1 text-[11px] text-on-surface-variant/50 hover:text-primary transition-colors pt-1"
       >
         <span className="material-symbols-outlined text-[15px]">unfold_less</span>
-        收起
+        {t("thought.collapse")}
       </button>
     </div>
   );

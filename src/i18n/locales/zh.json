@@ -44,6 +44,48 @@
     "default_confirm": "确认",
     "default_cancel": "取消"
   },
+  "home": {
+    "most_important": "最重要的事",
+    "all_thoughts": "所有想法",
+    "count_zero": "0 条",
+    "pagination_aria": "想法分页",
+    "prev_page": "上一页",
+    "next_page": "下一页",
+    "page_x_of_y": "第 {{current}} 页，共 {{total}} 页",
+    "most_chatted": "对话最多",
+    "no_chats_yet": "还没有对话过的灵感",
+    "no_chats_hint": "从主列表选一条点「对话」开始",
+    "topic_clusters": "主题聚类",
+    "clusters_empty": "记录更多想法以解锁主题发现",
+    "clusters_summary": "已分析 {{thoughts}} 条想法 —— 浮现 {{clusters}} 个主题",
+    "random_review": "随机回顾",
+    "review_empty": "先记一些想法，被遗忘的好东西会浮现在这里。",
+    "shuffle": "换一条",
+    "revisit": "重温思考",
+    "summary_done": "AI 总结已完成",
+    "summary_failed": "总结失败：{{msg}}"
+  },
+  "thought": {
+    "chat": "对话",
+    "append": "追加",
+    "appending": "追加中…",
+    "pin": "置顶",
+    "pinned": "已置顶",
+    "archive": "归档",
+    "select_aria": "选择此条",
+    "deselect_aria": "取消选择",
+    "append_placeholder_root": "追加到此灵感…（Cmd/Ctrl+Enter 发送）",
+    "append_placeholder_child": "追加到此追加…",
+    "n_appendices": "{{count}} 条追加",
+    "expand_n_appendices": "展开 {{count}} 条追加",
+    "collapse": "收起"
+  },
+  "appendix": {
+    "continue_title": "继续追加到此条",
+    "continue_aria": "继续追加",
+    "delete_title": "删除此追加",
+    "delete_aria": "删除追加"
+  },
   "chat_plan": {
     "title": "方案文档",
     "loading": "AI 正在整理对话…",

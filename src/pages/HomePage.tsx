@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { errorMsg } from "../lib/errorMsg";
 import { useNavigate } from "react-router-dom";
 import { invoke } from "@tauri-apps/api/core";
@@ -22,6 +23,7 @@ interface HomeThoughts {
 const PER_PAGE = 9;
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const [selectedThought, setSelectedThought] = useState<Thought | null>(null);
   const [home, setHome] = useState<HomeThoughts>({ recent: [], hot: [], pinned: null });
   const [allThoughts, setAllThoughts] = useState<Thought[]>([]);
@@ -113,9 +115,9 @@ export default function HomePage() {
     try {
       const result = await invoke<string>("summarize_thoughts", { ids: Array.from(selectedIds) });
       setSummaryText(result);
-      notify("EchoMind", "AI 总结已完成").catch(() => {});
+      notify("EchoMind", t("home.summary_done")).catch(() => {});
     } catch (e) {
-      setSummaryText(`总结失败：${errorMsg(e)}`);
+      setSummaryText(t("home.summary_failed", { msg: errorMsg(e) }));
     } finally {
       setSummarizing(false);
     }
@@ -134,7 +136,7 @@ export default function HomePage() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-headline font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                   <span className="material-symbols-outlined text-[16px] rotate-45">push_pin</span>
-                  最重要的事
+                  {t("home.most_important")}
                 </h3>
               </div>
               <div className="ring-1 ring-primary/30 rounded-2xl">
@@ -152,10 +154,10 @@ export default function HomePage() {
 
           <section ref={listSectionRef} className="scroll-mt-6">
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-xl font-headline font-bold text-on-surface">所有想法</h3>
+              <h3 className="text-xl font-headline font-bold text-on-surface">{t("home.all_thoughts")}</h3>
               <span className="text-xs text-on-surface-variant/50 font-mono">
                 {mainList.length === 0
-                  ? "0 条"
+                  ? t("home.count_zero")
                   : `${pageSafe * PER_PAGE + 1}–${Math.min((pageSafe + 1) * PER_PAGE, mainList.length)} / ${mainList.length}`}
               </span>
             </div>
@@ -171,13 +173,13 @@ export default function HomePage() {
             {totalPages > 1 && (
               <nav
                 className="flex items-center justify-center gap-2 mt-8"
-                aria-label="想法分页"
+                aria-label={t("home.pagination_aria")}
               >
                 <button
                   onClick={() => setPage(Math.max(0, pageSafe - 1))}
                   disabled={pageSafe === 0}
                   className="min-w-[40px] h-10 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  aria-label="上一页"
+                  aria-label={t("home.prev_page")}
                 >
                   <span className="material-symbols-outlined text-[20px]">chevron_left</span>
                 </button>
@@ -185,7 +187,7 @@ export default function HomePage() {
                   <button
                     key={i}
                     onClick={() => setPage(i)}
-                    aria-label={`第 ${i + 1} 页，共 ${totalPages} 页`}
+                    aria-label={t("home.page_x_of_y", { current: i + 1, total: totalPages })}
                     aria-current={i === pageSafe ? "page" : undefined}
                     className={`min-w-[40px] h-10 px-3 rounded-full text-xs font-mono focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors ${
                       i === pageSafe
@@ -200,7 +202,7 @@ export default function HomePage() {
                   onClick={() => setPage(Math.min(totalPages - 1, pageSafe + 1))}
                   disabled={pageSafe >= totalPages - 1}
                   className="min-w-[40px] h-10 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  aria-label="下一页"
+                  aria-label={t("home.next_page")}
                 >
                   <span className="material-symbols-outlined text-[20px]">chevron_right</span>
                 </button>
@@ -252,6 +254,7 @@ export default function HomePage() {
 }
 
 function HotChats({ thoughts }: { thoughts: Thought[] }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
@@ -259,7 +262,7 @@ function HotChats({ thoughts }: { thoughts: Thought[] }) {
       <div className="flex items-center gap-3 mb-4">
         <span className="material-symbols-outlined text-primary">forum</span>
         <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-on-surface">
-          对话最多
+          {t("home.most_chatted")}
         </h3>
       </div>
 
@@ -267,9 +270,9 @@ function HotChats({ thoughts }: { thoughts: Thought[] }) {
         <div className="text-center py-6">
           <span className="material-symbols-outlined text-3xl text-on-surface-variant/40">chat_bubble</span>
           <p className="text-xs text-on-surface-variant mt-2 leading-relaxed">
-            还没有对话过的灵感
+            {t("home.no_chats_yet")}
             <br />
-            从主列表选一条点「对话」开始
+            {t("home.no_chats_hint")}
           </p>
         </div>
       ) : (
@@ -328,6 +331,7 @@ const DOMAIN_ICONS: Record<string, string> = {
 };
 
 function CognitiveDiscovery() {
+  const { t } = useTranslation();
   const [clusters, setClusters] = useState<ThemeCluster[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalThoughts, setTotalThoughts] = useState(0);
@@ -377,7 +381,7 @@ function CognitiveDiscovery() {
       <div className="flex items-center gap-3 mb-4">
         <span className="material-symbols-outlined text-primary">insights</span>
         <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-on-surface">
-          主题聚类
+          {t("home.topic_clusters")}
         </h3>
       </div>
 
@@ -389,13 +393,13 @@ function CognitiveDiscovery() {
         <div className="text-center py-6">
           <span className="material-symbols-outlined text-3xl text-on-surface-variant/40">explore</span>
           <p className="text-xs text-on-surface-variant mt-2">
-            记录更多想法以解锁主题发现
+            {t("home.clusters_empty")}
           </p>
         </div>
       ) : (
         <>
           <p className="text-xs text-on-surface-variant leading-relaxed mb-5">
-            已分析 {totalThoughts} 条想法 —— 浮现 {clusters.length} 个主题
+            {t("home.clusters_summary", { thoughts: totalThoughts, clusters: clusters.length })}
           </p>
 
           <div className="space-y-3">
@@ -435,6 +439,7 @@ function CognitiveDiscovery() {
 }
 
 function RandomRevisit({ onSelect }: { onSelect: (t: Thought) => void }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [thought, setThought] = useState<Thought | null>(null);
   const [allThoughts, setAllThoughts] = useState<Thought[]>([]);
@@ -469,10 +474,10 @@ function RandomRevisit({ onSelect }: { onSelect: (t: Thought) => void }) {
       <div className="p-8 rounded-2xl bg-gradient-to-br from-primary-container/20 to-transparent ghost-border">
         <div className="flex items-center gap-3 mb-3">
           <span className="material-symbols-outlined text-primary">casino</span>
-          <h4 className="text-sm font-headline font-bold text-on-surface">随机回顾</h4>
+          <h4 className="text-sm font-headline font-bold text-on-surface">{t("home.random_review")}</h4>
         </div>
         <p className="text-xs text-on-surface-variant leading-relaxed">
-          先记一些想法，被遗忘的好东西会浮现在这里。
+          {t("home.review_empty")}
         </p>
       </div>
     );
@@ -488,13 +493,13 @@ function RandomRevisit({ onSelect }: { onSelect: (t: Thought) => void }) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-primary">casino</span>
-          <h4 className="text-sm font-headline font-bold text-on-surface">随机回顾</h4>
+          <h4 className="text-sm font-headline font-bold text-on-surface">{t("home.random_review")}</h4>
         </div>
         <button
           onClick={() => pickRandom(allThoughts)}
           className="min-w-[40px] h-10 grid place-items-center rounded-full text-on-surface-variant hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary transition-colors"
-          aria-label="换一条"
-          title="换一条"
+          aria-label={t("home.shuffle")}
+          title={t("home.shuffle")}
         >
           <span className="material-symbols-outlined text-[20px]">refresh</span>
         </button>
@@ -524,7 +529,7 @@ function RandomRevisit({ onSelect }: { onSelect: (t: Thought) => void }) {
           onClick={() => navigate(`/thought/${thought.id}/chat`)}
           className="mt-4 w-full h-10 bg-surface-container-high hover:bg-surface-container-highest focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary text-on-surface rounded-lg text-xs font-bold tracking-widest active:scale-95 transition-all ghost-border"
         >
-          重温思考
+          {t("home.revisit")}
         </button>
       )}
     </div>
