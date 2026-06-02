@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -34,6 +35,7 @@ const emptyRules: SubsetRules = {
 };
 
 export default function CloudBridgePage() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<Status | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,11 +92,11 @@ export default function CloudBridgePage() {
 
   const handlePair = async () => {
     if (!consent) {
-      setError("请先确认知情同意");
+      setError(t("cloud_bridge.consent_required"));
       return;
     }
     if (!serverUrl.trim() || !deviceCode.trim()) {
-      setError("服务器地址和配对码不能为空");
+      setError(t("cloud_bridge.fields_required"));
       return;
     }
     setPairing(true);
@@ -104,7 +106,7 @@ export default function CloudBridgePage() {
       const deviceId = await invoke<string>("cloud_bridge_pair", {
         args: { server_url: serverUrl.trim(), device_code: deviceCode.trim() },
       });
-      setInfo(`配对成功，设备 ID: ${deviceId}`);
+      setInfo(t("cloud_bridge.pair_success", { deviceId }));
       setDeviceCode("");
       await refresh();
     } catch (e) {
@@ -148,7 +150,7 @@ export default function CloudBridgePage() {
         exclude_archived: rulesDraft.exclude_archived ?? true,
       };
       await invoke("cloud_bridge_set_rules", { rules: payload });
-      setInfo("规则已保存");
+      setInfo(t("cloud_bridge.rules_saved"));
       await refresh();
     } catch (e) {
       setError(errorMsg(e));
@@ -162,7 +164,7 @@ export default function CloudBridgePage() {
     setInfo(null);
     try {
       const n = await invoke<number>("cloud_bridge_initial_sync");
-      setInfo(`已上传 ${n} 条想法到云端`);
+      setInfo(t("cloud_bridge.initial_sync_done", { count: n }));
     } catch (e) {
       setError(errorMsg(e));
     }
@@ -173,14 +175,14 @@ export default function CloudBridgePage() {
     setInfo(null);
     try {
       const n = await invoke<number>("cloud_bridge_sync_pull");
-      setInfo(n > 0 ? `已从云端拉取 ${n} 条新想法` : "云端无新增");
+      setInfo(n > 0 ? t("cloud_bridge.pull_done", { count: n }) : t("cloud_bridge.pull_empty"));
     } catch (e) {
       setError(errorMsg(e));
     }
   };
 
   const handlePushLlm = async () => {
-    if (!llmConsent) { setError("请先勾选知情同意"); return; }
+    if (!llmConsent) { setError(t("cloud_bridge.consent_llm_required")); return; }
     setLlmPushing(true);
     setError(null);
     setInfo(null);
@@ -189,7 +191,7 @@ export default function CloudBridgePage() {
         ? Math.round(parseFloat(llmBudget) * 100)
         : null;
       await invoke("cloud_bridge_push_llm_config", { budgetCents });
-      setInfo("LLM 配置已推送到 VPS");
+      setInfo(t("cloud_bridge.llm_pushed"));
       await refresh();
     } catch (e) {
       setError(errorMsg(e));
@@ -199,12 +201,12 @@ export default function CloudBridgePage() {
   };
 
   const handleClearLlm = async () => {
-    if (!confirm("这将从 VPS 删除 LLM 配置，微信 /chat 将无法远程调用。确认？")) return;
+    if (!confirm(t("cloud_bridge.llm_clear_confirm"))) return;
     setError(null);
     setInfo(null);
     try {
       await invoke("cloud_bridge_clear_llm_config");
-      setInfo("LLM 配置已从 VPS 清除");
+      setInfo(t("cloud_bridge.llm_cleared"));
       await refresh();
     } catch (e) {
       setError(errorMsg(e));
@@ -212,12 +214,12 @@ export default function CloudBridgePage() {
   };
 
   const handleTerminate = async () => {
-    if (!confirm("终止订阅将立即销毁云端数据，并清除本地绑定。确认继续？")) return;
+    if (!confirm(t("cloud_bridge.terminate_confirm"))) return;
     setError(null);
     setInfo(null);
     try {
       await invoke("cloud_bridge_terminate");
-      setInfo("已终止订阅并清除云端数据");
+      setInfo(t("cloud_bridge.terminated"));
       await refresh();
     } catch (e) {
       setError(errorMsg(e));
@@ -225,17 +227,12 @@ export default function CloudBridgePage() {
   };
 
   const handleResetLocal = async () => {
-    if (
-      !confirm(
-        "仅重置本地凭证：清除本地 token / device id / 同步游标，但**保留** VPS 上的所有云端数据。\n\n下一步：从 VPS 取一个新配对码，重新配对一次。\n\n确认继续？"
-      )
-    )
-      return;
+    if (!confirm(t("cloud_bridge.reset_local_confirm"))) return;
     setError(null);
     setInfo(null);
     try {
       await invoke("cloud_bridge_reset_local");
-      setInfo("已清除本地凭证，请用新配对码重新绑定");
+      setInfo(t("cloud_bridge.local_reset_done"));
       await refresh();
     } catch (e) {
       setError(errorMsg(e));
@@ -244,16 +241,16 @@ export default function CloudBridgePage() {
 
   if (loading) {
     return (
-      <div className="p-8 text-on-surface-variant/60">Loading...</div>
+      <div className="p-8 text-on-surface-variant/60">{t("cloud_bridge.loading")}</div>
     );
   }
 
   return (
     <div className="p-8 max-w-3xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-on-surface">Cloud Bridge</h1>
+        <h1 className="text-2xl font-bold text-on-surface">{t("cloud_bridge.title")}</h1>
         <p className="text-sm text-on-surface-variant/70 mt-1">
-          把筛选后的想法同步到你的 VPS，让微信 bot 在电脑关机时也能工作。
+          {t("cloud_bridge.subtitle")}
         </p>
       </div>
 
@@ -284,7 +281,7 @@ export default function CloudBridgePage() {
           <section className="rounded-xl bg-surface-container-low border border-outline-variant/20 p-5">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-on-surface">订阅状态</h2>
+                <h2 className="font-semibold text-on-surface">{t("cloud_bridge.subscription_status")}</h2>
                 <p className="text-xs text-on-surface-variant/60 font-mono mt-1">
                   {status.server_url}
                 </p>
@@ -294,10 +291,10 @@ export default function CloudBridgePage() {
                 {status.sync_key_fp && (
                   <p
                     className="text-xs text-on-surface-variant/60 font-mono cursor-pointer hover:text-primary"
-                    title="点击复制 — bot 配对时也用这个值，否则会落到不同的设备库无法互通"
+                    title={t("cloud_bridge.sync_fp_copy_title")}
                     onClick={() => {
                       navigator.clipboard?.writeText(status.sync_key_fp!);
-                      setInfo("sync_key_fp 已复制到剪贴板");
+                      setInfo(t("cloud_bridge.sync_fp_copied"));
                       setTimeout(() => setInfo(null), 2000);
                     }}
                   >
@@ -307,7 +304,7 @@ export default function CloudBridgePage() {
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
                 <span className="text-sm text-on-surface-variant/70">
-                  {status.enabled ? "同步中" : "已暂停"}
+                  {status.enabled ? t("cloud_bridge.syncing") : t("cloud_bridge.paused")}
                 </span>
                 <input
                   type="checkbox"
@@ -321,28 +318,28 @@ export default function CloudBridgePage() {
             </div>
             <div className="flex items-center justify-between gap-4 pt-3 mt-3 border-t border-outline-variant/20">
               <div>
-                <p className="text-sm text-on-surface">重新配对（保留云端数据）</p>
+                <p className="text-sm text-on-surface">{t("cloud_bridge.rebind_title")}</p>
                 <p className="text-xs text-on-surface-variant/60 mt-1">
-                  本地 token 过期 / 想换设备时用。清掉本地凭证后用新配对码重新绑定，VPS 上的想法 / bot 配置 / LLM 密钥不变。
+                  {t("cloud_bridge.rebind_desc")}
                 </p>
               </div>
               <button
                 onClick={handleResetLocal}
                 className="shrink-0 px-3 py-1.5 rounded-lg text-sm bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-primary transition-colors"
               >
-                重置本地凭证
+                {t("cloud_bridge.rebind_button")}
               </button>
             </div>
             <div className="flex items-center justify-between gap-4 pt-3 mt-3 border-t border-outline-variant/20">
               <div>
-                <p className="text-sm text-on-surface">通过云桥调用 LLM</p>
+                <p className="text-sm text-on-surface">{t("cloud_bridge.llm_via_bridge_title")}</p>
                 <p className="text-xs text-on-surface-variant/60 mt-1">
-                  开启后桌面 AI 调用经 VPS 转发，绕过本地地理封锁。需要先在下方推送 LLM 配置到 VPS。
+                  {t("cloud_bridge.llm_via_bridge_desc")}
                 </p>
               </div>
               <label className="flex items-center gap-2 cursor-pointer shrink-0">
                 <span className="text-sm text-on-surface-variant/70">
-                  {status.llm_via_bridge ? "已启用" : "未启用"}
+                  {status.llm_via_bridge ? t("cloud_bridge.via_enabled") : t("cloud_bridge.via_disabled")}
                 </span>
                 <input
                   type="checkbox"
@@ -359,9 +356,9 @@ export default function CloudBridgePage() {
           <details className="rounded-xl bg-surface-container-low border border-outline-variant/20 [&[open]]:p-5 group">
             <summary className="cursor-pointer p-5 [&::-webkit-details-marker]:hidden flex items-center justify-between group-[[open]]:pb-3">
               <div>
-                <h2 className="font-semibold text-on-surface">上云子集规则</h2>
+                <h2 className="font-semibold text-on-surface">{t("cloud_bridge.rules_section_title")}</h2>
                 <p className="text-xs text-on-surface-variant/60 mt-1">
-                  默认推送全部未归档想法。点开按时间窗 / 标签过滤。
+                  {t("cloud_bridge.rules_section_desc")}
                 </p>
               </div>
               <span className="material-symbols-outlined text-on-surface-variant/40 transition-transform group-[[open]]:rotate-180">expand_more</span>
@@ -369,11 +366,11 @@ export default function CloudBridgePage() {
             <div className="space-y-4">
 
             <div>
-              <label className="text-xs text-on-surface-variant/70">时间窗（天）</label>
+              <label className="text-xs text-on-surface-variant/70">{t("cloud_bridge.time_window")}</label>
               <input
                 type="number"
                 min={0}
-                placeholder="留空 = 不限"
+                placeholder={t("cloud_bridge.time_window_placeholder")}
                 value={rulesDraft.time_window_days ?? ""}
                 onChange={(e) => {
                   const v = e.target.value === "" ? null : Math.max(0, parseInt(e.target.value) || 0);
@@ -384,24 +381,24 @@ export default function CloudBridgePage() {
             </div>
 
             <div>
-              <label className="text-xs text-on-surface-variant/70">包含标签（任一命中即推送，逗号分隔）</label>
+              <label className="text-xs text-on-surface-variant/70">{t("cloud_bridge.include_tags")}</label>
               <input
                 type="text"
                 value={includeTagsInput}
                 onChange={(e) => setIncludeTagsInput(e.target.value)}
-                placeholder="例如：work, research"
+                placeholder={t("cloud_bridge.include_placeholder")}
                 className="mt-1 w-full bg-surface-container rounded-lg px-3 py-2 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary/30"
               />
-              <p className="text-[11px] text-on-surface-variant/40 mt-1">留空 = 不按包含标签过滤</p>
+              <p className="text-[11px] text-on-surface-variant/40 mt-1">{t("cloud_bridge.include_hint")}</p>
             </div>
 
             <div>
-              <label className="text-xs text-on-surface-variant/70">排除标签（命中任一则跳过）</label>
+              <label className="text-xs text-on-surface-variant/70">{t("cloud_bridge.exclude_tags")}</label>
               <input
                 type="text"
                 value={excludeTagsInput}
                 onChange={(e) => setExcludeTagsInput(e.target.value)}
-                placeholder="例如：private, 隐私"
+                placeholder={t("cloud_bridge.exclude_placeholder")}
                 className="mt-1 w-full bg-surface-container rounded-lg px-3 py-2 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary/30"
               />
             </div>
@@ -414,7 +411,7 @@ export default function CloudBridgePage() {
                   setRulesDraft({ ...rulesDraft, exclude_archived: e.target.checked })
                 }
               />
-              排除归档的想法
+              {t("cloud_bridge.exclude_archived")}
             </label>
 
             <div className="flex gap-3 pt-2">
@@ -423,19 +420,19 @@ export default function CloudBridgePage() {
                 disabled={savingRules}
                 className="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium disabled:opacity-50"
               >
-                {savingRules ? "保存中..." : "保存规则"}
+                {savingRules ? t("cloud_bridge.saving_rules") : t("cloud_bridge.save_rules")}
               </button>
               <button
                 onClick={handleInitialSync}
                 className="px-4 py-2 bg-surface-container-high text-on-surface rounded-lg text-sm font-medium"
               >
-                立即全量同步
+                {t("cloud_bridge.full_sync_now")}
               </button>
               <button
                 onClick={handleSyncPull}
                 className="px-4 py-2 bg-surface-container-high text-on-surface rounded-lg text-sm font-medium"
               >
-                拉取云端新增
+                {t("cloud_bridge.pull_now")}
               </button>
             </div>
             </div>
@@ -444,9 +441,9 @@ export default function CloudBridgePage() {
           <details className="rounded-xl bg-surface-container-low border border-outline-variant/20 [&[open]]:p-5 group">
             <summary className="cursor-pointer p-5 [&::-webkit-details-marker]:hidden flex items-center justify-between group-[[open]]:pb-3">
               <div>
-                <h2 className="font-semibold text-on-surface">LLM 远程执行（可选）</h2>
+                <h2 className="font-semibold text-on-surface">{t("cloud_bridge.llm_section_title")}</h2>
                 <p className="text-xs text-on-surface-variant/60 mt-1">
-                  把本地 LLM 密钥推送到 VPS，让微信 <code className="font-mono">/chat</code> 在手机端直接调用 AI，无需桌面在线。
+                  {t("cloud_bridge.llm_section_desc_a")}<code className="font-mono">/chat</code>{t("cloud_bridge.llm_section_desc_b")}
                 </p>
               </div>
               <span className="material-symbols-outlined text-on-surface-variant/40 transition-transform group-[[open]]:rotate-180">expand_more</span>
@@ -456,34 +453,34 @@ export default function CloudBridgePage() {
             {llmStatus && (
               <div className="grid grid-cols-3 gap-3 text-xs">
                 <div className="rounded-lg bg-surface-container px-3 py-2">
-                  <p className="text-on-surface-variant/50 mb-0.5">配置状态</p>
+                  <p className="text-on-surface-variant/50 mb-0.5">{t("cloud_bridge.config_status")}</p>
                   <p className={llmStatus.has_llm_config ? "text-green-400" : "text-on-surface-variant/60"}>
-                    {llmStatus.has_llm_config ? "已上传" : "未配置"}
+                    {llmStatus.has_llm_config ? t("cloud_bridge.uploaded") : t("cloud_bridge.not_configured")}
                   </p>
                 </div>
                 <div className="rounded-lg bg-surface-container px-3 py-2">
-                  <p className="text-on-surface-variant/50 mb-0.5">已用额度</p>
+                  <p className="text-on-surface-variant/50 mb-0.5">{t("cloud_bridge.used_quota")}</p>
                   <p className="text-on-surface">${(llmStatus.usage_cents / 100).toFixed(3)}</p>
                 </div>
                 <div className="rounded-lg bg-surface-container px-3 py-2">
-                  <p className="text-on-surface-variant/50 mb-0.5">预算上限</p>
+                  <p className="text-on-surface-variant/50 mb-0.5">{t("cloud_bridge.budget_cap")}</p>
                   <p className={llmStatus.llm_disabled ? "text-red-400" : "text-on-surface"}>
                     {llmStatus.llm_disabled
-                      ? "已禁用（超限）"
+                      ? t("cloud_bridge.disabled_overrun")
                       : llmStatus.budget_cents != null
                         ? `$${(llmStatus.budget_cents / 100).toFixed(2)}`
-                        : "不限"}
+                        : t("cloud_bridge.unlimited")}
                   </p>
                 </div>
               </div>
             )}
 
             <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-4 space-y-2">
-              <p className="text-xs text-on-surface-variant/80 font-medium">⚠ 推送前请确认：</p>
+              <p className="text-xs text-on-surface-variant/80 font-medium">{t("cloud_bridge.llm_warning_title")}</p>
               <ul className="text-xs text-on-surface-variant/70 space-y-1 list-disc list-inside">
-                <li>LLM API Key 将用服务端主密钥加密后存储，VPS 管理员有解密能力。</li>
-                <li>每次远程 /chat 均从你的 API 配额扣费，建议设置预算上限。</li>
-                <li>可随时点"清除"撤销，或在"危险区"销毁全部数据。</li>
+                <li>{t("cloud_bridge.llm_warn_1")}</li>
+                <li>{t("cloud_bridge.llm_warn_2")}</li>
+                <li>{t("cloud_bridge.llm_warn_3")}</li>
               </ul>
               <label className="flex items-center gap-2 text-sm text-on-surface mt-2">
                 <input
@@ -491,19 +488,19 @@ export default function CloudBridgePage() {
                   checked={llmConsent}
                   onChange={(e) => setLlmConsent(e.target.checked)}
                 />
-                我了解上述风险，同意推送 LLM 密钥
+                {t("cloud_bridge.llm_consent")}
               </label>
             </div>
 
             <div>
-              <label className="text-xs text-on-surface-variant/70">预算上限（USD，留空 = 不限）</label>
+              <label className="text-xs text-on-surface-variant/70">{t("cloud_bridge.budget_label")}</label>
               <input
                 type="number"
                 min={0}
                 step={0.01}
                 value={llmBudget}
                 onChange={(e) => setLlmBudget(e.target.value)}
-                placeholder="例如：5.00"
+                placeholder={t("cloud_bridge.budget_placeholder")}
                 className="mt-1 w-48 bg-surface-container rounded-lg px-3 py-2 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary/30"
               />
             </div>
@@ -514,14 +511,14 @@ export default function CloudBridgePage() {
                 disabled={llmPushing || !llmConsent}
                 className="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium disabled:opacity-50"
               >
-                {llmPushing ? "推送中..." : llmStatus?.has_llm_config ? "更新 LLM 配置" : "推送 LLM 配置"}
+                {llmPushing ? t("cloud_bridge.pushing_llm") : llmStatus?.has_llm_config ? t("cloud_bridge.update_llm") : t("cloud_bridge.push_llm")}
               </button>
               {llmStatus?.has_llm_config && (
                 <button
                   onClick={handleClearLlm}
                   className="px-4 py-2 bg-surface-container-high text-on-surface/70 hover:text-error rounded-lg text-sm font-medium"
                 >
-                  清除 LLM 配置
+                  {t("cloud_bridge.clear_llm")}
                 </button>
               )}
             </div>
@@ -531,22 +528,22 @@ export default function CloudBridgePage() {
           <details className="rounded-xl bg-red-500/5 border border-red-500/20 [&[open]]:p-5 group">
             <summary className="cursor-pointer p-5 [&::-webkit-details-marker]:hidden flex items-center justify-between group-[[open]]:pb-3">
               <div>
-                <h2 className="font-semibold text-on-surface">危险区</h2>
+                <h2 className="font-semibold text-on-surface">{t("cloud_bridge.danger_section_title")}</h2>
                 <p className="text-xs text-on-surface-variant/60 mt-1">
-                  终止订阅 / 销毁云端数据
+                  {t("cloud_bridge.danger_section_desc")}
                 </p>
               </div>
               <span className="material-symbols-outlined text-on-surface-variant/40 transition-transform group-[[open]]:rotate-180">expand_more</span>
             </summary>
             <div>
               <p className="text-xs text-on-surface-variant/60 mb-3">
-                终止订阅会立即销毁云端的所有想法副本、微信 bot 配置和可选的 LLM 密钥。
+                {t("cloud_bridge.terminate_desc")}
               </p>
               <button
                 onClick={handleTerminate}
                 className="px-4 py-2 bg-red-500/80 hover:bg-red-500 text-white rounded-lg text-sm font-medium"
               >
-                终止订阅并销毁云端数据
+                {t("cloud_bridge.terminate_button")}
               </button>
             </div>
           </details>
@@ -575,23 +572,24 @@ interface PairFormProps {
 }
 
 function PairForm(p: PairFormProps) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-6">
       <section className="rounded-xl bg-amber-500/5 border border-amber-500/30 p-5">
         <h2 className="font-semibold text-on-surface flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px] text-amber-400">warning</span>
-          隐私代价
+          {t("cloud_bridge.privacy_title")}
         </h2>
         <p className="mt-2 text-xs text-on-surface-variant/80">
-          匹配规则的想法将以明文存储在你的 VPS；密钥加密存储但管理员仍可访问；可随时终止销毁。
+          {t("cloud_bridge.privacy_summary")}
         </p>
         <details className="mt-2">
-          <summary className="text-xs text-on-surface-variant/60 cursor-pointer hover:text-on-surface">详细说明</summary>
+          <summary className="text-xs text-on-surface-variant/60 cursor-pointer hover:text-on-surface">{t("cloud_bridge.privacy_details")}</summary>
           <ul className="mt-2 text-xs text-on-surface-variant/70 space-y-1.5 list-disc list-inside">
-            <li>启用云端桥接意味着你匹配规则的想法会以明文存储在你的 VPS 上。</li>
-            <li>服务端持有完整子集数据，可用于微信 bot 离线访问，不是端到端加密。</li>
-            <li>微信 bot_token 和可选的 LLM 密钥加密存储，但 VPS 管理员仍有物理访问能力。</li>
-            <li>随时可终止订阅，云端数据立即销毁。</li>
+            <li>{t("cloud_bridge.privacy_detail_1")}</li>
+            <li>{t("cloud_bridge.privacy_detail_2")}</li>
+            <li>{t("cloud_bridge.privacy_detail_3")}</li>
+            <li>{t("cloud_bridge.privacy_detail_4")}</li>
           </ul>
         </details>
         <label className="mt-3 flex items-center gap-2 text-sm text-on-surface">
@@ -600,14 +598,14 @@ function PairForm(p: PairFormProps) {
             checked={p.consent}
             onChange={(e) => p.setConsent(e.target.checked)}
           />
-          我已阅读并理解上述隐私代价
+          {t("cloud_bridge.privacy_consent")}
         </label>
       </section>
 
       <section className="rounded-xl bg-surface-container-low border border-outline-variant/20 p-5 space-y-4">
-        <h2 className="font-semibold text-on-surface">配对设备</h2>
+        <h2 className="font-semibold text-on-surface">{t("cloud_bridge.pair_section_title")}</h2>
         <div>
-          <label className="text-xs text-on-surface-variant/70">VPS 服务器地址</label>
+          <label className="text-xs text-on-surface-variant/70">{t("cloud_bridge.server_url")}</label>
           <input
             type="text"
             value={p.serverUrl}
@@ -617,16 +615,16 @@ function PairForm(p: PairFormProps) {
           />
         </div>
         <div>
-          <label className="text-xs text-on-surface-variant/70">一次性配对码（由服务端生成）</label>
+          <label className="text-xs text-on-surface-variant/70">{t("cloud_bridge.device_code")}</label>
           <input
             type="text"
             value={p.deviceCode}
             onChange={(e) => p.setDeviceCode(e.target.value.toUpperCase())}
-            placeholder="8 位字符"
+            placeholder={t("cloud_bridge.device_code_placeholder")}
             className="mt-1 w-full bg-surface-container rounded-lg px-3 py-2 text-sm text-on-surface outline-none focus:ring-1 focus:ring-primary/30 font-mono tracking-widest uppercase"
           />
           <p className="text-[11px] text-on-surface-variant/40 mt-1">
-            在你的 VPS 上执行 <code className="font-mono">POST /admin/pair-codes</code> 获取。
+            {t("cloud_bridge.device_code_hint_a")}<code className="font-mono">POST /admin/pair-codes</code>{t("cloud_bridge.device_code_hint_b")}
           </p>
         </div>
         <button
@@ -634,7 +632,7 @@ function PairForm(p: PairFormProps) {
           disabled={p.pairing || !p.consent}
           className="w-full py-2.5 bg-primary text-on-primary rounded-lg text-sm font-medium disabled:opacity-50"
         >
-          {p.pairing ? "配对中..." : "配对并启用"}
+          {p.pairing ? t("cloud_bridge.pairing") : t("cloud_bridge.pair_button")}
         </button>
       </section>
     </div>

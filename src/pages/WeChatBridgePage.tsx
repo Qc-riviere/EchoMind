@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { errorMsg } from "../lib/errorMsg";
 import { invoke } from "@tauri-apps/api/core";
 import { QRCodeSVG } from "qrcode.react";
@@ -36,6 +37,7 @@ interface CloudBridgeStatus {
 type BridgeStep = "idle" | "starting-server" | "scanning" | "scanned" | "connecting" | "ready" | "error";
 
 export default function WeChatBridgePage() {
+  const { t } = useTranslation();
   const [serverStatus, setServerStatus] = useState<ServerStatus | null>(null);
   const [account, setAccount] = useState<WeChatAccount | null>(null);
   const [daemonRunning, setDaemonRunning] = useState(false);
@@ -84,7 +86,7 @@ export default function WeChatBridgePage() {
           await new Promise((r) => setTimeout(r, 1000));
           const status = await invoke<ServerStatus>("bridge_server_status");
           if (status.online) { setServerStatus(status); break; }
-          if (i === 9) throw new Error("Server 启动超时");
+          if (i === 9) throw new Error(t("wechat_bridge.server_timeout"));
         }
       }
       setStep("scanning");
@@ -105,7 +107,7 @@ export default function WeChatBridgePage() {
           } else if (result.status === "expired") {
             if (pollRef.current) clearInterval(pollRef.current);
             pollRef.current = null;
-            setError("二维码已过期，请重试");
+            setError(t("wechat_bridge.qr_expired"));
             setStep("idle");
           }
         } catch {}
@@ -168,9 +170,9 @@ export default function WeChatBridgePage() {
     <div className="max-w-5xl mx-auto px-8 py-12">
       {/* Header */}
       <div className="mb-10">
-        <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">微信桥</h1>
+        <h1 className="text-4xl font-headline font-bold text-on-surface tracking-tight">{t("wechat_bridge.title")}</h1>
         <p className="text-sm text-on-surface-variant mt-3 leading-relaxed max-w-2xl">
-          把第二大脑接到手机微信上：发条消息即落库，桌面 ~5 秒内同步并通知。
+          {t("wechat_bridge.subtitle")}
         </p>
       </div>
 
@@ -179,10 +181,9 @@ export default function WeChatBridgePage() {
         <div className="mb-6 px-5 py-4 rounded-2xl bg-primary/10 border border-primary/30 flex items-start gap-3">
           <span className="material-symbols-outlined text-primary mt-0.5" aria-hidden="true">cloud_done</span>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-semibold text-on-surface">微信桥已通过云桥连接</div>
+            <div className="text-sm font-semibold text-on-surface">{t("wechat_bridge.cloud_active_title")}</div>
             <div className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-              Bot 运行在 VPS{bridgeHost ? ` (${bridgeHost})` : ""}，桌面端不需要本地 daemon。
-              下方的「未启动」状态指本地 daemon 未跑——这是正常的；微信能正常发消息就行。
+              {t("wechat_bridge.cloud_active_desc_a")}{bridgeHost ? ` (${bridgeHost})` : ""}{t("wechat_bridge.cloud_active_desc_b")}
             </div>
           </div>
         </div>
@@ -190,15 +191,15 @@ export default function WeChatBridgePage() {
 
       {/* Status indicators */}
       <div className="grid grid-cols-4 gap-4 mb-8">
-        <StatusCard icon="cloud" label="本地服务" value={serverStatus?.online ? "在线" : "离线"} active={!!serverStatus?.online} />
-        <StatusCard icon="person" label="账号" value={account?.accountId ? `@${account.accountId.slice(0, 8)}` : "未绑定"} active={!!account?.configured} />
+        <StatusCard icon="cloud" label={t("wechat_bridge.status_local_service")} value={serverStatus?.online ? t("wechat_bridge.status_online") : t("wechat_bridge.status_offline")} active={!!serverStatus?.online} />
+        <StatusCard icon="person" label={t("wechat_bridge.status_account")} value={account?.accountId ? `@${account.accountId.slice(0, 8)}` : t("wechat_bridge.status_unbound")} active={!!account?.configured} />
         <StatusCard
           icon="hub"
-          label="桥接"
-          value={daemonRunning ? "本地运行中" : cloudActive ? "云桥连接中" : "未启动"}
+          label={t("wechat_bridge.status_bridge")}
+          value={daemonRunning ? t("wechat_bridge.status_running_local") : cloudActive ? t("wechat_bridge.status_running_cloud") : t("wechat_bridge.status_not_started")}
           active={daemonRunning || cloudActive}
         />
-        <StatusCard icon="lock" label="加密" value="256-bit AES" active={!!isReady || cloudActive} />
+        <StatusCard icon="lock" label={t("wechat_bridge.status_encryption")} value="256-bit AES" active={!!isReady || cloudActive} />
       </div>
 
       <div className="grid grid-cols-12 gap-8">
@@ -208,10 +209,10 @@ export default function WeChatBridgePage() {
             {step === "scanning" || step === "scanned" ? (
               <div className="text-center space-y-5">
                 <h2 className="text-lg font-headline font-bold text-on-surface">
-                  {step === "scanned" ? "请在手机上确认" : "Sync Device"}
+                  {step === "scanned" ? t("wechat_bridge.qr_title_scanned") : t("wechat_bridge.qr_title_default")}
                 </h2>
                 <p className="text-xs text-on-surface-variant">
-                  {step === "scanned" ? "已扫描，等待确认..." : "Open WeChat and scan the QR code to pair your device."}
+                  {step === "scanned" ? t("wechat_bridge.qr_hint_scanned") : t("wechat_bridge.qr_hint_default")}
                 </p>
                 {qrUrl && (
                   <div className="inline-block p-5 bg-surface-container-lowest rounded-2xl">
@@ -227,21 +228,21 @@ export default function WeChatBridgePage() {
                 {step === "scanned" && (
                   <div className="flex items-center justify-center gap-2 text-primary text-sm">
                     <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                    已扫描
+                    {t("wechat_bridge.qr_scanned")}
                   </div>
                 )}
                 <button
                   onClick={() => { if (pollRef.current) clearInterval(pollRef.current); pollRef.current = null; setStep("idle"); setQrUrl(null); }}
                   className="text-[11px] text-on-surface-variant hover:text-on-surface uppercase tracking-wider transition-colors"
                 >
-                  Cancel
+                  {t("wechat_bridge.qr_cancel")}
                 </button>
               </div>
             ) : step === "starting-server" || step === "connecting" ? (
               <div className="text-center space-y-4 py-8">
                 <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
                 <p className="text-on-surface-variant text-sm">
-                  {step === "starting-server" ? "正在启动服务..." : "正在连接微信桥接..."}
+                  {step === "starting-server" ? t("wechat_bridge.starting_server") : t("wechat_bridge.connecting_bridge")}
                 </p>
               </div>
             ) : isReady ? (
@@ -249,9 +250,9 @@ export default function WeChatBridgePage() {
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
                   <span className="material-symbols-outlined text-3xl text-primary">wifi</span>
                 </div>
-                <h2 className="text-lg font-headline font-bold text-on-surface">微信已连接</h2>
+                <h2 className="text-lg font-headline font-bold text-on-surface">{t("wechat_bridge.ready_title")}</h2>
                 <p className="text-xs text-on-surface-variant">
-                  在微信中发送文字即可记录想法，发送 /help 查看命令
+                  {t("wechat_bridge.ready_hint")}
                 </p>
                 <div className="flex items-center justify-center gap-3 text-[11px] text-on-surface-variant">
                   <span>{serverStatus?.thoughts ?? 0} thoughts</span>
@@ -261,12 +262,12 @@ export default function WeChatBridgePage() {
                 <div className="flex justify-center gap-3 pt-2">
                   <button onClick={startConnect} disabled={actionLoading}
                     className="flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider rounded-lg text-on-surface-variant hover:text-primary bg-surface-container-high transition-all">
-                    <span className="material-symbols-outlined text-[16px]">refresh</span> Rebind
+                    <span className="material-symbols-outlined text-[16px]">refresh</span> {t("wechat_bridge.rebind")}
                   </button>
                   <button onClick={handleDisconnect} disabled={actionLoading}
                     className="flex items-center gap-2 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider rounded-lg text-error/60 hover:text-error bg-error-container/10 transition-all">
                     {actionLoading ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> : <span className="material-symbols-outlined text-[16px]">power_off</span>}
-                    Disconnect
+                    {t("wechat_bridge.disconnect")}
                   </button>
                 </div>
               </div>
@@ -275,8 +276,8 @@ export default function WeChatBridgePage() {
                 <div className="w-16 h-16 mx-auto rounded-2xl bg-surface-container-high flex items-center justify-center">
                   <span className="material-symbols-outlined text-3xl text-on-surface-variant/40">wifi_off</span>
                 </div>
-                <h2 className="text-lg font-headline font-bold text-on-surface">连接微信</h2>
-                <p className="text-xs text-on-surface-variant">一键扫码，在微信中使用 EchoMind</p>
+                <h2 className="text-lg font-headline font-bold text-on-surface">{t("wechat_bridge.connect_title")}</h2>
+                <p className="text-xs text-on-surface-variant">{t("wechat_bridge.connect_hint")}</p>
                 {error && (
                   <div className="text-[11px] text-error bg-error-container/20 rounded-xl px-4 py-3 text-left">{error}</div>
                 )}
@@ -285,15 +286,15 @@ export default function WeChatBridgePage() {
                     <button
                       onClick={handleStartDaemon}
                       disabled={actionLoading}
-                      title="启动本地 bot，登录之前扫码绑定的微信账号"
+                      title={t("wechat_bridge.start_bridge_title")}
                       className="inline-flex items-center gap-2 px-8 py-3 text-sm font-bold rounded-xl luminous-pulse text-on-primary disabled:opacity-50 active:scale-95 transition-all"
                     >
                       {actionLoading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <span className="material-symbols-outlined">power</span>}
-                      启动桥接
+                      {t("wechat_bridge.start_bridge_button")}
                     </button>
                     <div className="text-[11px] text-on-surface-variant/50">
-                      已绑定 {account.accountId?.slice(0, 12)}...
-                      <button onClick={startConnect} className="text-primary hover:underline ml-2">重新绑定</button>
+                      {t("wechat_bridge.bound_to", { id: account.accountId?.slice(0, 12) })}
+                      <button onClick={startConnect} className="text-primary hover:underline ml-2">{t("wechat_bridge.rebind_link")}</button>
                     </div>
                   </div>
                 ) : (
@@ -301,14 +302,14 @@ export default function WeChatBridgePage() {
                     <button
                       onClick={startConnect}
                       disabled={actionLoading}
-                      title="启动本地 server + bot，调起腾讯官方 ilink 接口，本页内显示扫码二维码"
+                      title={t("wechat_bridge.scan_button_title")}
                       className="inline-flex items-center gap-2 px-8 py-3 text-sm font-bold rounded-xl luminous-pulse text-on-primary disabled:opacity-50 active:scale-95 transition-all"
                     >
                       {actionLoading ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <span className="material-symbols-outlined">qr_code_scanner</span>}
-                      扫码连接
+                      {t("wechat_bridge.scan_button")}
                     </button>
                     <p className="text-[11px] text-on-surface-variant/50 max-w-xs mx-auto leading-relaxed">
-                      点击后会启动本地 bot，并在页面里弹出二维码 — 用手机微信扫码即可绑定。绑定成功的账号会加密保存在本机。
+                      {t("wechat_bridge.scan_hint")}
                     </p>
                   </>
                 )}
@@ -322,21 +323,21 @@ export default function WeChatBridgePage() {
           <div className="bg-surface-container-low p-6 rounded-2xl ghost-border">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-sm font-headline font-bold text-on-surface uppercase tracking-widest">
-                WeChat Command Protocol
+                {t("wechat_bridge.cmd_panel_title")}
               </h3>
               <span className="text-[11px] text-on-surface-variant/40 font-mono">v1.2</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <CmdCard icon="list" cmd="直接发文字" desc="快速记录想法" />
-              <CmdCard icon="image" cmd="发送图片" desc="AI 识别并记录" />
-              <CmdCard icon="format_list_numbered" cmd="/list [n]" desc="列出最近 n 条想法" />
-              <CmdCard icon="search" cmd="/search <关键词>" desc="语义搜索想法" />
-              <CmdCard icon="visibility" cmd="/view <ID>" desc="查看想法详情" />
-              <CmdCard icon="chat_bubble" cmd="/chat <ID>" desc="开始 AI 深度对话" />
-              <CmdCard icon="logout" cmd="/exit" desc="退出对话模式" />
-              <CmdCard icon="inventory_2" cmd="/archive <ID>" desc="归档想法" />
-              <CmdCard icon="monitoring" cmd="/status" desc="系统状态" />
-              <CmdCard icon="help" cmd="/help" desc="显示帮助" />
+              <CmdCard icon="list" cmd={t("wechat_bridge.cmd_send_text")} desc={t("wechat_bridge.cmd_send_text_desc")} />
+              <CmdCard icon="image" cmd={t("wechat_bridge.cmd_send_image")} desc={t("wechat_bridge.cmd_send_image_desc")} />
+              <CmdCard icon="format_list_numbered" cmd="/list [n]" desc={t("wechat_bridge.cmd_list_desc")} />
+              <CmdCard icon="search" cmd={t("wechat_bridge.cmd_search")} desc={t("wechat_bridge.cmd_search_desc")} />
+              <CmdCard icon="visibility" cmd="/view <ID>" desc={t("wechat_bridge.cmd_view_desc")} />
+              <CmdCard icon="chat_bubble" cmd="/chat <ID>" desc={t("wechat_bridge.cmd_chat_desc")} />
+              <CmdCard icon="logout" cmd="/exit" desc={t("wechat_bridge.cmd_exit_desc")} />
+              <CmdCard icon="inventory_2" cmd="/archive <ID>" desc={t("wechat_bridge.cmd_archive_desc")} />
+              <CmdCard icon="monitoring" cmd="/status" desc={t("wechat_bridge.cmd_status_desc")} />
+              <CmdCard icon="help" cmd="/help" desc={t("wechat_bridge.cmd_help_desc")} />
             </div>
           </div>
         </div>
