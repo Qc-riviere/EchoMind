@@ -117,7 +117,7 @@ export default function Sidebar() {
           >
             chat_bubble
           </span>
-          <span className="text-sm flex-1 text-left">{t("nav.chat")}</span>
+          <span className="text-sm flex-1 text-left truncate">{t("nav.chat")}</span>
           <span className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${chatExpanded ? "rotate-180" : ""}`}>
             expand_more
           </span>
@@ -218,12 +218,12 @@ function NavItem({ to, icon, labelKey, hintKey }: NavItemDef) {
       {({ isActive }) => (
         <>
           <span
-            className="material-symbols-outlined"
+            className="material-symbols-outlined shrink-0"
             style={isActive ? { fontVariationSettings: "'FILL' 1" } : undefined}
           >
             {icon}
           </span>
-          <span className="text-sm">{t(labelKey)}</span>
+          <span className="text-sm truncate min-w-0">{t(labelKey)}</span>
         </>
       )}
     </NavLink>

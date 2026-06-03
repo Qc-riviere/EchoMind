@@ -44,6 +44,8 @@
 | D14 | 「导出」更多 case 作为 Skills 实现（除 MD/DOCX/PDF 外，如 Roam EDN / Markdown 单文件 archive） | PLAN 阶段 5 |
 | D15 | Obsidian 风格 **Plugin 系统** — 用户写 .js / .ts 扩展（M4，未开工） | PLAN 阶段 6 |
 | D15b | **MCP client 子系统** — 让用户像 Claude Desktop 那样配 MCP servers（filesystem / GitHub / Notion 等任意工具）；agent 能调任意 MCP tool。短期 Tavily 走自写 Rust client（已 ship），MCP 作为高级用户扩展通道；长期把 EchoMind 也开成 MCP server（供 Claude Desktop / Cursor 读灵感库） | 2026-05-29 |
+| D24 | **synthesize_chat_plan 模板全英文化** — D23 phase 4 只加了顶层 "respond in user's language" override，但 ~100 行的中文 section headings（一句话定位 / 核心假设与验证框架 / etc.）+ 6 维度框架描述 + 表格列名都还是中文。让 LLM 现场翻译能用但偶尔翻得不优雅；要完整英文模板就得照写一遍 EN 版本，按 locale 选 prompt。低优先级（bilingual override 在多数场景够用），等 EN 用户反馈 plan 质量再决定 | 0.5d | D23 phase 4 deferred |
+| D25 | **Rust 端字符串 i18n**（tray menu / notification body / bridge command 错误 returns）— D23 phase 3 暂未推进；当前 src-tauri/src/lib.rs 的 tray "显示主窗口/速记浮窗/退出" + sync 通知 "从云端同步到 N 条新灵感" + bridge_cmds.rs 的 ~13 处 format!("...失败: {}", e) 都还是中文。EN UI 用户看到中文 tray 一致性差。方案：plumb locale 到 Rust shared state，或最简单的"全部改 EN"二选一。等 EN 用户报告再做 | 0.5d | D23 phase 3 deferred |
 | D16 | **L3 Sync** — 多桌面 E2E 加密同步（产品三层架构里唯一未实现的） | MVP 报告 |
 | D17 | 4 方对比测评草稿（vs Obsidian / Notion / Flomo / 语雀小记） | MVP 报告 |
 | D18 | sqlite-vec 10K 规模 benchmark（验证 H4 性能假设） | MVP 报告 |
