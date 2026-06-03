@@ -31,7 +31,6 @@
 | D8 | 用户协议 / 隐私政策（"知情同意"叙事必备） | 1-2 周含外部 | §13 P2 #11 |
 | D9 | Landing Page — Vercel 部署 1 页（公开发布入口） | 2-3 天 | §13 P2 #12 |
 | D10 | 支付通道 — Stripe 国际 + 国内 Pingxx / 易支付 | 1 周 | §13 P2 #13 |
-| D11 | DB 迁移日志静默化（`ALTER TABLE` 满屏不专业） | 1 小时 | §13 P2 #15 |
 | D12 | OpenClaw 官方文档阅读，记录 iLink 限流上限 | 0.5 天 | MVP 报告 |
 | D13 | Closed Alpha 申请表（Tally / 飞书）+ 微信反馈群 | 半天 | MVP 报告 |
 | D1b | **synthesize max_tokens 集成测试** — D1 第一轮覆盖了 4 文件 24 tests（embedding fallback 8 / N2 thoughts tree 8 / agent dedup 3 / bridge 401+refresh 5）；synthesize max_tokens 传递需要 LLM provider trait 抽象注入 mock，工程量大留作 follow-up | 0.5d | D1 spec 余项 |
@@ -58,7 +57,6 @@
 
 ```
 立即（< 半天）：
-  D11 (DB 日志静默, 1h)
   D5 (e2e onboarding, 半天)
   D6 + D12 (各半天)
 

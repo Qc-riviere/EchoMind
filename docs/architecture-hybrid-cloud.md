@@ -503,7 +503,6 @@ docker compose up -d bot
 | 12 | 没有 Landing Page | 公开发布入口 | Vercel 部署 1 页 |
 | 13 | 没有支付通道 | 收订阅必备 | Stripe + 国内 Pingxx，Beta 前接 |
 | 14 | fastembed 模型首次下载 400MB+ | 国内 HuggingFace 不稳 | 文档提示 hf-mirror，长期可分发本地缓存 |
-| 15 | 首次启动数据库迁移日志暴露 | console 一堆 ALTER TABLE，不专业 | 静默化 |
 
 ### 不算卡点（伪问题）
 
@@ -531,7 +530,7 @@ Alpha 招募前剩余 —— 执行进度：
 
 Beta 公开前：
   ├── P1 #10  Phase 4 剩余三项（速率/重连/Budget 通知）
-  └── P2 #11-15 ToS / Landing / 支付 / fastembed 镜像 / 迁移日志静默
+  └── P2 #11-14 ToS / Landing / 支付 / fastembed 镜像
 
 UI/UX 体系性改进（2026-05-13 通过 ui-ux-pro-max skill 完成）：
   ├── ✅ 全局字号下限 11px（96 处 sub-12px 修正）
