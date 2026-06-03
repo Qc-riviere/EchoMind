@@ -11,7 +11,7 @@ export function EchoMindLogo({
       className={className}
       {...props}
     >
-      {/* 记忆波谱 (Memory Spectrum) - 递增的声波形柱状图，暗示声音、积累与回想 */}
+      {/* Memory Spectrum — ascending waveform bars hinting at sound, accumulation, recollection */}
       <rect x="20" y="40" width="12" height="20" rx="6" fill="currentColor" opacity="0.3" />
       <rect x="38" y="25" width="12" height="50" rx="6" fill="currentColor" opacity="0.5" />
       <rect x="56" y="10" width="12" height="80" rx="6" fill="currentColor" opacity="0.8" />
