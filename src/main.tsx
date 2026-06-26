@@ -1,5 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+// Bundle the Material Symbols icon font locally instead of fetching it from the
+// Google Fonts CDN. A desktop app launched at boot (autostart) has no network
+// yet, so a CDN font fails and every icon falls back to its raw ligature name
+// (home / search / push_pin …). Imported here in the shared entry so both the
+// main and capture windows get it. Provides @font-face + .material-symbols-outlined.
+import "material-symbols/outlined.css";
 import App from "./App";
 import CaptureWindow from "./pages/CaptureWindow";
 import { isPermissionGranted, requestPermission } from "@tauri-apps/plugin-notification";

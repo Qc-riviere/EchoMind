@@ -23,6 +23,7 @@
     "docx": "^9.6.1",
     "i18next": "^26.3.0",
     "lucide-react": "^1.0.1",
+    "material-symbols": "^0.45.4",
     "qrcode.react": "^4.2.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

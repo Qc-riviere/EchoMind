@@ -43,3 +43,5 @@ workspace/
 .env.*
 !.env.example
 !.env.template
+.pre-deploy-check.log
+.tauri-build.log
