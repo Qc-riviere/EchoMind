@@ -19,6 +19,20 @@ impl Default for BridgeState {
     }
 }
 
+/// On Windows, prevent the spawned console subprocess from flashing a black
+/// terminal window. CREATE_NO_WINDOW = 0x08000000. No-op on other platforms.
+fn hide_console_window(cmd: &mut std::process::Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = cmd;
+    }
+}
+
 fn home_dir() -> Option<PathBuf> {
     std::env::var_os("USERPROFILE")
         .or_else(|| std::env::var_os("HOME"))
@@ -66,9 +80,13 @@ pub fn bridge_start_server(
 
     let exe_path = find_server_binary(&app)?;
 
-    let child = std::process::Command::new(&exe_path)
+    let mut server_cmd = std::process::Command::new(&exe_path);
+    server_cmd
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    hide_console_window(&mut server_cmd);
+
+    let child = server_cmd
         .spawn()
         .map_err(|e| format!("Failed to start server: {}", e))?;
 
@@ -276,9 +294,11 @@ pub fn bridge_start_daemon(
         }
     };
 
+    cmd.stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped());
+    hide_console_window(&mut cmd);
+
     let mut child = cmd
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| format!("启动 daemon 失败: {}", e))?;
 

@@ -34,6 +34,11 @@ pub fn set_pinned_thought(
 }
 
 #[tauri::command]
+pub fn reorder_pinned_thoughts(state: State<AppCore>, ids: Vec<String>) -> Result<(), String> {
+    state.0.reorder_pinned(&ids)
+}
+
+#[tauri::command]
 pub fn count_today_thoughts(state: State<AppCore>) -> Result<i64, String> {
     state.0.count_today_thoughts()
 }

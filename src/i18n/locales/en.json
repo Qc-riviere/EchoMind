@@ -71,6 +71,7 @@
     "appending": "Appending…",
     "pin": "Pin",
     "pinned": "Pinned",
+    "pin_limit": "You can pin at most {{max}} thoughts — unpin one first.",
     "archive": "Archive",
     "select_aria": "Select this note",
     "deselect_aria": "Deselect",
@@ -100,6 +101,7 @@
   },
   "settings": {
     "tabs": {
+      "general": "General",
       "llm": "LLM",
       "embedding": "Embeddings",
       "websearch": "Web Search",
@@ -108,6 +110,11 @@
       "appearance": "Appearance",
       "data": "Data",
       "about": "About"
+    },
+    "general": {
+      "section_title": "General",
+      "autostart_title": "Launch at startup",
+      "autostart_desc": "Start EchoMind in the background when you log in (tray only, no main window)."
     },
     "appearance": {
       "language": "Language",

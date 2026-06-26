@@ -68,6 +68,13 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // Autostart is opt-in (default off). When EchoMind is launched at boot
+        // by the OS, the plugin appends `--minimized` so we start tray-only
+        // instead of popping the main window. See the setup hook below.
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--minimized"]),
+        ))
         .plugin({
             use tauri_plugin_global_shortcut::{Builder as GsBuilder, ShortcutState};
             GsBuilder::new()
@@ -190,6 +197,19 @@ pub fn run() {
 
             refresh_tray_tooltip(&app.handle());
 
+            // Self-heal any stale/broken Windows autostart entry (old builds
+            // wrote an unquoted path that fails to launch on boot).
+            #[cfg(windows)]
+            commands::autostart_cmds::resync_windows_entry();
+
+            // Tray-only launch: when started at boot via autostart we pass
+            // `--minimized`, so hide the main window and live in the tray.
+            if std::env::args().any(|a| a == "--minimized") {
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.hide();
+                }
+            }
+
             // Periodic tray tooltip refresh — covers day-rollover and external
             // mutations (WeChat bridge sync, manual edits) without needing per-
             // command hooks.
@@ -274,6 +294,7 @@ pub fn run() {
             commands::thought_cmds::list_thoughts,
             commands::thought_cmds::list_home_thoughts,
             commands::thought_cmds::set_pinned_thought,
+            commands::thought_cmds::reorder_pinned_thoughts,
             commands::thought_cmds::count_today_thoughts,
             commands::ai_cmds::summarize_thoughts,
             commands::thought_cmds::get_thought,
@@ -294,6 +315,8 @@ pub fn run() {
             commands::thought_cmds::get_embedding_graph,
             commands::thought_cmds::get_thought_neighbors,
             commands::thought_cmds::get_graph_node,
+            commands::autostart_cmds::autostart_is_enabled,
+            commands::autostart_cmds::autostart_set_enabled,
             commands::setting_cmds::get_setting,
             commands::setting_cmds::set_setting,
             commands::setting_cmds::delete_setting,

@@ -15,9 +15,11 @@ pub struct Thought {
     pub parent_id: Option<String>,
     pub created_at: String,
     pub updated_at: String,
+    #[serde(default)]
+    pub pin_order: i64,
 }
 
-const THOUGHT_COLS: &str = "id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at, is_pinned, parent_id";
+const THOUGHT_COLS: &str = "id, content, context, domain, tags, image_path, file_summary, is_archived, created_at, updated_at, is_pinned, parent_id, pin_order";
 
 fn row_to_thought(row: &rusqlite::Row) -> rusqlite::Result<Thought> {
     Ok(Thought {
@@ -33,6 +35,7 @@ fn row_to_thought(row: &rusqlite::Row) -> rusqlite::Result<Thought> {
         updated_at: row.get(9)?,
         is_pinned: row.get::<_, i32>(10)? != 0,
         parent_id: row.get(11)?,
+        pin_order: row.get(12)?,
     })
 }
 
@@ -335,37 +338,78 @@ pub fn upsert_from_remote(
     }
 }
 
-/// Fetch the single pinned thought, if any. Returns None if nothing is pinned
-/// (or the pinned thought has been archived/deleted).
-pub fn get_pinned_thought(conn: &Connection) -> Result<Option<Thought>> {
+/// Maximum number of thoughts that can be pinned at once.
+pub const MAX_PINNED: i64 = 5;
+
+/// Fetch all pinned thoughts, ordered by manual `pin_order` (newest pin first,
+/// since fresh pins get a negative order). Archived thoughts are excluded.
+pub fn get_pinned_thoughts(conn: &Connection) -> Result<Vec<Thought>> {
     let sql = format!(
-        "SELECT {} FROM thoughts WHERE is_pinned = 1 AND is_archived = 0 LIMIT 1",
+        "SELECT {} FROM thoughts WHERE is_pinned = 1 AND is_archived = 0 \
+         ORDER BY pin_order ASC, created_at DESC",
         THOUGHT_COLS
     );
     let mut stmt = conn.prepare(&sql)?;
-    let mut rows = stmt.query_map([], row_to_thought)?;
-    match rows.next() {
-        Some(r) => r.map(Some),
-        None => Ok(None),
-    }
+    let rows = stmt.query_map([], row_to_thought)?;
+    rows.collect()
 }
 
-/// Pin or unpin a thought. Pinning enforces single-pin: any previously pinned
-/// thought is unpinned first.
+/// Pin or unpin a thought. Pinning is capped at [`MAX_PINNED`]; a fresh pin is
+/// placed at the top of the list (smallest `pin_order`). Returns an error if
+/// the cap is reached.
 pub fn set_pinned(conn: &Connection, id: &str, pinned: bool) -> Result<()> {
     if pinned {
-        conn.execute("UPDATE thoughts SET is_pinned = 0 WHERE is_pinned = 1", [])?;
-        conn.execute(
-            "UPDATE thoughts SET is_pinned = 1 WHERE id = ?1",
+        // Idempotent: re-pinning an already-pinned thought is a no-op (doesn't
+        // count against the cap or reshuffle order).
+        let already: bool = conn.query_row(
+            "SELECT is_pinned FROM thoughts WHERE id = ?1",
             params![id],
+            |r| Ok(r.get::<_, i32>(0)? != 0),
+        )?;
+        if already {
+            return Ok(());
+        }
+        let count: i64 = conn.query_row(
+            "SELECT COUNT(*) FROM thoughts WHERE is_pinned = 1 AND is_archived = 0",
+            [],
+            |r| r.get(0),
+        )?;
+        if count >= MAX_PINNED {
+            return Err(rusqlite::Error::SqliteFailure(
+                rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_CONSTRAINT),
+                Some(format!("PIN_LIMIT:{MAX_PINNED}")),
+            ));
+        }
+        // New pin goes to the top: one below the current minimum order.
+        let min_order: i64 = conn.query_row(
+            "SELECT COALESCE(MIN(pin_order), 0) FROM thoughts WHERE is_pinned = 1",
+            [],
+            |r| r.get(0),
+        )?;
+        conn.execute(
+            "UPDATE thoughts SET is_pinned = 1, pin_order = ?2 WHERE id = ?1",
+            params![id, min_order - 1],
         )?;
     } else {
         conn.execute(
-            "UPDATE thoughts SET is_pinned = 0 WHERE id = ?1",
+            "UPDATE thoughts SET is_pinned = 0, pin_order = 0 WHERE id = ?1",
             params![id],
         )?;
     }
     Ok(())
+}
+
+/// Rewrite the manual order of pinned thoughts to match `ids` (index 0 = top).
+/// Ids that aren't currently pinned are ignored.
+pub fn reorder_pinned(conn: &mut Connection, ids: &[String]) -> Result<()> {
+    let tx = conn.transaction()?;
+    for (i, id) in ids.iter().enumerate() {
+        tx.execute(
+            "UPDATE thoughts SET pin_order = ?2 WHERE id = ?1 AND is_pinned = 1",
+            params![id, i as i64],
+        )?;
+    }
+    tx.commit()
 }
 
 /// Count thoughts created since the given UTC timestamp (RFC3339).

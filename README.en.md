@@ -15,7 +15,7 @@ Inspiration notes · cross-device capture + AI auto-curation + occasional deep d
 
 ### Browse
 - **Two-column home** — "Recent 5" + "Most chatted 5" cover the time axis and the attention axis separately
-- **Pin what matters most** — a single note can be pinned to the top of home to represent your current "main thread"
+- **Pin what matters most** — up to 5 notes can be pinned to the top of home (drag to reorder) to represent your current "main thread"
 - **Semantic search** — natural-language search over your full note history
 - **Related discovery** — when a new note lands, similar past notes are surfaced
 

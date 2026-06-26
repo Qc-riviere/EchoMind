@@ -17,11 +17,12 @@ const LLM_PROVIDERS = [
   { value: "deepseek", label: "DeepSeek", backend: "openai", defaultModel: "deepseek-chat", defaultBaseUrl: "https://api.deepseek.com/v1" },
 ];
 
-type SettingsTab = "llm" | "embedding" | "websearch" | "ai" | "skills" | "appearance" | "data" | "about";
+type SettingsTab = "general" | "llm" | "embedding" | "websearch" | "ai" | "skills" | "appearance" | "data" | "about";
 
 // Label is a translation key — resolved at render via t(). Icons + tab keys
 // stay literal because they don't depend on locale.
 const NAV_ITEMS: { key: SettingsTab; icon: string; labelKey: string }[] = [
+  { key: "general", icon: "tune", labelKey: "settings.tabs.general" },
   { key: "llm", icon: "auto_awesome", labelKey: "settings.tabs.llm" },
   { key: "embedding", icon: "hub", labelKey: "settings.tabs.embedding" },
   { key: "websearch", icon: "travel_explore", labelKey: "settings.tabs.websearch" },
@@ -863,6 +864,9 @@ export default function SettingsPage() {
             <SkillsTab inputClass={inputClass} labelClass={labelClass} />
           )}
 
+          {/* General */}
+          {activeTab === "general" && <GeneralTab />}
+
           {/* Appearance */}
           {activeTab === "appearance" && (
             <AppearanceTab labelClass={labelClass} />
@@ -1408,6 +1412,57 @@ function SkillsTab({ inputClass, labelClass }: { inputClass: string; labelClass:
         </div>
       )}
     </>
+  );
+}
+
+function GeneralTab() {
+  const { t } = useTranslation();
+  const [autostart, setAutostart] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Reflect the actual OS-registered state (default off on first run).
+  useEffect(() => {
+    invoke<boolean>("autostart_is_enabled")
+      .then(setAutostart)
+      .catch(() => {/* not available (e.g. dev web) — leave off */});
+  }, []);
+
+  const toggle = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    const next = !autostart;
+    try {
+      await invoke("autostart_set_enabled", { enabled: next });
+      setAutostart(next);
+    } catch (e) {
+      setError(errorMsg(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section>
+      <h3 className="text-sm font-headline font-bold uppercase tracking-widest text-primary mb-6">{t("settings.general.section_title")}</h3>
+      <div className="bg-surface-container-low rounded-2xl p-6 ghost-border space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h4 className="font-medium text-on-surface text-sm">{t("settings.general.autostart_title")}</h4>
+            <p className="text-xs text-on-surface-variant mt-1">{t("settings.general.autostart_desc")}</p>
+            {error && <p className="text-xs text-error mt-1">{error}</p>}
+          </div>
+          <button
+            onClick={toggle}
+            disabled={busy}
+            className={`w-11 h-6 rounded-full relative transition-colors disabled:opacity-50 ${autostart ? "bg-primary" : "bg-surface-container-highest"}`}
+          >
+            <div className={`absolute top-1 w-4 h-4 bg-on-primary rounded-full transition-all ${autostart ? "right-1" : "left-1"}`} />
+          </button>
+        </div>
+      </div>
+    </section>
   );
 }
 

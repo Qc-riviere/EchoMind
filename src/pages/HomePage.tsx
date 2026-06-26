@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { errorMsg } from "../lib/errorMsg";
 import { useNavigate } from "react-router-dom";
@@ -17,7 +17,7 @@ import { formatDistanceToNow } from "date-fns";
 interface HomeThoughts {
   recent: Thought[];
   hot: Thought[];
-  pinned: Thought | null;
+  pinned: Thought[];
 }
 
 const PER_PAGE = 9;
@@ -25,7 +25,7 @@ const PER_PAGE = 9;
 export default function HomePage() {
   const { t } = useTranslation();
   const [selectedThought, setSelectedThought] = useState<Thought | null>(null);
-  const [home, setHome] = useState<HomeThoughts>({ recent: [], hot: [], pinned: null });
+  const [home, setHome] = useState<HomeThoughts>({ recent: [], hot: [], pinned: [] });
   const [allThoughts, setAllThoughts] = useState<Thought[]>([]);
   const [page, setPage] = useState(0);
 
@@ -61,11 +61,12 @@ export default function HomePage() {
     };
   }, [loadHome]);
 
-  // Exclude pinned from the paginated list (it's already shown in its own
-  // section above) so the user doesn't see it twice.
+  // Exclude pinned from the paginated list (they're already shown in their own
+  // section above) so the user doesn't see them twice.
+  const pinnedIds = useMemo(() => new Set(home.pinned.map((t) => t.id)), [home.pinned]);
   const mainList = useMemo(
-    () => (home.pinned ? allThoughts.filter((t) => t.id !== home.pinned!.id) : allThoughts),
-    [allThoughts, home.pinned],
+    () => (pinnedIds.size ? allThoughts.filter((t) => !pinnedIds.has(t.id)) : allThoughts),
+    [allThoughts, pinnedIds],
   );
   const totalPages = Math.max(1, Math.ceil(mainList.length / PER_PAGE));
   const pageSafe = Math.min(page, totalPages - 1);
@@ -76,7 +77,7 @@ export default function HomePage() {
 
   const allDisplayed = useMemo(() => {
     const map = new Map<string, Thought>();
-    [...(home.pinned ? [home.pinned] : []), ...allThoughts, ...home.hot].forEach((t) => map.set(t.id, t));
+    [...home.pinned, ...allThoughts, ...home.hot].forEach((t) => map.set(t.id, t));
     return map;
   }, [home, allThoughts]);
 
@@ -131,7 +132,7 @@ export default function HomePage() {
       <div className="grid grid-cols-12 gap-12">
         {/* Inspiration Feed */}
         <div className="col-span-12 lg:col-span-8 space-y-12">
-          {home.pinned && (
+          {home.pinned.length > 0 && (
             <section>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-xs font-headline font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
@@ -139,16 +140,14 @@ export default function HomePage() {
                   {t("home.most_important")}
                 </h3>
               </div>
-              <div className="ring-1 ring-primary/30 rounded-2xl">
-                <ThoughtList
-                  thoughts={[home.pinned]}
-                  onThoughtClick={(thought) => setSelectedThought(thought)}
-                  activeThoughtId={selectedThought?.id}
-                  selectedIds={selectedIds}
-                  onToggleSelect={toggleSelect}
-                  onChanged={loadHome}
-                />
-              </div>
+              <PinnedSection
+                pinned={home.pinned}
+                activeThoughtId={selectedThought?.id}
+                selectedIds={selectedIds}
+                onThoughtClick={setSelectedThought}
+                onToggleSelect={toggleSelect}
+                onChanged={loadHome}
+              />
             </section>
           )}
 
@@ -249,6 +248,134 @@ export default function HomePage() {
           loadHome();
         }}
       />
+    </div>
+  );
+}
+
+interface PinnedSectionProps {
+  pinned: Thought[];
+  activeThoughtId?: string;
+  selectedIds: Set<string>;
+  onThoughtClick: (t: Thought) => void;
+  onToggleSelect: (id: string) => void;
+  onChanged: () => void;
+}
+
+// Renders the pinned thoughts as a manually-orderable list. Only the grip
+// handle is a drag source, so card text stays selectable and buttons clickable.
+// During a drag the list live-reorders so the other cards "make room"; a FLIP
+// animation makes that shift smooth (squeeze). Order is persisted on drop.
+function PinnedSection({
+  pinned,
+  activeThoughtId,
+  selectedIds,
+  onThoughtClick,
+  onToggleSelect,
+  onChanged,
+}: PinnedSectionProps) {
+  const [order, setOrder] = useState<Thought[]>(pinned);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const orderRef = useRef(order);
+  orderRef.current = order;
+
+  // Card DOM nodes + their last-painted top, keyed by thought id. Used to FLIP-
+  // animate cards into their new slot whenever `order` changes.
+  const cardEls = useRef<Map<string, HTMLElement>>(new Map());
+  const prevTops = useRef<Map<string, number>>(new Map());
+
+  // Resync when the backend list changes (new pin / unpin / external sync).
+  useEffect(() => { setOrder(pinned); }, [pinned]);
+
+  useLayoutEffect(() => {
+    cardEls.current.forEach((el, id) => {
+      const newTop = el.getBoundingClientRect().top;
+      const oldTop = prevTops.current.get(id);
+      if (oldTop != null && oldTop !== newTop) {
+        // Invert: jump back to the old position, then transition to natural (0).
+        el.style.transition = "none";
+        el.style.transform = `translateY(${oldTop - newTop}px)`;
+        el.getBoundingClientRect(); // force reflow so the next frame animates
+        el.style.transition = "transform 180ms cubic-bezier(0.2, 0, 0, 1)";
+        el.style.transform = "";
+      }
+      prevTops.current.set(id, newTop);
+    });
+  }, [order]);
+
+  // Live reorder: move the dragged card to the hovered slot. Guarded so it only
+  // fires when the position actually changes (dragOver streams continuously).
+  const moveOver = (targetId: string) => {
+    const from = draggingId;
+    if (!from || from === targetId) return;
+    setOrder((cur) => {
+      const fi = cur.findIndex((t) => t.id === from);
+      const ti = cur.findIndex((t) => t.id === targetId);
+      if (fi < 0 || ti < 0 || fi === ti) return cur;
+      const next = [...cur];
+      const [moved] = next.splice(fi, 1);
+      next.splice(ti, 0, moved);
+      return next;
+    });
+  };
+
+  const finishDrag = () => {
+    setDraggingId(null);
+    invoke("reorder_pinned_thoughts", { ids: orderRef.current.map((t) => t.id) })
+      .then(() => onChanged())
+      .catch(() => { /* revert on next loadHome */ });
+  };
+
+  return (
+    <div className="space-y-4">
+      {order.map((thought) => (
+        <div
+          key={thought.id}
+          data-pin-card
+          ref={(el) => {
+            if (el) cardEls.current.set(thought.id, el);
+            else cardEls.current.delete(thought.id);
+          }}
+          onDragOver={(e) => { e.preventDefault(); moveOver(thought.id); }}
+          onDrop={(e) => e.preventDefault()}
+          className={`relative flex items-start gap-1 ring-1 ring-primary/30 rounded-2xl pt-2 px-2 pb-4 ${
+            draggingId === thought.id ? "opacity-40 blur-[2px]" : ""
+          }`}
+        >
+          {order.length > 1 && (
+            <span
+              draggable
+              onDragStart={(e) => {
+                setDraggingId(thought.id);
+                // WebView2/Safari won't start a drag unless dataTransfer carries
+                // something; set a payload + move effect to make it reliable.
+                e.dataTransfer.effectAllowed = "move";
+                e.dataTransfer.setData("text/plain", thought.id);
+                // Drag the whole card (not just the grip) under the cursor.
+                const card = (e.currentTarget as HTMLElement).closest<HTMLElement>("[data-pin-card]");
+                if (card) {
+                  const rect = card.getBoundingClientRect();
+                  e.dataTransfer.setDragImage(card, e.clientX - rect.left, e.clientY - rect.top);
+                }
+              }}
+              onDragEnd={finishDrag}
+              className="material-symbols-outlined text-[18px] text-on-surface-variant/40 hover:text-primary cursor-grab active:cursor-grabbing mt-6 ml-2 select-none flex-shrink-0"
+              aria-label="drag to reorder"
+            >
+              drag_indicator
+            </span>
+          )}
+          <div className="flex-1 min-w-0">
+            <ThoughtList
+              thoughts={[thought]}
+              onThoughtClick={onThoughtClick}
+              activeThoughtId={activeThoughtId}
+              selectedIds={selectedIds}
+              onToggleSelect={onToggleSelect}
+              onChanged={onChanged}
+            />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

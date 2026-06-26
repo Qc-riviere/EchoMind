@@ -41,7 +41,7 @@ pub struct GraphData {
 pub struct HomeThoughts {
     pub recent: Vec<db::thoughts::Thought>,
     pub hot: Vec<db::thoughts::Thought>,
-    pub pinned: Option<db::thoughts::Thought>,
+    pub pinned: Vec<db::thoughts::Thought>,
 }
 
 use agent::builtin_tools;
@@ -170,13 +170,12 @@ impl EchoMind {
     /// yet. Children are hidden — they live inside their root's expand panel.
     pub fn list_home_thoughts(&self) -> Result<HomeThoughts, String> {
         let conn = self.conn()?;
-        let pinned = thoughts::get_pinned_thought(&conn).map_err(|e| e.to_string())?;
-        let pinned_id = pinned.as_ref().map(|t| t.id.clone());
+        let pinned = thoughts::get_pinned_thoughts(&conn).map_err(|e| e.to_string())?;
+        let pinned_ids: std::collections::HashSet<&str> =
+            pinned.iter().map(|t| t.id.as_str()).collect();
         let mut recent = thoughts::list_root_thoughts(&conn).map_err(|e| e.to_string())?;
-        // Drop the pinned thought from `recent` to avoid duplicate display.
-        if let Some(ref pid) = pinned_id {
-            recent.retain(|t| &t.id != pid);
-        }
+        // Drop pinned thoughts from `recent` to avoid duplicate display.
+        recent.retain(|t| !pinned_ids.contains(t.id.as_str()));
         recent.truncate(5);
         let hot = thoughts::list_hot_thoughts(&conn, 5).map_err(|e| e.to_string())?;
         Ok(HomeThoughts { recent, hot, pinned })
@@ -185,6 +184,11 @@ impl EchoMind {
     pub fn set_pinned(&self, id: &str, pinned: bool) -> Result<(), String> {
         let conn = self.conn()?;
         thoughts::set_pinned(&conn, id, pinned).map_err(|e| e.to_string())
+    }
+
+    pub fn reorder_pinned(&self, ids: &[String]) -> Result<(), String> {
+        let mut conn = self.conn()?;
+        thoughts::reorder_pinned(&mut conn, ids).map_err(|e| e.to_string())
     }
 
     /// Count thoughts created today (local-time start of day).

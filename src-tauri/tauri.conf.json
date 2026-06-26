@@ -19,7 +19,8 @@
         "minHeight": 500,
         "center": true,
         "decorations": false,
-        "transparent": true
+        "transparent": true,
+        "dragDropEnabled": false
       },
       {
         "label": "capture",

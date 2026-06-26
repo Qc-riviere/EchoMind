@@ -29,6 +29,7 @@ tauri-plugin-fs = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tauri-plugin-autostart = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 rusqlite = { version = "0.31", features = ["bundled", "blob"] }
@@ -41,4 +42,9 @@ futures-util = "0.3"
 base64 = "0.22"
 dirs-next = "2.0"
 echomind-core = { path = "echomind-core" }
+
+# Windows-only: write the HKCU\…\Run autostart entry ourselves (quoted path).
+# Reuse the version auto-launch already pulls in to avoid a duplicate in the tree.
+[target.'cfg(windows)'.dependencies]
+winreg = "0.10"
 

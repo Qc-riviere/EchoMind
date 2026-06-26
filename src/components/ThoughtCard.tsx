@@ -7,6 +7,7 @@ import { useThoughtStore } from "../stores/thoughtStore";
 import { formatRelative, formatFull } from "../lib/relativeTime";
 import RelatedThoughts from "./RelatedThoughts";
 import ThoughtImage from "./ThoughtImage";
+import { notify } from "../lib/notify";
 
 interface Props {
   thought: Thought;
@@ -349,7 +350,13 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
                 try {
                   await invoke("set_pinned_thought", { id: thought.id, pinned: !thought.is_pinned });
                   onChanged?.();
-                } catch { /* ignore */ }
+                } catch (err) {
+                  // Most likely the pin cap (5) was hit. Surface it instead of
+                  // silently no-op'ing so the user understands why nothing pinned.
+                  if (String(err).includes("PIN_LIMIT")) {
+                    notify("EchoMind", t("thought.pin_limit", { max: 5 })).catch(() => {});
+                  }
+                }
               }}
               className={`flex items-center gap-1.5 text-[11px] uppercase tracking-wider transition-colors ${
                 thought.is_pinned

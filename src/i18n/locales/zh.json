@@ -71,6 +71,7 @@
     "appending": "追加中…",
     "pin": "置顶",
     "pinned": "已置顶",
+    "pin_limit": "最多置顶 {{max}} 条灵感，先取消一条再置顶。",
     "archive": "归档",
     "select_aria": "选择此条",
     "deselect_aria": "取消选择",
@@ -100,6 +101,7 @@
   },
   "settings": {
     "tabs": {
+      "general": "通用",
       "llm": "LLM 配置",
       "embedding": "向量嵌入",
       "websearch": "联网搜索",
@@ -108,6 +110,11 @@
       "appearance": "外观",
       "data": "数据",
       "about": "关于"
+    },
+    "general": {
+      "section_title": "通用",
+      "autostart_title": "开机自启动",
+      "autostart_desc": "登录系统时在后台启动 EchoMind（仅托盘，不弹出主窗口）。"
     },
     "appearance": {
       "language": "语言",

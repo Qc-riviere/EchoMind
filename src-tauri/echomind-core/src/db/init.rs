@@ -95,6 +95,15 @@ pub fn initialize_database(db_path: &Path) -> Result<Connection> {
         conn.execute_batch("ALTER TABLE thoughts ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0;")?;
     }
 
+    // Migration: add pin_order column (N3 multi-pin manual ordering). Smaller
+    // pin_order sorts first; new pins go to the top via a negative order.
+    let has_pin_order: bool = conn
+        .prepare("SELECT pin_order FROM thoughts LIMIT 0")
+        .is_ok();
+    if !has_pin_order {
+        conn.execute_batch("ALTER TABLE thoughts ADD COLUMN pin_order INTEGER NOT NULL DEFAULT 0;")?;
+    }
+
     // Migration: add parent_id column (N2 thread/follow-up support).
     // No FK constraint — SQLite ALTER TABLE can't add ON DELETE CASCADE on an
     // existing table; cascade is handled in delete_thought instead.
