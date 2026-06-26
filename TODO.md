@@ -1,6 +1,6 @@
 # TODO — EchoMind
 
-> 更新日期：2026-05-28（v0.3.5 之后，audit B2/B3/B4 + I1/I2/I3 已完成）
+> 更新日期：2026-06-22（v0.3.8-dev：N3 置顶多选 + N4 开机自启 + N5 微信桥静默启动 已完成，见决策日志）
 > 已完成的不在这。这是"还没做的"。
 >
 > ID 约定：`N` 用户新增需求，`D` 文档考古挖出来的（D1 = audit B1, D2-13 = §13 卡点清单, D14-20 = PLAN/MVP）。
@@ -34,6 +34,7 @@
 | D12 | OpenClaw 官方文档阅读，记录 iLink 限流上限 | 0.5 天 | MVP 报告 |
 | D13 | Closed Alpha 申请表（Tally / 飞书）+ 微信反馈群 | 半天 | MVP 报告 |
 | D1b | **synthesize max_tokens 集成测试** — D1 第一轮覆盖了 4 文件 24 tests（embedding fallback 8 / N2 thoughts tree 8 / agent dedup 3 / bridge 401+refresh 5）；synthesize max_tokens 传递需要 LLM provider trait 抽象注入 mock，工程量大留作 follow-up | 0.5d | D1 spec 余项 |
+| **N6** | **VPS 生成对外测试 pair codes** — 给外部 alpha 测试者发可直接用的 pair code，需 SSH `49.128.204.149` 调 `POST /admin/pair-codes`（带 admin token）。当前 VPS 无公开 sign-up（见 memory `project_vps_state`），这是手动兜底；长期方案是 D26 `public-pair` 开放托管。**敏感操作**——执行前必须先列出每条 SSH/curl 给用户 review，确认后才跑。关联 D13（Alpha 申请表） | 0.5h | user 2026-06-22 |
 | D21 | **release workflow GitHub 权限回归** — `tauri-action@v0` (SHA 84b9d35b...) 自 2026-06-01 起 create-release 报 `Resource not accessible by integration`；v0.3.6 (5/29) push trigger 还能成，v0.3.7 (6/1) push + dispatch 都挂在同一步。yaml + tauri-action SHA 都没变 → GitHub 那边动了东西。当前 workaround：每次 release 先 `gh release create v0.X.X --draft --notes "..."` 手动建 draft → 再 push tag / dispatch，tauri-action 找到现有 draft 就跳过 create。要查：repo Settings → Actions / Org-level fine-grained perms / 或 pin tauri-action 到具体 SHA 锁住行为 | 1h | 2026-06-01 ship 时遇到 |
 
 ## 🟩 P3 — 长期演进
