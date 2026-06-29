@@ -288,8 +288,12 @@ pub fn unarchive_thought(conn: &Connection, id: &str) -> Result<()> {
 pub fn archive_thought(conn: &Connection, id: &str) -> Result<()> {
     let now = chrono::Utc::now().to_rfc3339();
 
+    // Archiving also unpins: a pinned thought hidden by archive would otherwise
+    // still count against — and could later exceed — the MAX_PINNED cap (the
+    // pin count only looks at is_archived = 0, so an archived-but-pinned row is
+    // an invisible slot that breaks the invariant on unarchive).
     conn.execute(
-        "UPDATE thoughts SET is_archived = 1, updated_at = ?1 WHERE id = ?2",
+        "UPDATE thoughts SET is_archived = 1, is_pinned = 0, pin_order = 0, updated_at = ?1 WHERE id = ?2",
         params![now, id],
     )?;
 

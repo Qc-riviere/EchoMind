@@ -6,6 +6,7 @@
 //!   - A fresh pin lands at the top of the list (newest-first default order)
 //!   - Unpinning frees a slot and removes the thought from the pinned set
 //!   - Manual reorder is persisted and reflected by list_home_thoughts
+//!   - Archiving a pinned thought unpins it, so it can't exceed the cap on unarchive
 
 mod common;
 
@@ -76,4 +77,31 @@ fn manual_reorder_is_persisted() {
     let pinned = core.list_home_thoughts().unwrap().pinned;
     let order: Vec<&str> = pinned.iter().map(|t| t.id.as_str()).collect();
     assert_eq!(order, vec![c.as_str(), a.as_str(), b.as_str()]);
+}
+
+#[test]
+fn archiving_a_pinned_thought_unpins_it() {
+    let (_dir, core) = make_test_core();
+    // Fill all five pin slots.
+    let ids: Vec<String> = (0..5)
+        .map(|i| core.create_thought(&format!("note {i}")).unwrap().id)
+        .collect();
+    for id in &ids {
+        core.set_pinned(id, true).unwrap();
+    }
+    assert_eq!(core.list_home_thoughts().unwrap().pinned.len(), 5);
+
+    // Archive one of the five. It must free a pin slot, not just hide the row —
+    // otherwise the archived-but-pinned thought is an invisible 6th pin.
+    core.archive_thought(&ids[0]).unwrap();
+    assert_eq!(core.list_home_thoughts().unwrap().pinned.len(), 4);
+
+    // A new pin now fits (cap respects the freed slot).
+    let extra = core.create_thought("extra").unwrap().id;
+    core.set_pinned(&extra, true).unwrap();
+    assert_eq!(core.list_home_thoughts().unwrap().pinned.len(), 5);
+
+    // Unarchiving the original must NOT resurrect its pin (would make 6).
+    core.unarchive_thought(&ids[0]).unwrap();
+    assert_eq!(core.list_home_thoughts().unwrap().pinned.len(), 5);
 }

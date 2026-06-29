@@ -78,6 +78,13 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
   const [appendTarget, setAppendTarget] = useState<string | null>(null);
   const [appendText, setAppendText] = useState("");
   const [appending, setAppending] = useState(false);
+  // Guards pin/archive against double-clicks (each fires an async invoke +
+  // onChanged reload; rapid clicks would race). `pinLimitHit` shows an inline
+  // hint when the pin cap is reached — there's no in-app toast system, so the
+  // OS notification (which silently no-ops if permission was denied) isn't
+  // enough on its own.
+  const [actionBusy, setActionBusy] = useState(false);
+  const [pinLimitHit, setPinLimitHit] = useState(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const openFolder = useCallback(() => {
@@ -345,20 +352,27 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
               {t("thought.append")}
             </button>
             <button
+              disabled={actionBusy}
               onClick={async (e) => {
                 e.stopPropagation();
+                if (actionBusy) return;
+                setActionBusy(true);
                 try {
                   await invoke("set_pinned_thought", { id: thought.id, pinned: !thought.is_pinned });
                   onChanged?.();
                 } catch (err) {
-                  // Most likely the pin cap (5) was hit. Surface it instead of
-                  // silently no-op'ing so the user understands why nothing pinned.
+                  // Most likely the pin cap (5) was hit. Surface it inline (and
+                  // via OS toast, best-effort) instead of silently no-op'ing.
                   if (String(err).includes("PIN_LIMIT")) {
+                    setPinLimitHit(true);
+                    window.setTimeout(() => setPinLimitHit(false), 2500);
                     notify("EchoMind", t("thought.pin_limit", { max: 5 })).catch(() => {});
                   }
+                } finally {
+                  setActionBusy(false);
                 }
               }}
-              className={`flex items-center gap-1.5 text-[11px] uppercase tracking-wider transition-colors ${
+              className={`flex items-center gap-1.5 text-[11px] uppercase tracking-wider transition-colors disabled:opacity-50 ${
                 thought.is_pinned
                   ? "text-primary"
                   : "text-on-surface-variant hover:text-primary"
@@ -368,12 +382,28 @@ export default function ThoughtCard({ thought, showRelated = false, onClick, isA
               {thought.is_pinned ? t("thought.pinned") : t("thought.pin")}
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); archiveThought(thought.id); onChanged?.(); }}
-              className="flex items-center gap-1.5 text-[11px] text-on-surface-variant hover:text-error uppercase tracking-wider transition-colors"
+              disabled={actionBusy}
+              onClick={async (e) => {
+                e.stopPropagation();
+                if (actionBusy) return;
+                setActionBusy(true);
+                try {
+                  await archiveThought(thought.id);
+                  onChanged?.();
+                } finally {
+                  setActionBusy(false);
+                }
+              }}
+              className="flex items-center gap-1.5 text-[11px] text-on-surface-variant hover:text-error uppercase tracking-wider transition-colors disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-[16px]">inventory_2</span>
               {t("thought.archive")}
             </button>
+            {pinLimitHit && (
+              <span className="text-[11px] text-error normal-case tracking-normal self-center">
+                {t("thought.pin_limit", { max: 5 })}
+              </span>
+            )}
           </div>
 
           {/* Inline append form */}

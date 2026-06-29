@@ -277,6 +277,9 @@ function PinnedSection({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const orderRef = useRef(order);
   orderRef.current = order;
+  // Snapshot of the order when a drag begins, so a cancelled drag (ESC / dropped
+  // outside) can be restored instead of persisting the half-way reorder.
+  const startOrderRef = useRef<Thought[]>(order);
 
   // Card DOM nodes + their last-painted top, keyed by thought id. Used to FLIP-
   // animate cards into their new slot whenever `order` changes.
@@ -318,8 +321,14 @@ function PinnedSection({
     });
   };
 
-  const finishDrag = () => {
+  const finishDrag = (e: React.DragEvent) => {
     setDraggingId(null);
+    // ESC / drop-outside cancels the drag — dropEffect is "none". Restore the
+    // pre-drag order and skip persistence so a cancelled drag is a true no-op.
+    if (e.dataTransfer.dropEffect === "none") {
+      setOrder(startOrderRef.current);
+      return;
+    }
     invoke("reorder_pinned_thoughts", { ids: orderRef.current.map((t) => t.id) })
       .then(() => onChanged())
       .catch(() => { /* revert on next loadHome */ });
@@ -345,6 +354,7 @@ function PinnedSection({
             <span
               draggable
               onDragStart={(e) => {
+                startOrderRef.current = orderRef.current;
                 setDraggingId(thought.id);
                 // WebView2/Safari won't start a drag unless dataTransfer carries
                 // something; set a payload + move effect to make it reliable.
@@ -357,7 +367,7 @@ function PinnedSection({
                   e.dataTransfer.setDragImage(card, e.clientX - rect.left, e.clientY - rect.top);
                 }
               }}
-              onDragEnd={finishDrag}
+              onDragEnd={(e) => finishDrag(e)}
               className="material-symbols-outlined text-[18px] text-on-surface-variant/40 hover:text-primary cursor-grab active:cursor-grabbing mt-6 ml-2 select-none flex-shrink-0"
               aria-label="drag to reorder"
             >
